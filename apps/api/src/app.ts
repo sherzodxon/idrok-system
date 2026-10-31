@@ -11,6 +11,7 @@ import { idempotency } from "./http/idempotency";
 import { requestId } from "./http/request-id";
 import { accessRoutes } from "./modules/access/access.routes";
 import { authRoutes } from "./modules/auth/auth.routes";
+import { importsRoutes } from "./modules/imports/imports.routes";
 import { meRoutes } from "./modules/me/me.routes";
 import { peopleRoutes } from "./modules/people/people.routes";
 import { structureRoutes } from "./modules/structure/structure.routes";
@@ -56,6 +57,7 @@ export function createApp(deps: AppDeps): express.Express {
   structureRoutes(v1, registry, deps);
   peopleRoutes(v1, registry, deps);
   usersRoutes(v1, registry, deps);
+  importsRoutes(v1, registry, deps);
 
   routesFor(v1, registry)(
     {

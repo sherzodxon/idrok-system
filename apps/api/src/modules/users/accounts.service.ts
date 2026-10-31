@@ -2,12 +2,17 @@
 // employees → name-based. The temporary password is returned once and must be changed at first login.
 import { requireTenantId, type Db, type DbTransaction, type Prisma } from "@idrok/db";
 import type { ListQuery, SystemRoleCode } from "@idrok/shared";
-import type { RequestAuth } from "../../http/auth";
 import { AppError, notFound } from "../../http/errors";
 import { page, skipTake } from "../../http/pagination";
 import type { AuthStateStore } from "../access/auth-state";
 import { writeAudit } from "../audit/audit.service";
 import { generateTemporaryPassword, hashPassword } from "../auth/password";
+
+/** Who creates accounts: a request user, or the user who started an import. */
+export interface Actor {
+  userId: string;
+  roles: readonly string[];
+}
 
 export interface AccountCreated {
   userId: string;
@@ -37,7 +42,7 @@ export class AccountsService {
     return roles.map((r) => r.id);
   }
 
-  private async createUser(tx: DbTransaction, actor: RequestAuth, username: string, roleIds: string[], phone?: string) {
+  private async createUser(tx: DbTransaction, actor: Actor, username: string, roleIds: string[], phone?: string) {
     const taken = await tx.user.findFirst({ where: { username }, select: { id: true } });
     if (taken) throw new AppError("CONFLICT", 409, { reason: "USERNAME_TAKEN", username });
     const temporaryPassword = generateTemporaryPassword();
@@ -60,12 +65,18 @@ export class AccountsService {
     return { userId: user.id, username, temporaryPassword };
   }
 
+  /** Runs inside the caller's transaction when one is given (import rows stay atomic). */
+  private run<T>(tx: DbTransaction | undefined, fn: (tx: DbTransaction) => Promise<T>): Promise<T> {
+    return tx ? fn(tx) : this.db.$transaction(fn);
+  }
+
   async createStudentAccount(
-    actor: RequestAuth,
+    actor: Actor,
     studentId: string,
     allowBelowMinGrade = false,
+    outer?: DbTransaction,
   ): Promise<AccountCreated> {
-    return this.db.$transaction(async (tx) => {
+    return this.run(outer, async (tx) => {
       const student = await tx.student.findUnique({
         where: { id: studentId },
         select: {
@@ -102,8 +113,8 @@ export class AccountsService {
     });
   }
 
-  async createGuardianAccount(actor: RequestAuth, guardianId: string): Promise<AccountCreated> {
-    return this.db.$transaction(async (tx) => {
+  async createGuardianAccount(actor: Actor, guardianId: string, outer?: DbTransaction): Promise<AccountCreated> {
+    return this.run(outer, async (tx) => {
       const guardian = await tx.guardian.findUnique({
         where: { id: guardianId },
         select: { phone: true, userId: true },
@@ -128,8 +139,13 @@ export class AccountsService {
     });
   }
 
-  async createEmployeeAccount(actor: RequestAuth, employeeId: string, roleIds?: string[]): Promise<AccountCreated> {
-    return this.db.$transaction(async (tx) => {
+  async createEmployeeAccount(
+    actor: Actor,
+    employeeId: string,
+    roleIds?: string[],
+    outer?: DbTransaction,
+  ): Promise<AccountCreated> {
+    return this.run(outer, async (tx) => {
       const employee = await tx.employee.findUnique({ where: { id: employeeId } });
       if (!employee) throw notFound();
       if (employee.userId) throw new AppError("CONFLICT", 409, { reason: "ACCOUNT_EXISTS" });
@@ -180,7 +196,7 @@ export class AccountsService {
     return { userId, username: result.username, temporaryPassword };
   }
 
-  async setStatus(actor: RequestAuth, userId: string, status: "ACTIVE" | "DISABLED") {
+  async setStatus(actor: Actor, userId: string, status: "ACTIVE" | "DISABLED") {
     if (userId === actor.userId && status === "DISABLED")
       throw new AppError("CONFLICT", 409, { reason: "CANNOT_DISABLE_SELF" });
     const sessions = await this.db.$transaction(async (tx) => {

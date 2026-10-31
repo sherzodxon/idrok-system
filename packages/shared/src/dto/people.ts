@@ -156,3 +156,41 @@ export const CreateAccountSchema = z
   })
   .strict();
 export const AccountCreatedSchema = z.object({ userId: z.uuid(), username: z.string(), temporaryPassword: z.string() });
+
+export const ImportKindSchema = z.enum(["STUDENTS_GUARDIANS", "EMPLOYEES_ASSIGNMENTS", "CLASS_GROUPS", "SUBJECTS"]);
+export const ImportOptionsSchema = z
+  .object({
+    academicYearId: z.uuid().optional(),
+    /** Enrollment / assignment start; defaults to the year start (or today if the year has started). */
+    validFrom: SchoolDateSchema.optional(),
+  })
+  .strict();
+export const ImportJobSchema = z.object({
+  id: z.uuid(),
+  kind: ImportKindSchema,
+  status: z.enum(["UPLOADED", "PARSING", "PREVIEW_READY", "COMMITTING", "COMMITTED", "FAILED", "CANCELLED"]),
+  fileName: z.string(),
+  summary: z.record(z.string(), z.number()).nullable(),
+  errorCount: z.number().int(),
+  warningCount: z.number().int(),
+  failure: z.object({ code: z.string() }).nullable(),
+  hasCredentials: z.boolean(),
+  createdAt: z.string(),
+  committedAt: z.string().nullable(),
+});
+export type ImportJobDto = z.infer<typeof ImportJobSchema>;
+export const ImportMessageSchema = z.object({
+  code: z.string(),
+  field: z.string().optional(),
+  params: z.record(z.string(), z.unknown()).optional(),
+});
+export const ImportRowSchema = z.object({
+  rowNumber: z.number().int(),
+  status: z.enum(["OK", "WARNING", "ERROR", "SKIPPED"]),
+  data: z.record(z.string(), z.unknown()),
+  messages: z.array(ImportMessageSchema),
+});
+export const ImportRowsQuerySchema = ListQuerySchema.extend({
+  status: z.enum(["OK", "WARNING", "ERROR", "SKIPPED"]).optional(),
+});
+export const CommitImportSchema = z.object({ skipErrors: z.boolean().default(false) }).strict();

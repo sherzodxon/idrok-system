@@ -376,29 +376,33 @@ model FileAsset {
   brandingLogos    SchoolBranding[] @relation("BrandingLogo")
   brandingFavicons SchoolBranding[] @relation("BrandingFavicon")
   importJobs       ImportJob[]
+  importResults    ImportJob[]      @relation("ImportResult")
   studentPhotos    Student[]
 
   @@index([tenantId, kind, createdAt])
 }
 
 model ImportJob {
-  id           String       @id @default(uuid(7)) @db.Uuid
-  tenantId     String       @db.Uuid
-  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  kind         ImportKind
-  status       ImportStatus @default(UPLOADED)
-  fileAssetId  String       @db.Uuid
-  fileAsset    FileAsset    @relation(fields: [fileAssetId], references: [id], onDelete: Restrict)
-  options      Json?
-  summary      Json?
-  errorCount   Int          @default(0)
-  warningCount Int          @default(0)
-  failure      Json?
-  createdById  String       @db.Uuid
-  committedAt  DateTime?    @db.Timestamptz(3)
-  createdAt    DateTime     @default(now()) @db.Timestamptz(3)
-  updatedAt    DateTime     @updatedAt @db.Timestamptz(3)
-  rows         ImportRow[]
+  id            String       @id @default(uuid(7)) @db.Uuid
+  tenantId      String       @db.Uuid
+  tenant        Tenant       @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  kind          ImportKind
+  status        ImportStatus @default(UPLOADED)
+  fileAssetId   String       @db.Uuid
+  fileAsset     FileAsset    @relation(fields: [fileAssetId], references: [id], onDelete: Restrict)
+  options       Json?
+  summary       Json?
+  errorCount    Int          @default(0)
+  warningCount  Int          @default(0)
+  failure       Json?
+  // Credentials file produced by the commit (temporary passwords), downloadable once by the importing user.
+  resultAssetId String?      @db.Uuid
+  resultAsset   FileAsset?   @relation("ImportResult", fields: [resultAssetId], references: [id], onDelete: SetNull)
+  createdById   String       @db.Uuid
+  committedAt   DateTime?    @db.Timestamptz(3)
+  createdAt     DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime     @updatedAt @db.Timestamptz(3)
+  rows          ImportRow[]
 
   @@index([tenantId, kind, createdAt])
 }

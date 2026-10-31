@@ -1,6 +1,6 @@
 import { defineConfig } from "tsup";
 
-// Workspace packages export TypeScript sources, so they are bundled into the output.
+// Workspace packages (including the API code the worker runs) are bundled; npm dependencies stay external.
 export default defineConfig({
   entry: ["src/main.ts"],
   format: ["esm"],
@@ -9,4 +9,5 @@ export default defineConfig({
   sourcemap: true,
   clean: true,
   noExternal: [/^@idrok\//],
+  external: ["@prisma/client", "@prisma/adapter-pg", "pg"],
 });
