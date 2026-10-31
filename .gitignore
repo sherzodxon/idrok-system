@@ -27,3 +27,6 @@ uploads/
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# generated
+packages/db/src/generated/

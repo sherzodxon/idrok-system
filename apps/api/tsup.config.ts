@@ -9,4 +9,6 @@ export default defineConfig({
   sourcemap: true,
   clean: true,
   noExternal: [/^@idrok\//],
+  // Prisma query engine pieces and pg stay external (installed in node_modules).
+  external: ["@prisma/client", "@prisma/adapter-pg", "pg"],
 });

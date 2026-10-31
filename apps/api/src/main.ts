@@ -1,3 +1,4 @@
+import { createRootClient } from "@idrok/db";
 import { Redis } from "ioredis";
 import { createApp } from "./app";
 import { loadEnv } from "./config/env";
@@ -8,6 +9,12 @@ const env = loadEnv();
 const logger = createLogger(env.LOG_LEVEL);
 
 const readiness: Record<string, ReadinessCheck> = {};
+if (env.DATABASE_URL) {
+  const db = createRootClient({ url: env.DATABASE_URL, max: env.DATABASE_POOL_MAX });
+  readiness.db = async () => {
+    await db.$queryRaw`SELECT 1`;
+  };
+}
 if (env.REDIS_URL) {
   const redis = new Redis(env.REDIS_URL, { lazyConnect: true, maxRetriesPerRequest: 1 });
   readiness.redis = async () => {
