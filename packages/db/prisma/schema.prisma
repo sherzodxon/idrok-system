@@ -1,0 +1,714 @@
+// Idrok System — database schema. Only models of finished stages live here; the full M1–M5 draft is
+// docs/architecture/schema.draft.prisma. Rules (docs/architecture/data-model.md §1):
+// - UUID ids; every tenant-scoped table has tenantId (FK → Tenant); tenantId comes from the auth context only.
+// - Instants are timestamptz (UTC); calendar days are `date` (school date, Asia/Tashkent, computed on the server).
+// - Invariants Prisma cannot express (partial unique, CHECK, EXCLUDE, append-only triggers) live in migration SQL and
+//   are listed in packages/db/INVARIANTS.md; a test verifies they exist.
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "esm"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// =====================================================================================================================
+// ENUMS
+// =====================================================================================================================
+
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum ThemeMode {
+  LIGHT
+  DARK
+  SYSTEM
+}
+
+enum Density {
+  COMFORTABLE
+  COMPACT
+}
+
+enum Locale {
+  uz
+  ru
+}
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum ClientType {
+  WEB
+  MOBILE
+  TELEGRAM
+}
+
+enum FileKind {
+  IMPORT_SOURCE
+  EXPORT
+  STUDENT_PHOTO
+  BRANDING
+  OTHER
+}
+
+enum FileStatus {
+  PENDING
+  READY
+  DELETED
+}
+
+enum ImportKind {
+  STUDENTS_GUARDIANS
+  EMPLOYEES_ASSIGNMENTS
+  CLASS_GROUPS
+  SUBJECTS
+}
+
+enum ImportStatus {
+  UPLOADED
+  PARSING
+  PREVIEW_READY
+  COMMITTING
+  COMMITTED
+  FAILED
+  CANCELLED
+}
+
+enum ImportRowStatus {
+  OK
+  WARNING
+  ERROR
+  SKIPPED
+}
+
+enum OutboxStatus {
+  PENDING
+  PUBLISHED
+  FAILED
+}
+
+enum AcademicYearStatus {
+  PLANNED
+  ACTIVE
+  CLOSED
+  ARCHIVED
+}
+
+enum TeachingGroupKind {
+  CLASS
+  SUBGROUP
+  CROSS_CLASS
+}
+
+enum EmployeeStatus {
+  ACTIVE
+  ON_LEAVE
+  LEFT
+}
+
+enum StudentStatus {
+  ACTIVE
+  GRADUATED
+  LEFT
+  SUSPENDED
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum GuardianRelation {
+  MOTHER
+  FATHER
+  GRANDPARENT
+  SIBLING
+  OTHER
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  TRANSFERRED
+  LEFT
+  GRADUATED
+  CANCELLED
+}
+
+// =====================================================================================================================
+// TENANT, SETTINGS, BRANDING
+// =====================================================================================================================
+
+model Tenant {
+  id        String       @id @default(uuid(7)) @db.Uuid
+  slug      String       @unique
+  name      String
+  status    TenantStatus @default(ACTIVE)
+  createdAt DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime     @updatedAt @db.Timestamptz(3)
+
+  settings SchoolSettings?
+  branding SchoolBranding?
+
+  users                User[]
+  authSessions         AuthSession[]
+  roles                Role[]
+  userRoles            UserRole[]
+  auditLogs            AuditLog[]
+  fileAssets           FileAsset[]
+  importJobs           ImportJob[]
+  idempotencyRecords   IdempotencyRecord[]
+  outboxEvents         OutboxEvent[]
+  academicYears        AcademicYear[]
+  grades               Grade[]
+  classGroups          ClassGroup[]
+  teachingGroups       TeachingGroup[]
+  teachingGroupMembers TeachingGroupMember[]
+  subjects             Subject[]
+  employees            Employee[]
+  teacherAssignments   TeacherAssignment[]
+  students             Student[]
+  guardians            Guardian[]
+  studentGuardians     StudentGuardian[]
+  studentEnrollments   StudentEnrollment[]
+}
+
+model SchoolSettings {
+  id                     String   @id @default(uuid(7)) @db.Uuid
+  tenantId               String   @unique @db.Uuid
+  tenant                 Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  timezone               String   @default("Asia/Tashkent")
+  defaultLocale          Locale   @default(uz)
+  enabledLocales         Locale[] @default([uz, ru])
+  currency               String   @default("UZS")
+  weekStartsOn           Int      @default(1)
+  studentCodePrefix      String   @default("STD")
+  studentAccountMinGrade Int      @default(5) // Q-27: import creates logins from this grade level up
+  planApprovalRequired   Boolean  @default(true)
+  updatedById            String?  @db.Uuid
+  updatedAt              DateTime @updatedAt @db.Timestamptz(3)
+}
+
+model SchoolBranding {
+  id                    String     @id @default(uuid(7)) @db.Uuid
+  tenantId              String     @unique @db.Uuid
+  tenant                Tenant     @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  schoolName            String
+  platformName          String     @default("Idrok System")
+  logoAssetId           String?    @db.Uuid
+  logoAsset             FileAsset? @relation("BrandingLogo", fields: [logoAssetId], references: [id], onDelete: SetNull)
+  faviconAssetId        String?    @db.Uuid
+  faviconAsset          FileAsset? @relation("BrandingFavicon", fields: [faviconAssetId], references: [id], onDelete: SetNull)
+  primaryColor          String     @default("#4E92CF")
+  primaryHoverColor     String     @default("#397FBF")
+  primaryStrongColor    String     @default("#286FA9")
+  primarySoftColor      String     @default("#EAF3FB")
+  secondaryColor        String?
+  defaultThemeMode      ThemeMode  @default(SYSTEM)
+  customBrandingEnabled Boolean    @default(true)
+  updatedById           String?    @db.Uuid
+  updatedAt             DateTime   @updatedAt @db.Timestamptz(3)
+}
+
+// =====================================================================================================================
+// IDENTITY, AUTH, RBAC
+// =====================================================================================================================
+
+model User {
+  id                 String     @id @default(uuid(7)) @db.Uuid
+  tenantId           String     @db.Uuid
+  tenant             Tenant     @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  username           String // staff/students: login name; guardians: E.164 phone
+  phone              String?
+  passwordHash       String // argon2id; reversible encryption is forbidden
+  passwordChangedAt  DateTime?  @db.Timestamptz(3)
+  mustChangePassword Boolean    @default(true)
+  status             UserStatus @default(ACTIVE)
+  authVersion        Int        @default(0) // bumped on role/password/status change → cached permissions refresh
+  lastLoginAt        DateTime?  @db.Timestamptz(3)
+  createdById        String?    @db.Uuid
+  createdAt          DateTime   @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime   @updatedAt @db.Timestamptz(3)
+
+  preference UserPreference?
+  sessions   AuthSession[]
+  roles      UserRole[]      @relation("UserRoles")
+  rolesGiven UserRole[]      @relation("UserRolesAssignedBy")
+  student    Student?
+  guardian   Guardian?
+  employee   Employee?
+
+  @@unique([tenantId, username])
+  @@index([tenantId, phone])
+}
+
+model UserPreference {
+  userId           String    @id @db.Uuid
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  themeMode        ThemeMode @default(SYSTEM)
+  sidebarCollapsed Boolean   @default(false)
+  density          Density   @default(COMFORTABLE)
+  locale           Locale?
+  updatedAt        DateTime  @updatedAt @db.Timestamptz(3)
+}
+
+// Refresh token family. Only SHA-256 hashes are stored. Rotation moves the old hash to previousTokenHash; a reused
+// old token revokes the whole session.
+model AuthSession {
+  id                String     @id @default(uuid(7)) @db.Uuid
+  tenantId          String     @db.Uuid
+  tenant            Tenant     @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  userId            String     @db.Uuid
+  user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clientType        ClientType
+  refreshTokenHash  String     @unique
+  previousTokenHash String?    @unique
+  rotatedAt         DateTime?  @db.Timestamptz(3)
+  expiresAt         DateTime   @db.Timestamptz(3)
+  lastUsedAt        DateTime   @default(now()) @db.Timestamptz(3)
+  userAgent         String?
+  ipHash            String?
+  revokedAt         DateTime?  @db.Timestamptz(3)
+  revokeReason      String?
+  createdAt         DateTime   @default(now()) @db.Timestamptz(3)
+
+  @@index([tenantId, userId, revokedAt])
+}
+
+// Global catalogue (no tenant), synced from packages/shared/src/permissions.ts by the seed.
+model Permission {
+  code       String           @id
+  module     String
+  deprecated Boolean          @default(false)
+  roles      RolePermission[]
+}
+
+model Role {
+  id          String           @id @default(uuid(7)) @db.Uuid
+  tenantId    String           @db.Uuid
+  tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  code        String
+  name        String
+  description String?
+  isSystem    Boolean          @default(false)
+  archivedAt  DateTime?        @db.Timestamptz(3)
+  createdAt   DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime         @updatedAt @db.Timestamptz(3)
+  permissions RolePermission[]
+  userRoles   UserRole[]
+
+  @@unique([tenantId, code])
+}
+
+model RolePermission {
+  roleId         String     @db.Uuid
+  role           Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permissionCode String
+  permission     Permission @relation(fields: [permissionCode], references: [code], onDelete: Restrict)
+
+  @@id([roleId, permissionCode])
+}
+
+model UserRole {
+  id           String    @id @default(uuid(7)) @db.Uuid
+  tenantId     String    @db.Uuid
+  tenant       Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  userId       String    @db.Uuid
+  user         User      @relation("UserRoles", fields: [userId], references: [id], onDelete: Cascade)
+  roleId       String    @db.Uuid
+  role         Role      @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  assignedById String?   @db.Uuid
+  assignedBy   User?     @relation("UserRolesAssignedBy", fields: [assignedById], references: [id], onDelete: SetNull)
+  assignedAt   DateTime  @default(now()) @db.Timestamptz(3)
+  revokedAt    DateTime? @db.Timestamptz(3)
+
+  // SQL: UserRole_active_unique — partial unique (userId, roleId) WHERE revokedAt IS NULL
+  @@index([tenantId, userId])
+}
+
+// =====================================================================================================================
+// INFRASTRUCTURE: AUDIT, FILES, IMPORT, IDEMPOTENCY, OUTBOX
+// =====================================================================================================================
+
+// Append-only (SQL trigger). Written in the same transaction as the change it records.
+model AuditLog {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  tenantId    String   @db.Uuid
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  actorUserId String?  @db.Uuid
+  action      String
+  entityType  String
+  entityId    String?
+  before      Json?
+  after       Json?
+  reason      String?
+  requestId   String?
+  ipHash      String?
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([tenantId, entityType, entityId])
+  @@index([tenantId, createdAt])
+  @@index([tenantId, actorUserId, createdAt])
+}
+
+model FileAsset {
+  id           String     @id @default(uuid(7)) @db.Uuid
+  tenantId     String     @db.Uuid
+  tenant       Tenant     @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  storageKey   String     @unique
+  originalName String
+  mimeType     String
+  sizeBytes    Int
+  sha256       String
+  kind         FileKind
+  status       FileStatus @default(PENDING)
+  createdById  String?    @db.Uuid
+  createdAt    DateTime   @default(now()) @db.Timestamptz(3)
+  deletedAt    DateTime?  @db.Timestamptz(3)
+
+  brandingLogos    SchoolBranding[] @relation("BrandingLogo")
+  brandingFavicons SchoolBranding[] @relation("BrandingFavicon")
+  importJobs       ImportJob[]
+  studentPhotos    Student[]
+
+  @@index([tenantId, kind, createdAt])
+}
+
+model ImportJob {
+  id           String       @id @default(uuid(7)) @db.Uuid
+  tenantId     String       @db.Uuid
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  kind         ImportKind
+  status       ImportStatus @default(UPLOADED)
+  fileAssetId  String       @db.Uuid
+  fileAsset    FileAsset    @relation(fields: [fileAssetId], references: [id], onDelete: Restrict)
+  options      Json?
+  summary      Json?
+  errorCount   Int          @default(0)
+  warningCount Int          @default(0)
+  failure      Json?
+  createdById  String       @db.Uuid
+  committedAt  DateTime?    @db.Timestamptz(3)
+  createdAt    DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime     @updatedAt @db.Timestamptz(3)
+  rows         ImportRow[]
+
+  @@index([tenantId, kind, createdAt])
+}
+
+model ImportRow {
+  id             String          @id @default(uuid(7)) @db.Uuid
+  importJobId    String          @db.Uuid
+  importJob      ImportJob       @relation(fields: [importJobId], references: [id], onDelete: Cascade)
+  rowNumber      Int
+  status         ImportRowStatus
+  data           Json
+  messages       Json
+  targetEntityId String?
+
+  @@unique([importJobId, rowNumber])
+}
+
+model IdempotencyRecord {
+  id           String   @id @default(uuid(7)) @db.Uuid
+  tenantId     String   @db.Uuid
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  userId       String   @db.Uuid
+  key          String
+  method       String
+  path         String
+  requestHash  String
+  statusCode   Int
+  responseBody Json?
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+  expiresAt    DateTime @db.Timestamptz(3)
+
+  @@unique([tenantId, userId, key])
+  @@index([expiresAt])
+}
+
+model OutboxEvent {
+  id            String       @id @default(uuid(7)) @db.Uuid
+  tenantId      String       @db.Uuid
+  tenant        Tenant       @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  type          String
+  aggregateType String
+  aggregateId   String
+  payload       Json
+  status        OutboxStatus @default(PENDING)
+  attempts      Int          @default(0)
+  lastError     String?
+  availableAt   DateTime     @default(now()) @db.Timestamptz(3)
+  publishedAt   DateTime?    @db.Timestamptz(3)
+  createdAt     DateTime     @default(now()) @db.Timestamptz(3)
+
+  @@index([status, availableAt])
+}
+
+// =====================================================================================================================
+// SCHOOL STRUCTURE
+// =====================================================================================================================
+
+// startDate/endDate: first and last school day (both inclusive).
+model AcademicYear {
+  id        String             @id @default(uuid(7)) @db.Uuid
+  tenantId  String             @db.Uuid
+  tenant    Tenant             @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  name      String
+  startDate DateTime           @db.Date
+  endDate   DateTime           @db.Date
+  status    AcademicYearStatus @default(PLANNED)
+  createdAt DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime           @updatedAt @db.Timestamptz(3)
+
+  classGroups        ClassGroup[]
+  teachingGroups     TeachingGroup[]
+  teacherAssignments TeacherAssignment[]
+  enrollments        StudentEnrollment[]
+
+  // SQL: AcademicYear_one_active, AcademicYear_dates_check
+  @@unique([tenantId, name])
+}
+
+// Parallel (grade level), independent of the year.
+model Grade {
+  id         String    @id @default(uuid(7)) @db.Uuid
+  tenantId   String    @db.Uuid
+  tenant     Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  level      Int
+  name       String
+  archivedAt DateTime? @db.Timestamptz(3)
+
+  classGroups ClassGroup[]
+
+  // SQL: Grade_level_check (0..11)
+  @@unique([tenantId, level])
+}
+
+// A class in one academic year (7-A, 2026-2027).
+model ClassGroup {
+  id                String       @id @default(uuid(7)) @db.Uuid
+  tenantId          String       @db.Uuid
+  tenant            Tenant       @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  academicYearId    String       @db.Uuid
+  academicYear      AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+  gradeId           String       @db.Uuid
+  grade             Grade        @relation(fields: [gradeId], references: [id], onDelete: Restrict)
+  section           String
+  name              String
+  homeroomTeacherId String?      @db.Uuid
+  homeroomTeacher   Employee?    @relation(fields: [homeroomTeacherId], references: [id], onDelete: SetNull)
+  capacity          Int?
+  archivedAt        DateTime?    @db.Timestamptz(3)
+  createdAt         DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime     @updatedAt @db.Timestamptz(3)
+
+  teachingGroups TeachingGroup[]
+  enrollments    StudentEnrollment[]
+
+  @@unique([tenantId, academicYearId, name])
+  @@index([tenantId, academicYearId, gradeId])
+}
+
+model TeachingGroup {
+  id             String            @id @default(uuid(7)) @db.Uuid
+  tenantId       String            @db.Uuid
+  tenant         Tenant            @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  academicYearId String            @db.Uuid
+  academicYear   AcademicYear      @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+  classGroupId   String?           @db.Uuid
+  classGroup     ClassGroup?       @relation(fields: [classGroupId], references: [id], onDelete: Restrict)
+  kind           TeachingGroupKind
+  name           String
+  subjectId      String?           @db.Uuid
+  subject        Subject?          @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  archivedAt     DateTime?         @db.Timestamptz(3)
+  createdAt      DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime          @updatedAt @db.Timestamptz(3)
+
+  members            TeachingGroupMember[]
+  teacherAssignments TeacherAssignment[]
+
+  // SQL: TeachingGroup_one_class_group, TeachingGroup_class_check
+  @@index([tenantId, academicYearId])
+  @@index([classGroupId])
+}
+
+model TeachingGroupMember {
+  id              String        @id @default(uuid(7)) @db.Uuid
+  tenantId        String        @db.Uuid
+  tenant          Tenant        @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  teachingGroupId String        @db.Uuid
+  teachingGroup   TeachingGroup @relation(fields: [teachingGroupId], references: [id], onDelete: Restrict)
+  studentId       String        @db.Uuid
+  student         Student       @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  validFrom       DateTime      @db.Date
+  validTo         DateTime?     @db.Date
+
+  // SQL: TeachingGroupMember_no_overlap (EXCLUDE), TeachingGroupMember_dates_check
+  @@index([teachingGroupId, validFrom])
+  @@index([studentId])
+}
+
+model Subject {
+  id         String    @id @default(uuid(7)) @db.Uuid
+  tenantId   String    @db.Uuid
+  tenant     Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  name       String
+  shortName  String?
+  code       String?
+  colorKey   String?
+  order      Int       @default(0)
+  archivedAt DateTime? @db.Timestamptz(3)
+
+  teachingGroups     TeachingGroup[]
+  teacherAssignments TeacherAssignment[]
+
+  @@unique([tenantId, name])
+}
+
+model Employee {
+  id            String         @id @default(uuid(7)) @db.Uuid
+  tenantId      String         @db.Uuid
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  userId        String?        @unique @db.Uuid
+  user          User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  employeeCode  String?
+  firstName     String
+  lastName      String
+  middleName    String?
+  phone         String?
+  positionTitle String?
+  status        EmployeeStatus @default(ACTIVE)
+  hiredAt       DateTime?      @db.Date
+  leftAt        DateTime?      @db.Date
+  createdAt     DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime       @updatedAt @db.Timestamptz(3)
+
+  homeroomClasses    ClassGroup[]
+  teacherAssignments TeacherAssignment[]
+
+  @@unique([tenantId, employeeCode])
+  @@index([tenantId, lastName, firstName])
+}
+
+model TeacherAssignment {
+  id              String        @id @default(uuid(7)) @db.Uuid
+  tenantId        String        @db.Uuid
+  tenant          Tenant        @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  academicYearId  String        @db.Uuid
+  academicYear    AcademicYear  @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+  teacherId       String        @db.Uuid
+  teacher         Employee      @relation(fields: [teacherId], references: [id], onDelete: Restrict)
+  teachingGroupId String        @db.Uuid
+  teachingGroup   TeachingGroup @relation(fields: [teachingGroupId], references: [id], onDelete: Restrict)
+  subjectId       String        @db.Uuid
+  subject         Subject       @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  weeklyHours     Decimal?      @db.Decimal(4, 1)
+  validFrom       DateTime      @db.Date
+  validTo         DateTime?     @db.Date
+  createdAt       DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime      @updatedAt @db.Timestamptz(3)
+
+  // SQL: TeacherAssignment_dates_check
+  @@unique([teachingGroupId, subjectId, teacherId, validFrom])
+  @@index([tenantId, teacherId, academicYearId])
+  @@index([tenantId, teachingGroupId, subjectId])
+}
+
+// No passport, birth certificate or INN fields — not collected (Q-29).
+model Student {
+  id           String        @id @default(uuid(7)) @db.Uuid
+  tenantId     String        @db.Uuid
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  userId       String?       @unique @db.Uuid
+  user         User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  studentCode  String
+  firstName    String
+  lastName     String
+  middleName   String?
+  dateOfBirth  DateTime?     @db.Date
+  gender       Gender?
+  phone        String?
+  address      String?
+  notes        String?
+  status       StudentStatus @default(ACTIVE)
+  photoAssetId String?       @db.Uuid
+  photoAsset   FileAsset?    @relation(fields: [photoAssetId], references: [id], onDelete: SetNull)
+  createdAt    DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime      @updatedAt @db.Timestamptz(3)
+
+  guardians        StudentGuardian[]
+  enrollments      StudentEnrollment[]
+  groupMemberships TeachingGroupMember[]
+
+  @@unique([tenantId, studentCode])
+  @@index([tenantId, lastName, firstName])
+}
+
+model Guardian {
+  id         String            @id @default(uuid(7)) @db.Uuid
+  tenantId   String            @db.Uuid
+  tenant     Tenant            @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  userId     String?           @unique @db.Uuid
+  user       User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  firstName  String
+  lastName   String
+  middleName String?
+  phone      String // E.164 (+998XXXXXXXXX)
+  notes      String?
+  createdAt  DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime          @updatedAt @db.Timestamptz(3)
+  students   StudentGuardian[]
+
+  @@index([tenantId, phone])
+}
+
+model StudentGuardian {
+  id                    String           @id @default(uuid(7)) @db.Uuid
+  tenantId              String           @db.Uuid
+  tenant                Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  studentId             String           @db.Uuid
+  student               Student          @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  guardianId            String           @db.Uuid
+  guardian              Guardian         @relation(fields: [guardianId], references: [id], onDelete: Restrict)
+  relation              GuardianRelation
+  isPrimary             Boolean          @default(false)
+  canViewData           Boolean          @default(true)
+  receivesNotifications Boolean          @default(true)
+  revokedAt             DateTime?        @db.Timestamptz(3)
+  createdAt             DateTime         @default(now()) @db.Timestamptz(3)
+
+  @@unique([studentId, guardianId])
+  @@index([tenantId, guardianId])
+}
+
+model StudentEnrollment {
+  id             String           @id @default(uuid(7)) @db.Uuid
+  tenantId       String           @db.Uuid
+  tenant         Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  studentId      String           @db.Uuid
+  student        Student          @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  academicYearId String           @db.Uuid
+  academicYear   AcademicYear     @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+  classGroupId   String           @db.Uuid
+  classGroup     ClassGroup       @relation(fields: [classGroupId], references: [id], onDelete: Restrict)
+  status         EnrollmentStatus @default(ACTIVE)
+  validFrom      DateTime         @db.Date
+  validTo        DateTime?        @db.Date
+  reason         String?
+  createdById    String?          @db.Uuid
+  createdAt      DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime         @updatedAt @db.Timestamptz(3)
+
+  // SQL: StudentEnrollment_one_active, StudentEnrollment_dates_check
+  @@index([tenantId, classGroupId, status])
+  @@index([studentId, academicYearId])
+}

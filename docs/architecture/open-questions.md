@@ -105,3 +105,13 @@ A–D bo'limlari ochiq qoladi — tegishli bosqichdan oldin maktab hal qiladi. J
 | Vaznli testlar: MASTER_SPEC §13.9 "vaznlar yig'indisi ≤ komponent limiti" vs `tests.md` §7 nisbiy vaznlar | `tests.md` (nisbiy vazn, komponent maksimumiga masshtablash) | Ustunlik tartibi: spec > MASTER_SPEC; `tests.md` §7 buni aniq aytadi |
 | Test qoralamasi EdexTest'da brauzerda saqlanadi | Server-side DRAFT test | `tests.md` §4.1 |
 | `TIME_SLOTS` rejimi (MASTER_SPEC §10 Rejim B) | M2 scope'ida yo'q (`lesson-plan.md` faqat jadval asosida) | ROADMAP M2 scope; kerak bo'lsa alohida savol |
+
+## M1 davomida qabul qilingan texnik qarorlar (default, egasi tasdig'iga)
+
+| # | Qaror | Asos |
+|---|---|---|
+| Q-38 | Prisma **7.10.1** + `@prisma/adapter-pg` (`prisma-client` generator, `prisma.config.ts`). Migratsiya `DIRECT_URL` bilan, ilova `DATABASE_URL` (pooler) bilan | Joriy major versiya; adapter-pg transaction-mode pooler bilan ishlaydi. Supabase pooler bilan smoke test staging deploy'da (8-qadam) qilinadi — lokal muhitda Supabase yo'q |
+| T-01 | TypeScript **6.0** (7.0 emas) | `typescript-eslint` hozircha `<6.1` ni qo'llab-quvvatlaydi |
+| T-02 | ID'lar UUIDv7 (`uuid(7)`) | vaqt bo'yicha tartiblangan — indekslar uchun qulay |
+| T-03 | "5-sinfdan" = `level >= 5`; sozlama `SchoolSettings.studentAccountMinGrade` (default 5) | Q-27 |
+| T-04 | Integration testlar: CI'da `TEST_DATABASE_URL` (postgres servis konteyneri), lokalda `embedded-postgres` (Docker shart emas). Har ishga tushishda alohida test bazasi yaratiladi va o'chiriladi | lokal muhitda Docker yo'q |
