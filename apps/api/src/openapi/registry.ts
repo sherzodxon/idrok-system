@@ -9,6 +9,10 @@ export class OpenApiRegistry {
     this.routes.push(def);
   }
 
+  definitions(): readonly RouteDef[] {
+    return this.routes;
+  }
+
   document(info: { title: string; version: string }) {
     const paths: Record<string, Record<string, unknown>> = {};
     const schema = (s: z.ZodType, io: "input" | "output") => z.toJSONSchema(s, { io, unrepresentable: "any" });
@@ -42,7 +46,11 @@ export class OpenApiRegistry {
         summary: def.summary,
         tags: def.tags,
         ...(def.access !== "public" ? { security: [{ cookieAuth: [] }, { bearerAuth: [] }] } : {}),
-        ...(typeof def.access === "string" && def.access.includes(".") ? { "x-permission": def.access } : {}),
+        ...(typeof def.access === "object"
+          ? { "x-permission": def.access.anyOf.join(" | ") }
+          : def.access.includes(".")
+            ? { "x-permission": def.access }
+            : {}),
         ...(parameters.length ? { parameters } : {}),
         ...(def.body
           ? { requestBody: { required: true, content: { "application/json": { schema: schema(def.body, "input") } } } }

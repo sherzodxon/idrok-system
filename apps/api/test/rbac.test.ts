@@ -174,8 +174,10 @@ describe("errors and OpenAPI", () => {
     );
   });
 
-  it("publishes an OpenAPI document of the declared routes", async () => {
-    const res = await request(t.app).get("/api/v1/openapi.json");
+  it("publishes an OpenAPI document of the declared routes (logged-in users only)", async () => {
+    expect((await request(t.app).get("/api/v1/openapi.json")).status).toBe(401);
+    const user = await t.defaultTenant.createUser("TEACHER");
+    const res = await request(t.app).get("/api/v1/openapi.json").set(await bearer(user.username));
     expect(res.status).toBe(200);
     expect(res.body.openapi).toBe("3.1.0");
     expect(Object.keys(res.body.paths)).toEqual(
