@@ -115,3 +115,6 @@ A–D bo'limlari ochiq qoladi — tegishli bosqichdan oldin maktab hal qiladi. J
 | T-02 | ID'lar UUIDv7 (`uuid(7)`) | vaqt bo'yicha tartiblangan — indekslar uchun qulay |
 | T-03 | "5-sinfdan" = `level >= 5`; sozlama `SchoolSettings.studentAccountMinGrade` (default 5) | Q-27 |
 | T-04 | Integration testlar: CI'da `TEST_DATABASE_URL` (postgres servis konteyneri), lokalda `embedded-postgres` (Docker shart emas). Har ishga tushishda alohida test bazasi yaratiladi va o'chiriladi | lokal muhitda Docker yo'q |
+| T-05 | Ma'lumot doirasi rol kodidan aniqlanadi: Admin/Direktor/O'rinbosar/Uslubchi va maktab yaratgan rollar — butun maktab; O'qituvchi — faol biriktirishlaridagi guruhlar (bugungi sana bo'yicha); Sinf rahbari — + o'z sinfi va vasiylari; Vasiy/O'quvchi — faqat o'zi | `rbac-matrix.md` "Ma'lumot doirasi"; 7-qadamdan oldin egasi ko'radi |
+| T-06 | Login nomlari: o'quvchi — `studentCode` kichik harfda (`std-0001`), vasiy — E.164 telefon, xodim — `ism.familiya` (band bo'lsa raqam qo'shiladi) | Q-26, Q-27, Q-42 |
+| T-07 | `Idempotency-Key` natijasi javob yuborilgandan keyin saqlanadi: juda tez (millisekundlar ichida) qayta yuborilgan so'rov ikki marta bajarilishi mumkin. Ball/coin kabi ledger yozuvlari buning o'rniga natural unique kalitga tayanadi (M3, M5) | M1 uchun yetarli |

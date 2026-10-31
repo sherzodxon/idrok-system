@@ -38,3 +38,10 @@ export class TenantMismatchError extends Error {
     super(`${model}: tenantId in data does not match the request tenant`);
   }
 }
+
+/** The current tenant id, for explicit `tenantId` in create data (the extension verifies it matches). */
+export function requireTenantId(): string {
+  const ctx = storage.getStore();
+  if (!ctx) throw new TenantContextMissingError("context", "requireTenantId");
+  return ctx.tenantId;
+}

@@ -71,3 +71,18 @@ export function defineRoute<
     }
   });
 }
+
+/** `defineRoute` bound to one router and registry (shorter route files). */
+export function routesFor(router: Router, registry: OpenApiRegistry) {
+  return <
+    B extends z.ZodType | undefined = undefined,
+    Q extends z.ZodType | undefined = undefined,
+    P extends z.ZodType | undefined = undefined,
+    const A extends Access = Access,
+  >(
+    def: RouteDef<B, Q, P> & { access: A },
+    handler: (
+      ctx: RouteContext<Infer<B>, Infer<Q>, Infer<P>, A extends "public" ? RequestAuth | undefined : RequestAuth>,
+    ) => Promise<unknown> | unknown,
+  ) => defineRoute(router, registry, def, handler);
+}
