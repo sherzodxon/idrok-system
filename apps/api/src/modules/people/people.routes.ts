@@ -23,7 +23,6 @@ import {
   pageOf,
 } from "@idrok/shared";
 import type { AppDeps } from "../../deps";
-import { notFound } from "../../http/errors";
 import { routesFor } from "../../http/route";
 import type { OpenApiRegistry } from "../../openapi/registry";
 import { AccountsService } from "../users/accounts.service";
@@ -72,21 +71,15 @@ export function peopleRoutes(router: Router, registry: OpenApiRegistry, deps: Ap
       path: "/students/:id",
       summary: "Student profile (within the caller's scope)",
       tags,
-      access: "authenticated",
+      // Staff need students.view; guardians and students reach their own record through the portal permissions.
+      access: { anyOf: ["students.view", "portal.guardian", "portal.student"] },
       params: IdParamsSchema,
       responses: {
         200: { description: "Student", schema: StudentDetailSchema },
         404: { description: "NOT_FOUND (also outside scope)" },
       },
     },
-    async ({ res, auth, params }) => {
-      // Staff need students.view; guardians and students reach their own record through the portal permissions.
-      const allowed = (["students.view", "portal.guardian", "portal.student"] as const).some((p) =>
-        auth.permissions.includes(p),
-      );
-      if (!allowed) throw notFound();
-      return res.json(await students.get(auth, params.id));
-    },
+    async ({ res, auth, params }) => res.json(await students.get(auth, params.id)),
   );
   route(
     {

@@ -11,7 +11,7 @@ import { hashPassword } from "../../src/modules/auth/password";
 
 export const PASSWORD = "Demo-parol-2026";
 
-export async function createTestApp() {
+export async function createTestApp(envOverrides: Record<string, string> = {}) {
   const env = loadEnv({
     NODE_ENV: "test",
     DATABASE_URL: inject("databaseUrl"),
@@ -20,6 +20,7 @@ export async function createTestApp() {
     COOKIE_SECURE: "false",
     LOG_LEVEL: "silent",
     DEFAULT_TENANT_SLUG: `t-${randomUUID()}`,
+    ...envOverrides,
   });
   const deps = buildDeps(env, pino({ level: "silent" }));
   await deps.redis.flushdb();

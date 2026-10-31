@@ -16,6 +16,7 @@ import { peopleRoutes } from "./modules/people/people.routes";
 import { structureRoutes } from "./modules/structure/structure.routes";
 import { usersRoutes } from "./modules/users/users.routes";
 import { OpenApiRegistry } from "./openapi/registry";
+import { routesFor } from "./http/route";
 
 export function createApp(deps: AppDeps): express.Express {
   const app = express();
@@ -56,11 +57,22 @@ export function createApp(deps: AppDeps): express.Express {
   peopleRoutes(v1, registry, deps);
   usersRoutes(v1, registry, deps);
 
-  v1.get("/openapi.json", (_req, res) => {
-    res.json(registry.document({ title: "Idrok System API", version: "1" }));
-  });
+  routesFor(v1, registry)(
+    {
+      method: "get",
+      path: "/openapi.json",
+      summary: "This document",
+      tags: ["meta"],
+      access: "authenticated",
+      responses: { 200: { description: "OpenAPI 3.1" } },
+    },
+    ({ res }) => res.json(registry.document({ title: "Idrok System API", version: "1" })),
+  );
 
   app.use("/api/v1", v1);
+  // Exposed for the route-guard test, which walks every route actually served.
+  app.locals.apiRouter = v1;
+  app.locals.routeRegistry = registry;
   app.use(notFoundHandler);
   app.use(errorHandler);
   return app;

@@ -1,7 +1,7 @@
 # CLAUDE.md — Idrok System
 
 Bu fayl har sessiyada o'qiladi. Bu yerdagi qoidalar barcha bosqichlar uchun majburiy.
-Batafsil talablar: `docs/MASTER_SPEC.md` (to'liq texnik topshiriq), modul spec'lari: `docs/spec/*.md`, bosqichlar: `docs/ROADMAP.md`.
+Batafsil talablar: `docs/MASTER_SPEC.md` (to'liq texnik topshiriq), modul spec'lari: `docs/spec/*.md`, bosqichlar: `docs/ROADMAP.md`, xavfsizlik bazasi: `docs/spec/security-baseline.md` (barcha bosqichlar uchun majburiy).
 
 ## 1. Loyiha haqida
 
@@ -93,6 +93,9 @@ Paket menejeri: pnpm workspaces + Turborepo.
 - Muhim amal bilan uning `AuditLog` yozuvi bitta transaction'da saqlanadi.
 - Logga parol, token, kalit, passport/INN chiqmaydi.
 - Secret'lar faqat env'da. `.env.example` doim yangilanadi.
+- Default-deny: autentifikatsiyasiz route faqat `apps/api/src/http/public-routes.ts` ro'yxatida, `route-guard.test.ts` buni tekshiradi.
+- O'quvchi/vasiy DTO'larida to'g'ri javob ma'lumoti yo'q (`security-baseline.md` S4).
+- Hech qaysi skript/log/API parolni qayta chiqarmaydi.
 
 ### UI
 - Ranglar komponent ichida yozilmaydi (`bg-[#4E92CF]` taqiqlanadi). Faqat semantic token: `bg-primary`, `var(--color-primary)`.

@@ -86,6 +86,7 @@ OfflineResult    id, testId, studentId, rawScore?, status(SCORED|ABSENT|EXCUSED)
 - `deadline = min(startedAt + timeLimit, windowEnd)` — **serverda** hisoblanadi.
 - Pool bo'lsa savollar tanlanadi, `shuffle*` bo'lsa tartib yaratiladi (seed = attemptId) va **attempt'ga saqlanadi**. Qayta hisoblanmaydi.
 - Klientga to'g'ri javoblar **yuborilmaydi**. Option'lar faqat `id` va matn bilan.
+- O'quvchi DTO'lari va natijani ko'rsatish qoidalari: `docs/spec/security-baseline.md` S4–S5 (savol bo'yicha ✅/❌ faqat test oynasi va barcha retake oynalari yopilgandan keyin).
 
 ### 4.3. Yechish
 - Bitta savol — bitta ekran, oldingi/keyingi, savollar navigatori (javob berilgan/berilmagan).
@@ -185,3 +186,6 @@ Ruxsatlar: `questions.manage` (o'z banki), `tests.create`, `tests.publish`, `tes
 14. WEIGHTED testni CLOSED davrga bog'lash → rad.
 15. O'quvchi assign qilinmagan testni boshlay olmaydi (403); ochiq oynadan tashqarida (409).
 16. Excel import: dublikat savol preview'da belgilanadi; noto'g'ri "to'g'ri javob" (masalan `G` 4 variantda) → xato.
+17. Boshqa attempt/test savoliga yoki boshqa savol variantiga javob → 400, saqlanmaydi.
+18. Test oynasi (yoki biror retake oynasi) ochiq paytda o'quvchi natija so'rovida savollar bo'yicha ✅/❌ yo'q, faqat umumiy ball; oyna yopilgach bor.
+19. Savollar eksporti: STUDENT/GUARDIAN → 403.

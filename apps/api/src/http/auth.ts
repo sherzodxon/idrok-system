@@ -77,6 +77,13 @@ export function requirePermission(req: Request, code: PermissionCode): RequestAu
   return auth;
 }
 
+export function requireAnyPermission(req: Request, codes: readonly PermissionCode[]): RequestAuth {
+  const auth = requireAuth(req);
+  if (!codes.some((c) => auth.permissions.includes(c)))
+    throw new AppError("FORBIDDEN", 403, { permission: codes.join("|") });
+  return auth;
+}
+
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
 export function csrfTokensMatch(req: Request): boolean {
