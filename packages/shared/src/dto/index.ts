@@ -3,3 +3,4 @@ export * from "./auth";
 export * from "./common";
 export * from "./people";
 export * from "./structure";
+export * from "./settings";

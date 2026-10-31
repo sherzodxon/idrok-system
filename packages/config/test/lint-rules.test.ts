@@ -77,3 +77,24 @@ describe("colour rules (web)", () => {
     expect(ids).toContain("no-restricted-imports");
   });
 });
+
+describe("i18n rules (web)", () => {
+  it("rejects words written into JSX", async () => {
+    const ids = await ruleIds("export const A = () => <button>Saqlash</button>;", "apps/web/src/a.tsx", webConfig);
+    expect(ids).toContain("no-restricted-syntax");
+  });
+
+  it("rejects literal placeholders and aria labels", async () => {
+    const ids = await ruleIds(
+      'export const A = () => <input placeholder="Qidirish" />;',
+      "apps/web/src/a.tsx",
+      webConfig,
+    );
+    expect(ids).toContain("no-restricted-syntax");
+  });
+
+  it("allows translated text and punctuation", async () => {
+    const code = 'declare const t: (k: string) => string;\nexport const A = () => <p>{t("save")} · 1/2</p>;';
+    expect(await ruleIds(code, "apps/web/src/a.tsx", webConfig)).toEqual([]);
+  });
+});

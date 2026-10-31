@@ -55,6 +55,19 @@ export const colorRules = [
   },
 ];
 
+/** UI copy lives in translation files (CLAUDE.md §4): no words typed into JSX. */
+export const i18nRules = [
+  {
+    selector: "JSXText[value=/[A-Za-zА-Яа-яЁёЎўҚқҒғҲҳʻ]{2,}/]",
+    message: "UI text must come from the translation files (useTranslations), not be written in JSX.",
+  },
+  {
+    selector:
+      "JSXAttribute[name.name=/^(placeholder|title|alt|aria-label|label)$/] > Literal[value=/[A-Za-zА-Яа-яЁё]{2,}/]",
+    message: "UI text must come from the translation files (useTranslations), not be written in JSX.",
+  },
+];
+
 /** Restricted-syntax list for code that must stay timezone-safe. */
 export const projectSyntaxRules = [timeRules, dateStringRule];
 
@@ -90,7 +103,7 @@ export const webConfig = tseslint.config(...baseConfig, {
   languageOptions: { globals: { ...globals.browser } },
   rules: {
     ...reactHooks.configs.recommended.rules,
-    "no-restricted-syntax": ["error", ...projectSyntaxRules, ...colorRules],
+    "no-restricted-syntax": ["error", ...projectSyntaxRules, ...colorRules, ...i18nRules],
     "no-restricted-imports": [
       "error",
       {

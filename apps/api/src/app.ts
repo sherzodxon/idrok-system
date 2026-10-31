@@ -12,6 +12,7 @@ import { requestId } from "./http/request-id";
 import { accessRoutes } from "./modules/access/access.routes";
 import { authRoutes } from "./modules/auth/auth.routes";
 import { importsRoutes } from "./modules/imports/imports.routes";
+import { settingsRoutes } from "./modules/settings/settings.routes";
 import { meRoutes } from "./modules/me/me.routes";
 import { peopleRoutes } from "./modules/people/people.routes";
 import { structureRoutes } from "./modules/structure/structure.routes";
@@ -58,6 +59,7 @@ export function createApp(deps: AppDeps): express.Express {
   peopleRoutes(v1, registry, deps);
   usersRoutes(v1, registry, deps);
   importsRoutes(v1, registry, deps);
+  settingsRoutes(v1, registry, deps);
 
   routesFor(v1, registry)(
     {
