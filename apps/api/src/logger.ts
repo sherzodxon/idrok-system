@@ -1,22 +1,33 @@
-import { pino, type Logger } from "pino";
+import { pino, type DestinationStream, type Logger } from "pino";
 
-/** Secrets and personal data never reach the logs (CLAUDE.md §4). */
-export const REDACT_PATHS = [
+// Secrets never reach the logs (CLAUDE.md §4, security-baseline.md S3). Field names are redacted at the top level and
+// one level deep (`*.x`); request headers explicitly.
+const SECRET_FIELDS = [
   "password",
-  "*.password",
-  "*.newPassword",
-  "*.currentPassword",
+  "newPassword",
+  "currentPassword",
+  "temporaryPassword",
+  "passwordHash",
   "token",
-  "*.token",
-  "*.accessToken",
-  "*.refreshToken",
-  "req.headers.authorization",
-  "req.headers.cookie",
-  'res.headers["set-cookie"]',
+  "accessToken",
+  "refreshToken",
+  "authorization",
+  "cookie",
   "apiKey",
-  "*.apiKey",
+  "secret",
 ];
 
-export function createLogger(level: string): Logger {
-  return pino({ level, redact: { paths: REDACT_PATHS, censor: "[redacted]" } });
+export const REDACT_PATHS = [
+  ...SECRET_FIELDS,
+  ...SECRET_FIELDS.map((f) => `*.${f}`),
+  "req.headers.authorization",
+  "req.headers.cookie",
+  'req.headers["x-csrf-token"]',
+  'res.headers["set-cookie"]',
+];
+
+export const REDACTED = "[Redacted]";
+
+export function createLogger(level: string, destination?: DestinationStream): Logger {
+  return pino({ level, redact: { paths: REDACT_PATHS, censor: REDACTED } }, destination);
 }
