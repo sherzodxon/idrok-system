@@ -56,6 +56,10 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Dependency audit (security-baseline.md S7, informational)
+        if: matrix.tz == 'UTC'
+        continue-on-error: true
+        run: pnpm audit --prod --audit-level high
       - run: pnpm lint
         if: matrix.tz == 'UTC'
       - run: pnpm typecheck
