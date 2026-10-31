@@ -1,0 +1,11 @@
+/* Design tokens — the only place colours are defined (ui-structure.md §5). Full light/dark set lands in step 6. */
+:root {
+  --color-primary: #4e92cf;
+  --color-on-primary: #ffffff;
+  --color-background: #f5f8fc;
+  --color-surface: #ffffff;
+  --color-text-primary: #172b3a;
+  --color-text-secondary: #718096;
+  --color-border: #e3eaf1;
+  --radius-card: 12px;
+}
