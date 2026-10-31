@@ -1,31 +1,28 @@
-import { pino } from "pino";
+import express from "express";
 import request from "supertest";
 import { describe, expect, it } from "vitest";
-import { createApp } from "../src/app";
+import { healthRouter } from "../src/http/health";
 
-const logger = pino({ level: "silent" });
+const app = (checks: Parameters<typeof healthRouter>[0]) => express().use(healthRouter(checks));
 
 describe("health endpoints", () => {
-  it("GET /api/v1/healthz is always ok", async () => {
-    const res = await request(createApp({ logger, readiness: {} })).get("/api/v1/healthz");
+  it("GET /healthz is always ok", async () => {
+    const res = await request(app({})).get("/healthz");
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ status: "ok" });
   });
 
-  it("GET /api/v1/readyz is 200 when every dependency answers", async () => {
-    const app = createApp({ logger, readiness: { db: async () => {}, redis: async () => {} } });
-    const res = await request(app).get("/api/v1/readyz");
+  it("GET /readyz is 200 when every dependency answers", async () => {
+    const res = await request(app({ db: async () => {}, redis: async () => {} })).get("/readyz");
     expect(res.status).toBe(200);
     expect(res.body.checks).toEqual({ db: "ok", redis: "ok" });
   });
 
-  it("GET /api/v1/readyz is 503 and names the failing dependency", async () => {
+  it("GET /readyz is 503 and names the failing dependency", async () => {
     const failing = async () => {
       throw new Error("down");
     };
-    const res = await request(createApp({ logger, readiness: { db: async () => {}, redis: failing } })).get(
-      "/api/v1/readyz",
-    );
+    const res = await request(app({ db: async () => {}, redis: failing })).get("/readyz");
     expect(res.status).toBe(503);
     expect(res.body.checks).toEqual({ db: "ok", redis: "fail" });
   });
