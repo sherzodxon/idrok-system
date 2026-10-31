@@ -3,7 +3,14 @@
 // test/route-guard.test.ts checks every route Express actually serves. Paths are relative to /api/v1.
 
 /** Reachable without a token. */
-export const PUBLIC_ROUTES = ["GET /healthz", "GET /readyz", "POST /auth/login", "POST /auth/refresh"] as const;
+export const PUBLIC_ROUTES = [
+  "GET /healthz",
+  "GET /readyz",
+  "POST /auth/login",
+  "POST /auth/refresh",
+  // School name and colours for the login page; no personal data.
+  "GET /branding",
+] as const;
 
 /** Any logged-in user, no permission: the user's own account and session only. */
 export const SELF_SERVICE_ROUTES = [

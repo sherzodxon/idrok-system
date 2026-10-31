@@ -2,7 +2,7 @@ import { createReadStream } from "node:fs";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { Readable } from "node:stream";
-import { assertSafeKey, type StorageProvider } from "./storage";
+import { assertSafeKey, type PutOptions, type StorageProvider } from "./storage";
 
 export class LocalDiskStorage implements StorageProvider {
   constructor(private readonly root: string) {}
@@ -12,7 +12,7 @@ export class LocalDiskStorage implements StorageProvider {
     return path.join(this.root, key);
   }
 
-  async put(key: string, body: Buffer) {
+  async put(key: string, body: Buffer, _opts?: PutOptions) {
     const file = this.file(key);
     await mkdir(path.dirname(file), { recursive: true });
     await writeFile(file, body);
