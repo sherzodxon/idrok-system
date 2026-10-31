@@ -27,8 +27,10 @@ async function guardProblems(app: express.Express, list: ServedRoute[]): Promise
     if (isPublicRoute(r.id)) continue;
     if (r.access === undefined) problems.push(`${r.id}: registered without defineRoute (no access rule)`);
     else if (r.access === "public") problems.push(`${r.id}: public but not in PUBLIC_ROUTES`);
-    else if (r.access === "authenticated" && !isSelfServiceRoute(r.id)) problems.push(`${r.id}: no permission and not self-service`);
-    const res = await request(app)[r.method as "get"](`/api/v1${concrete(r.path)}`).send({});
+    else if (r.access === "authenticated" && !isSelfServiceRoute(r.id))
+      problems.push(`${r.id}: no permission and not self-service`);
+    const agent = request(app);
+    const res = await agent[r.method as "get"](`/api/v1${concrete(r.path)}`).send({});
     if (res.status !== 401) problems.push(`${r.id}: answered ${res.status} without a token (expected 401)`);
   }
   return problems;
@@ -51,7 +53,8 @@ describe("route guard", () => {
 
   it("every protected route except self-service ones declares a permission", () => {
     const permissionless = routes.filter(
-      (r) => !isPublicRoute(r.id) && !isSelfServiceRoute(r.id) && (r.access === "authenticated" || r.access === "public"),
+      (r) =>
+        !isPublicRoute(r.id) && !isSelfServiceRoute(r.id) && (r.access === "authenticated" || r.access === "public"),
     );
     expect(permissionless).toEqual([]);
   });
@@ -73,7 +76,9 @@ describe("route guard", () => {
 
   it("defineRoute refuses public or permission-less routes that are not listed", () => {
     expect(() => assertAccessAllowed({ method: "get", path: "/secret", access: "public" })).toThrow(/PUBLIC_ROUTES/);
-    expect(() => assertAccessAllowed({ method: "get", path: "/secret", access: "authenticated" })).toThrow(/SELF_SERVICE/);
+    expect(() => assertAccessAllowed({ method: "get", path: "/secret", access: "authenticated" })).toThrow(
+      /SELF_SERVICE/,
+    );
     expect(() => assertAccessAllowed({ method: "get", path: "/secret", access: { anyOf: [] } })).toThrow(/empty/);
     expect(() => assertAccessAllowed({ method: "get", path: "/secret", access: "students.view" })).not.toThrow();
   });

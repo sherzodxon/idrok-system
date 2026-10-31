@@ -79,7 +79,8 @@ export function requirePermission(req: Request, code: PermissionCode): RequestAu
 
 export function requireAnyPermission(req: Request, codes: readonly PermissionCode[]): RequestAuth {
   const auth = requireAuth(req);
-  if (!codes.some((c) => auth.permissions.includes(c))) throw new AppError("FORBIDDEN", 403, { permission: codes.join("|") });
+  if (!codes.some((c) => auth.permissions.includes(c)))
+    throw new AppError("FORBIDDEN", 403, { permission: codes.join("|") });
   return auth;
 }
 

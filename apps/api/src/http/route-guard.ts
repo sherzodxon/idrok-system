@@ -22,7 +22,8 @@ function walk(stack: Layer[], out: { method: string; path: string }[]) {
     if (layer.route) {
       const paths = Array.isArray(layer.route.path) ? layer.route.path : [layer.route.path];
       for (const path of paths) {
-        for (const [method, on] of Object.entries(layer.route.methods)) if (on && method !== "_all") out.push({ method, path });
+        for (const [method, on] of Object.entries(layer.route.methods))
+          if (on && method !== "_all") out.push({ method, path });
       }
     } else if (layer.handle?.stack) {
       // Nested routers mounted at "/" (e.g. the health router).

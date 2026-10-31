@@ -26,9 +26,13 @@ describe("log redaction", () => {
       apiKey: "k-1",
       secret: "s-1",
     };
-    logger.info({ ...secrets, body: { ...secrets }, req: { headers: { authorization: "Bearer h-1", cookie: "x=h-2" } } }, "event");
+    logger.info(
+      { ...secrets, body: { ...secrets }, req: { headers: { authorization: "Bearer h-1", cookie: "x=h-2" } } },
+      "event",
+    );
     const out = lines.join("");
-    for (const value of ["p-1", "t-1", "r-1", "a-1", "c-1", "k-1", "s-1", "h-1", "h-2"]) expect(out).not.toContain(value);
+    for (const value of ["p-1", "t-1", "r-1", "a-1", "c-1", "k-1", "s-1", "h-1", "h-2"])
+      expect(out).not.toContain(value);
     const entry = JSON.parse(out) as Record<string, unknown> & { body: Record<string, unknown> };
     for (const key of Object.keys(secrets)) {
       expect(entry[key]).toBe(REDACTED);

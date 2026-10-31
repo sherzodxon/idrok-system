@@ -95,7 +95,8 @@ export function assertAccessAllowed(def: Pick<RouteDef, "method" | "path" | "acc
   if (def.access === "authenticated" && !isSelfServiceRoute(id)) {
     throw new Error(`${id} has no permission but is not listed in SELF_SERVICE_ROUTES`);
   }
-  if (typeof def.access === "object" && def.access.anyOf.length === 0) throw new Error(`${id} has an empty permission list`);
+  if (typeof def.access === "object" && def.access.anyOf.length === 0)
+    throw new Error(`${id} has an empty permission list`);
 }
 
 function checkAccess(req: Request, access: Access): RequestAuth | undefined {

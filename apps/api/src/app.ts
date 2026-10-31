@@ -58,7 +58,14 @@ export function createApp(deps: AppDeps): express.Express {
   usersRoutes(v1, registry, deps);
 
   routesFor(v1, registry)(
-    { method: "get", path: "/openapi.json", summary: "This document", tags: ["meta"], access: "authenticated", responses: { 200: { description: "OpenAPI 3.1" } } },
+    {
+      method: "get",
+      path: "/openapi.json",
+      summary: "This document",
+      tags: ["meta"],
+      access: "authenticated",
+      responses: { 200: { description: "OpenAPI 3.1" } },
+    },
     ({ res }) => res.json(registry.document({ title: "Idrok System API", version: "1" })),
   );
 

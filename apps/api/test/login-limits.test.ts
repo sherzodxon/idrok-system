@@ -26,12 +26,17 @@ describe("behind one proxy (TRUST_PROXY=1)", () => {
   it("an unknown user and a wrong password get exactly the same answer", async () => {
     const user = await t.defaultTenant.createUser("TEACHER");
     const send = (username: string, ip: string) =>
-      request(t.app).post("/api/v1/auth/login").set("X-Forwarded-For", ip).send({ username, password: "xato-parol", clientType: "MOBILE" });
+      request(t.app)
+        .post("/api/v1/auth/login")
+        .set("X-Forwarded-For", ip)
+        .send({ username, password: "xato-parol", clientType: "MOBILE" });
     const wrong = await send(user.username, "198.51.100.1");
     const unknown = await send("bunday_foydalanuvchi_yoq", "198.51.100.2");
     expect(unknown.status).toBe(wrong.status);
     expect(unknown.body).toEqual(wrong.body);
-    expect(wrong.body).toEqual({ error: { code: "AUTH_INVALID_CREDENTIALS", message: "errors.AUTH_INVALID_CREDENTIALS" } });
+    expect(wrong.body).toEqual({
+      error: { code: "AUTH_INVALID_CREDENTIALS", message: "errors.AUTH_INVALID_CREDENTIALS" },
+    });
   });
 });
 
