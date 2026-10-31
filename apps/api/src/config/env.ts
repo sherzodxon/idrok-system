@@ -29,6 +29,13 @@ const EnvSchema = z.object({
   COOKIE_SECURE: bool.default(true),
   /** Tenant used when a login request does not name one (single-school deployment). */
   DEFAULT_TENANT_SLUG: z.string().default("idrok"),
+  STORAGE_DRIVER: z.enum(["local", "supabase"]).default("local"),
+  STORAGE_LOCAL_DIR: z.string().default(".data/storage"),
+  SUPABASE_URL: z.string().url().optional(),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
+  SUPABASE_STORAGE_BUCKET: z.string().default("idrok-files"),
+  /** argon2id memory cost in KiB (OWASP minimum 19456). Lower values only in tests. */
+  ARGON2_MEMORY_KIB: z.coerce.number().int().min(1024).default(19_456),
 });
 
 export type Env = z.infer<typeof EnvSchema>;
