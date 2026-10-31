@@ -1,0 +1,18 @@
+@import "tailwindcss";
+@import "../styles/tokens.css";
+
+@theme inline {
+  --color-primary: var(--color-primary);
+  --color-on-primary: var(--color-on-primary);
+  --color-background: var(--color-background);
+  --color-surface: var(--color-surface);
+  --color-foreground: var(--color-text-primary);
+  --color-muted: var(--color-text-secondary);
+  --color-border: var(--color-border);
+  --radius-card: var(--radius-card);
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-text-primary);
+}

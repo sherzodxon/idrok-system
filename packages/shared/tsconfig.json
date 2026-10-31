@@ -1,0 +1,5 @@
+{
+  "extends": "@idrok/config/tsconfig/base.json",
+  "compilerOptions": { "lib": ["ES2023", "DOM"] },
+  "include": ["src", "test"]
+}
