@@ -33,6 +33,11 @@ export function renderRbacMatrix(): string {
   }
   lines.push("", "## Ma'lumot doirasi", "", "| Rol | Kod | Doira |", "|---|---|---|");
   for (const r of roles) lines.push(`| ${ROLE_LABELS[r]} | \`${r}\` | ${ROLE_SCOPE_NOTES[r]} |`);
-  lines.push("");
+  lines.push(
+    "",
+    "Maktab yaratgan (tizimdan tashqari) rollar butun maktab doirasida ishlaydi — ruxsatlar to'plami bilan cheklanadi.",
+    "Bir nechta roli bor foydalanuvchida eng keng doira amal qiladi (masalan O'qituvchi + Direktor → butun maktab).",
+    "",
+  );
   return lines.join("\n");
 }

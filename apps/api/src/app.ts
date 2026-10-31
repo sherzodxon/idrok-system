@@ -12,6 +12,9 @@ import { requestId } from "./http/request-id";
 import { accessRoutes } from "./modules/access/access.routes";
 import { authRoutes } from "./modules/auth/auth.routes";
 import { meRoutes } from "./modules/me/me.routes";
+import { peopleRoutes } from "./modules/people/people.routes";
+import { structureRoutes } from "./modules/structure/structure.routes";
+import { usersRoutes } from "./modules/users/users.routes";
 import { OpenApiRegistry } from "./openapi/registry";
 
 export function createApp(deps: AppDeps): express.Express {
@@ -49,6 +52,9 @@ export function createApp(deps: AppDeps): express.Express {
   authRoutes(v1, registry, deps);
   meRoutes(v1, registry, deps);
   accessRoutes(v1, registry, deps);
+  structureRoutes(v1, registry, deps);
+  peopleRoutes(v1, registry, deps);
+  usersRoutes(v1, registry, deps);
 
   v1.get("/openapi.json", (_req, res) => {
     res.json(registry.document({ title: "Idrok System API", version: "1" }));

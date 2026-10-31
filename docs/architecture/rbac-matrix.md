@@ -50,3 +50,6 @@
 | Sinf rahbari | `CLASS_TEACHER` | O'qituvchi doirasi + o'z sinfi o'quvchilari va ularning vasiylari |
 | O'quvchi | `STUDENT` | Faqat o'zi |
 | Vasiy | `GUARDIAN` | Faqat o'z farzand(lar)i (`StudentGuardian`, `canViewData`) |
+
+Maktab yaratgan (tizimdan tashqari) rollar butun maktab doirasida ishlaydi — ruxsatlar to'plami bilan cheklanadi.
+Bir nechta roli bor foydalanuvchida eng keng doira amal qiladi (masalan O'qituvchi + Direktor → butun maktab).
