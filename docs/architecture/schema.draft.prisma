@@ -1,0 +1,2115 @@
+// Idrok System — M1–M5 data model DRAFT (M0).
+// Bu fayl faqat qoralama: migratsiya yaratilmaydi. Tasdiqlangandan keyin packages/db/prisma/schema.prisma ga
+// bosqichma-bosqich ko'chiriladi (har bosqich faqat o'z modellarini qo'shadi).
+//
+// Konvensiyalar (docs/architecture/data-model.md §1):
+// - id: UUID. Har tenant-scoped jadvalda tenantId (FK → Tenant) bor; tenantId serverda auth kontekstidan qo'yiladi.
+// - Vaqt nuqtalari: timestamptz (UTC). Kunga bog'liq yozuvlar: schoolDate (date), Asia/Tashkent bo'yicha serverda.
+// - Ball/foiz: Decimal. Coin: Int (butun birlik). Float yo'q.
+// - Ledger jadvallar (ScoreEntry, CoinTransaction) — faqat INSERT. Tuzatish = REVERSAL/CORRECTION yozuv.
+// - Prisma ifodalay olmaydigan invariantlar (partial unique, CHECK) "SQL:" izohi bilan belgilangan; ular migratsiya
+//   SQL'ida yoziladi va integration test bilan tekshiriladi (data-model.md §8).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// =====================================================================================================================
+// ENUMS
+// =====================================================================================================================
+
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum ThemeMode {
+  LIGHT
+  DARK
+  SYSTEM
+}
+
+enum Density {
+  COMFORTABLE
+  COMPACT
+}
+
+enum Locale {
+  uz
+  ru
+}
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum ClientType {
+  WEB
+  MOBILE
+  TELEGRAM
+}
+
+enum FileKind {
+  IMPORT_SOURCE
+  EXPORT
+  STUDENT_PHOTO
+  QUESTION_IMAGE
+  PRODUCT_IMAGE
+  BRANDING
+  OTHER
+}
+
+enum FileStatus {
+  PENDING
+  READY
+  DELETED
+}
+
+enum ImportKind {
+  STUDENTS_GUARDIANS
+  EMPLOYEES_ASSIGNMENTS
+  CLASS_GROUPS
+  SUBJECTS
+  CURRICULUM_PLAN
+  QUESTIONS
+}
+
+enum ImportStatus {
+  UPLOADED
+  PARSING
+  PREVIEW_READY
+  COMMITTING
+  COMMITTED
+  FAILED
+  CANCELLED
+}
+
+enum ImportRowStatus {
+  OK
+  WARNING
+  ERROR
+  SKIPPED
+}
+
+enum OutboxStatus {
+  PENDING
+  PUBLISHED
+  FAILED
+}
+
+enum AcademicYearStatus {
+  PLANNED
+  ACTIVE
+  CLOSED
+  ARCHIVED
+}
+
+enum TeachingGroupKind {
+  CLASS // butun sinf (7-A) — har ClassGroup uchun avtomatik bitta
+  SUBGROUP // sinf ichidagi guruhcha (7-A ingliz tili 1-guruh)
+  CROSS_CLASS // bir nechta sinfdan yig'ilgan guruh (kengaytirish nuqtasi)
+}
+
+enum EmployeeStatus {
+  ACTIVE
+  ON_LEAVE
+  LEFT
+}
+
+enum StudentStatus {
+  ACTIVE
+  GRADUATED
+  LEFT
+  SUSPENDED
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum GuardianRelation {
+  MOTHER
+  FATHER
+  GRANDPARENT
+  SIBLING
+  OTHER
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  TRANSFERRED
+  LEFT
+  GRADUATED
+  CANCELLED
+}
+
+// ---- M2
+
+enum AcademicPeriodType {
+  QUARTER
+  HALF
+  YEAR
+  CUSTOM
+}
+
+enum AcademicPeriodStatus {
+  DRAFT
+  ACTIVE
+  CLOSED
+}
+
+enum CalendarDayKind {
+  HOLIDAY
+  VACATION
+  NON_WORKING
+  WORKING_OVERRIDE
+  SHORTENED
+}
+
+enum TimetableStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum WeekType {
+  ALL
+  ODD
+  EVEN
+}
+
+enum LessonSessionStatus {
+  SCHEDULED
+  HELD
+  CANCELLED
+  MOVED
+}
+
+enum LessonSessionSource {
+  TIMETABLE
+  MANUAL
+}
+
+enum CurriculumPlanStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+  ARCHIVED
+}
+
+enum LessonType {
+  NEW
+  PRACTICE
+  REVIEW
+  CONTROL_WORK
+  BSB
+  CHSB
+  LAB
+  OTHER
+}
+
+enum PlanAssignmentStatus {
+  ACTIVE
+  SUPERSEDED
+  REMOVED
+}
+
+// ---- M3
+
+enum AttendanceStatus {
+  PRESENT
+  LATE
+  ABSENT_EXCUSED
+  ABSENT_UNEXCUSED
+}
+
+enum ScoreEntryKind {
+  NORMAL
+  REVERSAL
+}
+
+enum ScoreLimitWindow {
+  LESSON
+  DAY
+  WEEK
+  MONTH
+  PERIOD
+}
+
+enum ScoreLimitScope {
+  GLOBAL
+  SUBJECT
+  GRADE
+  TEACHER
+  TEACHING_GROUP
+}
+
+enum PolicyVersionStatus {
+  DRAFT
+  PUBLISHED
+  RETIRED
+}
+
+enum PeriodResultStatus {
+  DRAFT
+  FINAL
+}
+
+enum PeriodCloseRunStatus {
+  PREPARED
+  CLOSED
+  CANCELLED
+}
+
+// ---- M4
+
+enum TestFormat {
+  ONLINE
+  OFFLINE
+}
+
+enum TestPurpose {
+  PRACTICE
+  WEIGHTED
+}
+
+enum TestAudience {
+  STUDENT // LEAD / CANDIDATE — CRM bosqichida qo'shiladi
+}
+
+enum TestStatus {
+  DRAFT
+  SCHEDULED
+  OPEN
+  CLOSED
+  ARCHIVED
+}
+
+enum QuestionType {
+  SINGLE
+  MULTIPLE
+  SHORT_TEXT
+  MATCHING
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum QuestionStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum RetakePolicy {
+  LAST
+  BEST
+}
+
+enum MultipleScoring {
+  ALL_OR_NOTHING
+  PARTIAL
+}
+
+enum ResultVisibility {
+  IMMEDIATE
+  AFTER_CLOSE
+  NEVER
+}
+
+enum AttemptStatus {
+  IN_PROGRESS
+  FINISHED
+}
+
+enum FinishReason {
+  SUBMITTED
+  TIME_UP
+  VIOLATION
+  ADMIN_CLOSED
+}
+
+enum TestEventType {
+  VISIBILITY_HIDDEN
+  VISIBILITY_VISIBLE
+  BLUR
+  FOCUS
+  RECONNECT
+  OFFLINE
+}
+
+enum OfflineResultStatus {
+  SCORED
+  ABSENT
+  EXCUSED
+}
+
+// ---- M5
+
+enum CoinCriterionType {
+  REWARD
+  PENALTY
+  BOTH
+}
+
+enum CoinEligibility {
+  ALL_TEACHERS
+  SELECTED_TEACHERS
+}
+
+enum CoinTxType {
+  REWARD
+  PENALTY
+  PURCHASE
+  REFUND
+  ADMIN_ADJUSTMENT
+  REVERSAL
+  CORRECTION
+}
+
+enum CoinTxSource {
+  TEACHER_CRITERION
+  ATTENDANCE
+  TEST_RESULT
+  ADMIN_ADJUST
+  SHOP_PURCHASE
+  REFUND
+  OTHER
+}
+
+enum CoinLimitScope {
+  GLOBAL
+  CRITERION
+  TEACHER
+  TEACHER_CRITERION
+  EACH_CRITERION
+  EACH_TEACHER
+  EACH_TEACHER_CRITERION
+}
+
+enum CoinLimitPeriod {
+  DAY
+  WEEK
+  MONTH
+  ROLLING
+}
+
+enum CoinOrderStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  DELIVERED
+  CANCELLED
+}
+
+enum CoinAutoSource {
+  TEST_RESULT
+  ATTENDANCE // M6 dan keyin ulanadi
+}
+
+// =====================================================================================================================
+// M1 — TENANT, SOZLAMALAR, BRENDING
+// =====================================================================================================================
+
+model Tenant {
+  id        String       @id @default(uuid()) @db.Uuid
+  slug      String       @unique
+  name      String
+  status    TenantStatus @default(ACTIVE)
+  createdAt DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime     @updatedAt @db.Timestamptz(3)
+
+  settings SchoolSettings?
+  branding SchoolBranding?
+
+  users                  User[]
+  authSessions           AuthSession[]
+  roles                  Role[]
+  userRoles              UserRole[]
+  auditLogs              AuditLog[]
+  fileAssets             FileAsset[]
+  importJobs             ImportJob[]
+  idempotencyRecords     IdempotencyRecord[]
+  outboxEvents           OutboxEvent[]
+  academicYears          AcademicYear[]
+  grades                 Grade[]
+  classGroups            ClassGroup[]
+  teachingGroups         TeachingGroup[]
+  teachingGroupMembers   TeachingGroupMember[]
+  subjects               Subject[]
+  employees              Employee[]
+  teacherAssignments     TeacherAssignment[]
+  students               Student[]
+  guardians              Guardian[]
+  studentGuardians       StudentGuardian[]
+  studentEnrollments     StudentEnrollment[]
+  academicPeriods        AcademicPeriod[]
+  schoolWeeks            SchoolWeek[]
+  calendarDays           CalendarDay[]
+  shifts                 Shift[]
+  bellSchedules          BellSchedule[]
+  rooms                  Room[]
+  timetables             Timetable[]
+  timetableEntries       TimetableEntry[]
+  lessonSessions         LessonSession[]
+  topics                 Topic[]
+  curriculumPlans        CurriculumPlan[]
+  planItems              PlanItem[]
+  planAssignments        PlanAssignment[]
+  scoreCriteria          ScoreCriterion[]
+  lessonAttendances      LessonAttendance[]
+  scoreEntries           ScoreEntry[]
+  scoreLimitRules        ScoreLimitRule[]
+  scoreSettings          ScoreSettings?
+  assessmentPolicies     AssessmentPolicy[]
+  policyBindings         PolicyBinding[]
+  gradeScales            GradeScale[]
+  periodResults          PeriodResult[]
+  periodCloseRuns        PeriodCloseRun[]
+  manualAssessmentScores ManualAssessmentScore[]
+  testTypes              TestType[]
+  questions              Question[]
+  tests                  Test[]
+  testWindowOverrides    TestWindowOverride[]
+  testAttempts           TestAttempt[]
+  offlineResults         OfflineResult[]
+  coinSettings           CoinSettings?
+  coinCriteria           CoinCriterion[]
+  coinLimitRules         CoinLimitRule[]
+  coinAccounts           CoinAccount[]
+  coinTransactions       CoinTransaction[]
+  coinProducts           CoinProduct[]
+  coinOrders             CoinOrder[]
+  coinAutoRules          CoinAutoRule[]
+}
+
+// Maktab darajasidagi umumiy sozlamalar. Modulga xos sozlamalar alohida (ScoreSettings, CoinSettings).
+model SchoolSettings {
+  id                     String   @id @default(uuid()) @db.Uuid
+  tenantId               String   @unique @db.Uuid
+  tenant                 Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  timezone               String   @default("Asia/Tashkent")
+  defaultLocale          Locale   @default(uz)
+  enabledLocales         Locale[] @default([uz, ru])
+  currency               String   @default("UZS")
+  weekStartsOn           Int      @default(1) // ISO: 1 = dushanba
+  studentCodePrefix      String   @default("STD")
+  planApprovalRequired   Boolean  @default(true) // lesson-plan.md §4.5
+  maxQuestionsPerTest    Int? // tests.md §3
+  lessonMarkReminderDays Int? // lesson-plan.md §4.7 (eslatma M7 da)
+  updatedById            String?  @db.Uuid
+  updatedAt              DateTime @updatedAt @db.Timestamptz(3)
+}
+
+// Runtime CSS variables manbai. Ranglar faqat shu yerda (va tokenlar faylida) — komponentlarda emas.
+model SchoolBranding {
+  id                    String     @id @default(uuid()) @db.Uuid
+  tenantId              String     @unique @db.Uuid
+  tenant                Tenant     @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  schoolName            String
+  platformName          String     @default("Idrok System")
+  logoAssetId           String?    @db.Uuid
+  logoAsset             FileAsset? @relation("BrandingLogo", fields: [logoAssetId], references: [id], onDelete: SetNull)
+  faviconAssetId        String?    @db.Uuid
+  faviconAsset          FileAsset? @relation("BrandingFavicon", fields: [faviconAssetId], references: [id], onDelete: SetNull)
+  primaryColor          String     @default("#4E92CF") // SQL: CHECK ~ '^#[0-9A-Fa-f]{6}$'
+  primaryHoverColor     String     @default("#397FBF")
+  primaryStrongColor    String     @default("#286FA9")
+  primarySoftColor      String     @default("#EAF3FB")
+  secondaryColor        String?
+  defaultThemeMode      ThemeMode  @default(SYSTEM)
+  customBrandingEnabled Boolean    @default(true)
+  updatedById           String?    @db.Uuid
+  updatedAt             DateTime   @updatedAt @db.Timestamptz(3)
+}
+
+// =====================================================================================================================
+// M1 — IDENTITY, AUTH, RBAC
+// =====================================================================================================================
+
+// Login identifikatori. Shaxs ma'lumotlari profilda: Student / Guardian / Employee (har biri userId? bilan).
+model User {
+  id                 String     @id @default(uuid()) @db.Uuid
+  tenantId           String     @db.Uuid
+  tenant             Tenant     @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  username           String
+  phone              String? // E.164, normalizatsiyalangan
+  passwordHash       String // argon2id. Qaytariladigan shifrlash TAQIQLANADI (edextest-audit.md §6)
+  passwordChangedAt  DateTime?  @db.Timestamptz(3)
+  mustChangePassword Boolean    @default(true)
+  status             UserStatus @default(ACTIVE)
+  lastLoginAt        DateTime?  @db.Timestamptz(3)
+  createdById        String?    @db.Uuid
+  createdAt          DateTime   @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime   @updatedAt @db.Timestamptz(3)
+
+  preference UserPreference?
+  sessions   AuthSession[]
+  roles      UserRole[]      @relation("UserRoles")
+  rolesGiven UserRole[]      @relation("UserRolesAssignedBy")
+  student    Student?
+  guardian   Guardian?
+  employee   Employee?
+
+  @@unique([tenantId, username])
+  @@index([tenantId, phone])
+}
+
+model UserPreference {
+  userId           String    @id @db.Uuid
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  themeMode        ThemeMode @default(SYSTEM)
+  sidebarCollapsed Boolean   @default(false)
+  density          Density   @default(COMFORTABLE)
+  locale           Locale?
+  updatedAt        DateTime  @updatedAt @db.Timestamptz(3)
+}
+
+// Refresh token oilasi. Token o'zi saqlanmaydi — faqat SHA-256 hash. Rotation: har refresh'da yangi hash,
+// eski hash `previousTokenHash`da qoladi; eski token qayta kelsa (reuse) butun oila revoke qilinadi.
+model AuthSession {
+  id                String     @id @default(uuid()) @db.Uuid
+  tenantId          String     @db.Uuid
+  tenant            Tenant     @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  userId            String     @db.Uuid
+  user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clientType        ClientType
+  refreshTokenHash  String     @unique
+  previousTokenHash String?    @unique
+  rotatedAt         DateTime?  @db.Timestamptz(3)
+  expiresAt         DateTime   @db.Timestamptz(3)
+  lastUsedAt        DateTime   @default(now()) @db.Timestamptz(3)
+  userAgent         String?
+  ipHash            String? // IP ochiq saqlanmaydi
+  revokedAt         DateTime?  @db.Timestamptz(3)
+  revokeReason      String? // LOGOUT | REUSE_DETECTED | ADMIN | PASSWORD_CHANGED | EXPIRED
+  createdAt         DateTime   @default(now()) @db.Timestamptz(3)
+
+  @@index([tenantId, userId, revokedAt])
+}
+
+// Permission kodlari packages/shared/permissions.ts da (manba). Seed shu jadvalni sinxronlaydi. Global (tenant'siz).
+model Permission {
+  code        String           @id // masalan "scores.create"
+  module      String
+  description String?
+  roles       RolePermission[]
+}
+
+model Role {
+  id          String           @id @default(uuid()) @db.Uuid
+  tenantId    String           @db.Uuid
+  tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  code        String // SCHOOL_ADMIN, TEACHER, ... (tizim rollari) yoki maktab yaratgan kod
+  name        String // ko'rsatiladigan nom (tizim rollari uchun i18n kaliti)
+  description String?
+  isSystem    Boolean          @default(false)
+  archivedAt  DateTime?        @db.Timestamptz(3)
+  createdAt   DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime         @updatedAt @db.Timestamptz(3)
+  permissions RolePermission[]
+  userRoles   UserRole[]
+
+  @@unique([tenantId, code])
+}
+
+model RolePermission {
+  roleId         String     @db.Uuid
+  role           Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permissionCode String
+  permission     Permission @relation(fields: [permissionCode], references: [code], onDelete: Restrict)
+
+  @@id([roleId, permissionCode])
+}
+
+// Bir foydalanuvchida bir nechta rol. Ruxsatlar = rollar ruxsatlari birlashmasi.
+model UserRole {
+  id           String    @id @default(uuid()) @db.Uuid
+  tenantId     String    @db.Uuid
+  tenant       Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  userId       String    @db.Uuid
+  user         User      @relation("UserRoles", fields: [userId], references: [id], onDelete: Cascade)
+  roleId       String    @db.Uuid
+  role         Role      @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  assignedById String?   @db.Uuid
+  assignedBy   User?     @relation("UserRolesAssignedBy", fields: [assignedById], references: [id], onDelete: SetNull)
+  assignedAt   DateTime  @default(now()) @db.Timestamptz(3)
+  revokedAt    DateTime? @db.Timestamptz(3)
+
+  // SQL: partial unique (userId, roleId) WHERE revokedAt IS NULL
+  @@index([tenantId, userId])
+}
+
+// =====================================================================================================================
+// M1 — INFRATUZILMA: AUDIT, FAYLLAR, IMPORT, IDEMPOTENCY, OUTBOX
+// =====================================================================================================================
+
+// Append-only. Muhim amal bilan bitta transaction'da yoziladi. UPDATE/DELETE yo'q (SQL: REVOKE UPDATE, DELETE).
+model AuditLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @db.Uuid
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  actorUserId String?  @db.Uuid // null = tizim/worker
+  action      String // "score.reverse", "period.close", "role.permissions.update" ...
+  entityType  String
+  entityId    String?
+  before      Json?
+  after       Json?
+  reason      String?
+  requestId   String?
+  ipHash      String?
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([tenantId, entityType, entityId])
+  @@index([tenantId, createdAt])
+  @@index([tenantId, actorUserId, createdAt])
+}
+
+model FileAsset {
+  id           String     @id @default(uuid()) @db.Uuid
+  tenantId     String     @db.Uuid
+  tenant       Tenant     @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  storageKey   String     @unique // "<tenantId>/<kind>/<uuid>.<ext>" — StorageProvider kaliti
+  originalName String
+  mimeType     String
+  sizeBytes    Int
+  sha256       String
+  kind         FileKind
+  status       FileStatus @default(PENDING)
+  createdById  String?    @db.Uuid
+  createdAt    DateTime   @default(now()) @db.Timestamptz(3)
+  deletedAt    DateTime?  @db.Timestamptz(3)
+
+  brandingLogos    SchoolBranding[]  @relation("BrandingLogo")
+  brandingFavicons SchoolBranding[]  @relation("BrandingFavicon")
+  importJobs       ImportJob[]
+  studentPhotos    Student[]
+  questionImages   QuestionVersion[]
+  productImages    CoinProduct[]
+
+  @@index([tenantId, kind, createdAt])
+}
+
+// Excel import: yuklash → parse (worker) → preview → commit (worker). Har qator ImportRow'da.
+model ImportJob {
+  id           String       @id @default(uuid()) @db.Uuid
+  tenantId     String       @db.Uuid
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  kind         ImportKind
+  status       ImportStatus @default(UPLOADED)
+  fileAssetId  String       @db.Uuid
+  fileAsset    FileAsset    @relation(fields: [fileAssetId], references: [id], onDelete: Restrict)
+  options      Json? // masalan academicYearId, rejim (lesson-plan §4.3 a/b)
+  summary      Json? // { total, ok, warnings, errors, created, updated }
+  errorCount   Int          @default(0)
+  warningCount Int          @default(0)
+  failure      Json? // texnik xato (code, message)
+  createdById  String       @db.Uuid
+  committedAt  DateTime?    @db.Timestamptz(3)
+  createdAt    DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime     @updatedAt @db.Timestamptz(3)
+  rows         ImportRow[]
+
+  @@index([tenantId, kind, createdAt])
+}
+
+model ImportRow {
+  id             String          @id @default(uuid()) @db.Uuid
+  importJobId    String          @db.Uuid
+  importJob      ImportJob       @relation(fields: [importJobId], references: [id], onDelete: Cascade)
+  rowNumber      Int
+  status         ImportRowStatus
+  data           Json // normalizatsiyalangan qiymatlar
+  messages       Json // [{ code, field?, params? }] — tarjima kalitlari
+  targetEntityId String? // commit'dan keyin yaratilgan/yangilangan obyekt
+
+  @@unique([importJobId, rowNumber])
+}
+
+// Idempotency-Key header bilan kelgan yozish so'rovlari natijasi (scoring/test/coin o'zining natural kalitiga ham ega).
+model IdempotencyRecord {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @db.Uuid
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  userId       String   @db.Uuid
+  key          String
+  method       String
+  path         String
+  requestHash  String
+  statusCode   Int
+  responseBody Json?
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+  expiresAt    DateTime @db.Timestamptz(3)
+
+  @@unique([tenantId, userId, key])
+  @@index([expiresAt])
+}
+
+// Transactional outbox: domen hodisasi biznes yozuv bilan bitta transaction'da yoziladi, worker BullMQ'ga uzatadi.
+model OutboxEvent {
+  id            String       @id @default(uuid()) @db.Uuid
+  tenantId      String       @db.Uuid
+  tenant        Tenant       @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  type          String // "test.attempt.finished", "score.created" ...
+  aggregateType String
+  aggregateId   String
+  payload       Json
+  status        OutboxStatus @default(PENDING)
+  attempts      Int          @default(0)
+  lastError     String?
+  availableAt   DateTime     @default(now()) @db.Timestamptz(3)
+  publishedAt   DateTime?    @db.Timestamptz(3)
+  createdAt     DateTime     @default(now()) @db.Timestamptz(3)
+
+  @@index([status, availableAt])
+}
+
+// =====================================================================================================================
+// M1 — O'QUV TUZILMASI
+// =====================================================================================================================
+
+// startDate/endDate — o'quv yilining birinchi va oxirgi kuni (ikkalasi ham kiradi).
+model AcademicYear {
+  id        String             @id @default(uuid()) @db.Uuid
+  tenantId  String             @db.Uuid
+  tenant    Tenant             @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  name      String // "2026-2027"
+  startDate DateTime           @db.Date
+  endDate   DateTime           @db.Date
+  status    AcademicYearStatus @default(PLANNED)
+  createdAt DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime           @updatedAt @db.Timestamptz(3)
+
+  classGroups        ClassGroup[]
+  teachingGroups     TeachingGroup[]
+  teacherAssignments TeacherAssignment[]
+  enrollments        StudentEnrollment[]
+  periods            AcademicPeriod[]
+  schoolWeek         SchoolWeek?
+  calendarDays       CalendarDay[]
+  bellSchedules      BellSchedule[]
+  timetables         Timetable[]
+  lessonSessions     LessonSession[]
+  curriculumPlans    CurriculumPlan[]
+  scoreEntries       ScoreEntry[]
+  coinTransactions   CoinTransaction[]
+
+  // SQL: partial unique (tenantId) WHERE status = 'ACTIVE' — bir vaqtda bitta joriy yil
+  // SQL: CHECK startDate < endDate
+  @@unique([tenantId, name])
+}
+
+// Parallel (7-sinf). Yildan mustaqil — Topic va CurriculumPlan shablonlari yillar osha qayta ishlatiladi.
+model Grade {
+  id         String    @id @default(uuid()) @db.Uuid
+  tenantId   String    @db.Uuid
+  tenant     Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  level      Int // 0..11 (0 = tayyorlov)
+  name       String // "7-sinf"
+  archivedAt DateTime? @db.Timestamptz(3)
+
+  classGroups     ClassGroup[]
+  topics          Topic[]
+  curriculumPlans CurriculumPlan[]
+  calendarDays    CalendarDayGrade[]
+  questions       Question[]
+  tests           Test[]
+
+  @@unique([tenantId, level])
+}
+
+// Yilga bog'liq sinf (7-A, 2026-2027). Yangi yil = yangi qatorlar; eski qatorlar o'zgarmaydi.
+model ClassGroup {
+  id                String       @id @default(uuid()) @db.Uuid
+  tenantId          String       @db.Uuid
+  tenant            Tenant       @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  academicYearId    String       @db.Uuid
+  academicYear      AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+  gradeId           String       @db.Uuid
+  grade             Grade        @relation(fields: [gradeId], references: [id], onDelete: Restrict)
+  section           String // "A"
+  name              String // "7-A"
+  shiftId           String?      @db.Uuid
+  shift             Shift?       @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+  homeroomTeacherId String?      @db.Uuid
+  homeroomTeacher   Employee?    @relation(fields: [homeroomTeacherId], references: [id], onDelete: SetNull)
+  capacity          Int?
+  archivedAt        DateTime?    @db.Timestamptz(3)
+  createdAt         DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime     @updatedAt @db.Timestamptz(3)
+
+  teachingGroups TeachingGroup[]
+  enrollments    StudentEnrollment[]
+
+  @@unique([tenantId, academicYearId, name])
+  @@index([tenantId, academicYearId, gradeId])
+}
+
+// Dars o'tiladigan birlik. Har ClassGroup uchun kind=CLASS guruh avtomatik yaratiladi.
+model TeachingGroup {
+  id             String            @id @default(uuid()) @db.Uuid
+  tenantId       String            @db.Uuid
+  tenant         Tenant            @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  academicYearId String            @db.Uuid
+  academicYear   AcademicYear      @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+  classGroupId   String?           @db.Uuid // CLASS/SUBGROUP uchun majburiy; CROSS_CLASS uchun null
+  classGroup     ClassGroup?       @relation(fields: [classGroupId], references: [id], onDelete: Restrict)
+  kind           TeachingGroupKind
+  name           String // "7-A" yoki "7-A Ingliz tili 1-guruh"
+  subjectId      String?           @db.Uuid // guruhcha qaysi fan uchun ajratilgan
+  subject        Subject?          @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  archivedAt     DateTime?         @db.Timestamptz(3)
+  createdAt      DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime          @updatedAt @db.Timestamptz(3)
+
+  members            TeachingGroupMember[]
+  teacherAssignments TeacherAssignment[]
+  timetableEntries   TimetableEntry[]
+  lessonSessions     LessonSession[]
+  planAssignments    PlanAssignment[]
+  scoreEntries       ScoreEntry[]
+  scoreLimitRules    ScoreLimitRule[]
+  testAssignments    TestAssignment[]
+
+  // SQL: partial unique (classGroupId) WHERE kind = 'CLASS'
+  @@index([tenantId, academicYearId])
+  @@index([classGroupId])
+}
+
+// A'zolik tarixi bilan. CLASS guruh a'zoligini enrollment servisi shu transaction'da sinxronlaydi.
+model TeachingGroupMember {
+  id              String        @id @default(uuid()) @db.Uuid
+  tenantId        String        @db.Uuid
+  tenant          Tenant        @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  teachingGroupId String        @db.Uuid
+  teachingGroup   TeachingGroup @relation(fields: [teachingGroupId], references: [id], onDelete: Restrict)
+  studentId       String        @db.Uuid
+  student         Student       @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  validFrom       DateTime      @db.Date
+  validTo         DateTime?     @db.Date // oxirgi kun (kiradi); null = hozir ham a'zo
+
+  // SQL: EXCLUDE USING gist (teachingGroupId, studentId, daterange(validFrom, validTo, '[]') WITH &&) — kesishmasin
+  @@index([teachingGroupId, validFrom])
+  @@index([studentId])
+}
+
+// Maktab darajasidagi fan (Informatika). EdexTest'dagidek "fan sinfga bog'langan" emas: sinf bog'lanishi
+// TeacherAssignment / TimetableEntry orqali.
+model Subject {
+  id         String    @id @default(uuid()) @db.Uuid
+  tenantId   String    @db.Uuid
+  tenant     Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  name       String
+  shortName  String?
+  code       String?
+  colorKey   String? // UI palitrasidagi token nomi (hex emas)
+  order      Int       @default(0)
+  archivedAt DateTime? @db.Timestamptz(3)
+
+  teachingGroups     TeachingGroup[]
+  teacherAssignments TeacherAssignment[]
+  timetableEntries   TimetableEntry[]
+  lessonSessions     LessonSession[]
+  topics             Topic[]
+  curriculumPlans    CurriculumPlan[]
+  scoreEntries       ScoreEntry[]
+  policyBindings     PolicyBinding[]
+  periodResults      PeriodResult[]
+  manualScores       ManualAssessmentScore[]
+  questions          Question[]
+  tests              Test[]
+  coinCriteria       CoinCriterion[]
+
+  @@unique([tenantId, name])
+}
+
+model Employee {
+  id            String         @id @default(uuid()) @db.Uuid
+  tenantId      String         @db.Uuid
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  userId        String?        @unique @db.Uuid
+  user          User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  employeeCode  String?
+  firstName     String
+  lastName      String
+  middleName    String?
+  phone         String?
+  positionTitle String?
+  status        EmployeeStatus @default(ACTIVE)
+  hiredAt       DateTime?      @db.Date
+  leftAt        DateTime?      @db.Date
+  createdAt     DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime       @updatedAt @db.Timestamptz(3)
+
+  homeroomClasses    ClassGroup[]
+  teacherAssignments TeacherAssignment[]
+  timetableEntries   TimetableEntry[]
+  lessonSessions     LessonSession[]
+  curriculumPlans    CurriculumPlan[]
+  scoreEntries       ScoreEntry[]
+  scoreLimitRules    ScoreLimitRule[]
+  questions          Question[]
+  tests              Test[]
+  coinPermissions    CoinCriterionTeacher[]
+  coinLimitRules     CoinLimitRule[]
+  coinTransactions   CoinTransaction[]
+
+  @@unique([tenantId, employeeCode])
+  @@index([tenantId, lastName, firstName])
+}
+
+// Kim, qaysi guruhda, qaysi fanni, qaysi davrda o'qitadi. Ruxsat filtrlari (o'qituvchi faqat o'z guruhi) shunga tayanadi.
+model TeacherAssignment {
+  id              String        @id @default(uuid()) @db.Uuid
+  tenantId        String        @db.Uuid
+  tenant          Tenant        @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  academicYearId  String        @db.Uuid
+  academicYear    AcademicYear  @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+  teacherId       String        @db.Uuid
+  teacher         Employee      @relation(fields: [teacherId], references: [id], onDelete: Restrict)
+  teachingGroupId String        @db.Uuid
+  teachingGroup   TeachingGroup @relation(fields: [teachingGroupId], references: [id], onDelete: Restrict)
+  subjectId       String        @db.Uuid
+  subject         Subject       @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  weeklyHours     Decimal?      @db.Decimal(4, 1)
+  validFrom       DateTime      @db.Date
+  validTo         DateTime?     @db.Date
+  createdAt       DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime      @updatedAt @db.Timestamptz(3)
+
+  @@unique([teachingGroupId, subjectId, teacherId, validFrom])
+  @@index([tenantId, teacherId, academicYearId])
+  @@index([tenantId, teachingGroupId, subjectId])
+}
+
+model Student {
+  id           String        @id @default(uuid()) @db.Uuid
+  tenantId     String        @db.Uuid
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  userId       String?       @unique @db.Uuid
+  user         User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  studentCode  String // STD-0001 (tenant ichida ketma-ket, serverda beriladi)
+  firstName    String
+  lastName     String
+  middleName   String?
+  dateOfBirth  DateTime?     @db.Date
+  gender       Gender?
+  phone        String?
+  address      String?
+  notes        String?
+  status       StudentStatus @default(ACTIVE)
+  photoAssetId String?       @db.Uuid
+  photoAsset   FileAsset?    @relation(fields: [photoAssetId], references: [id], onDelete: SetNull)
+  createdAt    DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime      @updatedAt @db.Timestamptz(3)
+
+  guardians         StudentGuardian[]
+  enrollments       StudentEnrollment[]
+  groupMemberships  TeachingGroupMember[]
+  lessonAttendances LessonAttendance[]
+  scoreEntries      ScoreEntry[]
+  periodResults     PeriodResult[]
+  manualScores      ManualAssessmentScore[]
+  testAssignments   TestAssignment[]
+  testOverrides     TestWindowOverride[]
+  testAttempts      TestAttempt[]
+  offlineResults    OfflineResult[]
+  coinAccount       CoinAccount?
+  coinTransactions  CoinTransaction[]
+  coinOrders        CoinOrder[]
+
+  @@unique([tenantId, studentCode])
+  @@index([tenantId, lastName, firstName])
+}
+
+model Guardian {
+  id         String            @id @default(uuid()) @db.Uuid
+  tenantId   String            @db.Uuid
+  tenant     Tenant            @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  userId     String?           @unique @db.Uuid
+  user       User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  firstName  String
+  lastName   String
+  middleName String?
+  phone      String // E.164 (+998XXXXXXXXX)
+  notes      String?
+  createdAt  DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime          @updatedAt @db.Timestamptz(3)
+  students   StudentGuardian[]
+
+  @@index([tenantId, phone])
+}
+
+model StudentGuardian {
+  id                    String           @id @default(uuid()) @db.Uuid
+  tenantId              String           @db.Uuid
+  tenant                Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  studentId             String           @db.Uuid
+  student               Student          @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  guardianId            String           @db.Uuid
+  guardian              Guardian         @relation(fields: [guardianId], references: [id], onDelete: Restrict)
+  relation              GuardianRelation
+  isPrimary             Boolean          @default(false)
+  canViewData           Boolean          @default(true)
+  receivesNotifications Boolean          @default(true)
+  revokedAt             DateTime?        @db.Timestamptz(3)
+  createdAt             DateTime         @default(now()) @db.Timestamptz(3)
+
+  @@unique([studentId, guardianId])
+  @@index([tenantId, guardianId])
+}
+
+// O'quvchining yil ichidagi sinfi (manba). Tarix o'chirilmaydi: o'tkazish = eski qatorni yopish + yangi qator.
+model StudentEnrollment {
+  id             String           @id @default(uuid()) @db.Uuid
+  tenantId       String           @db.Uuid
+  tenant         Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  studentId      String           @db.Uuid
+  student        Student          @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  academicYearId String           @db.Uuid
+  academicYear   AcademicYear     @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+  classGroupId   String           @db.Uuid
+  classGroup     ClassGroup       @relation(fields: [classGroupId], references: [id], onDelete: Restrict)
+  status         EnrollmentStatus @default(ACTIVE)
+  validFrom      DateTime         @db.Date
+  validTo        DateTime?        @db.Date
+  reason         String?
+  createdById    String?          @db.Uuid
+  createdAt      DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime         @updatedAt @db.Timestamptz(3)
+
+  // SQL: partial unique (studentId, academicYearId) WHERE status = 'ACTIVE'
+  @@index([tenantId, classGroupId, status])
+  @@index([studentId, academicYearId])
+}
+
+// =====================================================================================================================
+// M2 — KALENDAR, JADVAL, DARSLAR, KALENDAR-TEMATIK REJA
+// =====================================================================================================================
+
+model AcademicPeriod {
+  id             String               @id @default(uuid()) @db.Uuid
+  tenantId       String               @db.Uuid
+  tenant         Tenant               @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  academicYearId String               @db.Uuid
+  academicYear   AcademicYear         @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+  type           AcademicPeriodType
+  name           String
+  order          Int
+  startDate      DateTime             @db.Date
+  endDate        DateTime             @db.Date
+  parentId       String?              @db.Uuid // chorak → yarim yillik → yil
+  parent         AcademicPeriod?      @relation("PeriodHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
+  children       AcademicPeriod[]     @relation("PeriodHierarchy")
+  status         AcademicPeriodStatus @default(DRAFT)
+  closedAt       DateTime?            @db.Timestamptz(3)
+  closedById     String?              @db.Uuid
+  createdAt      DateTime             @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime             @updatedAt @db.Timestamptz(3)
+
+  lessonSessions LessonSession[]
+  planItems      PlanItem[]
+  scoreEntries   ScoreEntry[]
+  policyBindings PolicyBinding[]
+  periodResults  PeriodResult[]
+  closeRuns      PeriodCloseRun[]
+  manualScores   ManualAssessmentScore[]
+  tests          Test[]
+
+  // SQL: EXCLUDE — bir yil ichida bir xil type davrlar sanalari kesishmasin
+  @@unique([academicYearId, type, order])
+}
+
+model SchoolWeek {
+  id              String       @id @default(uuid()) @db.Uuid
+  tenantId        String       @db.Uuid
+  tenant          Tenant       @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  academicYearId  String       @unique @db.Uuid
+  academicYear    AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+  workingWeekdays Int[] // ISO 1..7, masalan [1,2,3,4,5,6]
+}
+
+model CalendarDay {
+  id             String             @id @default(uuid()) @db.Uuid
+  tenantId       String             @db.Uuid
+  tenant         Tenant             @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  academicYearId String             @db.Uuid
+  academicYear   AcademicYear       @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+  date           DateTime           @db.Date
+  kind           CalendarDayKind
+  title          String
+  followsWeekday Int? // WORKING_OVERRIDE: qaysi hafta kuni jadvali
+  appliesToAll   Boolean            @default(true)
+  grades         CalendarDayGrade[] // appliesToAll = false bo'lsa
+  createdAt      DateTime           @default(now()) @db.Timestamptz(3)
+
+  @@index([academicYearId, date])
+}
+
+model CalendarDayGrade {
+  calendarDayId String      @db.Uuid
+  calendarDay   CalendarDay @relation(fields: [calendarDayId], references: [id], onDelete: Cascade)
+  gradeId       String      @db.Uuid
+  grade         Grade       @relation(fields: [gradeId], references: [id], onDelete: Restrict)
+
+  @@id([calendarDayId, gradeId])
+}
+
+model Shift {
+  id          String    @id @default(uuid()) @db.Uuid
+  tenantId    String    @db.Uuid
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  name        String
+  startMinute Int // kun boshidan daqiqa (08:30 → 510), Toshkent vaqti
+  endMinute   Int
+  archivedAt  DateTime? @db.Timestamptz(3)
+
+  classGroups   ClassGroup[]
+  bellSchedules BellSchedule[]
+}
+
+model BellSchedule {
+  id             String       @id @default(uuid()) @db.Uuid
+  tenantId       String       @db.Uuid
+  tenant         Tenant       @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  academicYearId String       @db.Uuid
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+  shiftId        String?      @db.Uuid
+  shift          Shift?       @relation(fields: [shiftId], references: [id], onDelete: Restrict)
+  name           String
+  validFrom      DateTime     @db.Date
+  validTo        DateTime?    @db.Date
+  slots          BellSlot[]
+
+  @@index([academicYearId, shiftId, validFrom])
+}
+
+model BellSlot {
+  id             String       @id @default(uuid()) @db.Uuid
+  bellScheduleId String       @db.Uuid
+  bellSchedule   BellSchedule @relation(fields: [bellScheduleId], references: [id], onDelete: Cascade)
+  lessonNumber   Int
+  startMinute    Int
+  endMinute      Int
+
+  @@unique([bellScheduleId, lessonNumber])
+}
+
+model Room {
+  id         String    @id @default(uuid()) @db.Uuid
+  tenantId   String    @db.Uuid
+  tenant     Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  name       String
+  capacity   Int?
+  archivedAt DateTime? @db.Timestamptz(3)
+
+  timetableEntries TimetableEntry[]
+
+  @@unique([tenantId, name])
+}
+
+// Versiyalangan haftalik jadval. PUBLISHED versiya o'zgarmaydi; o'zgartirish = yangi versiya (validFrom bilan).
+model Timetable {
+  id             String           @id @default(uuid()) @db.Uuid
+  tenantId       String           @db.Uuid
+  tenant         Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  academicYearId String           @db.Uuid
+  academicYear   AcademicYear     @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+  version        Int
+  status         TimetableStatus  @default(DRAFT)
+  validFrom      DateTime         @db.Date
+  validTo        DateTime?        @db.Date
+  note           String?
+  createdById    String           @db.Uuid
+  publishedById  String?          @db.Uuid
+  publishedAt    DateTime?        @db.Timestamptz(3)
+  createdAt      DateTime         @default(now()) @db.Timestamptz(3)
+  entries        TimetableEntry[]
+
+  @@unique([academicYearId, version])
+}
+
+model TimetableEntry {
+  id              String          @id @default(uuid()) @db.Uuid
+  tenantId        String          @db.Uuid
+  tenant          Tenant          @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  timetableId     String          @db.Uuid
+  timetable       Timetable       @relation(fields: [timetableId], references: [id], onDelete: Cascade) // faqat DRAFT o'chiriladi
+  teachingGroupId String          @db.Uuid
+  teachingGroup   TeachingGroup   @relation(fields: [teachingGroupId], references: [id], onDelete: Restrict)
+  subjectId       String          @db.Uuid
+  subject         Subject         @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  teacherId       String          @db.Uuid
+  teacher         Employee        @relation(fields: [teacherId], references: [id], onDelete: Restrict)
+  roomId          String?         @db.Uuid
+  room            Room?           @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  weekday         Int // ISO 1..7
+  lessonNumber    Int
+  weekType        WeekType        @default(ALL)
+  lessonSessions  LessonSession[]
+
+  @@index([timetableId, teachingGroupId])
+  @@index([timetableId, teacherId, weekday, lessonNumber])
+}
+
+// Aniq dars. date = schoolDate. HELD yoki ball/davomat bog'langan sessiya o'chirilmaydi va o'zgarmaydi.
+model LessonSession {
+  id               String              @id @default(uuid()) @db.Uuid
+  tenantId         String              @db.Uuid
+  tenant           Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  academicYearId   String              @db.Uuid
+  academicYear     AcademicYear        @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+  periodId         String              @db.Uuid
+  period           AcademicPeriod      @relation(fields: [periodId], references: [id], onDelete: Restrict)
+  teachingGroupId  String              @db.Uuid
+  teachingGroup    TeachingGroup       @relation(fields: [teachingGroupId], references: [id], onDelete: Restrict)
+  subjectId        String              @db.Uuid
+  subject          Subject             @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  teacherId        String              @db.Uuid
+  teacher          Employee            @relation(fields: [teacherId], references: [id], onDelete: Restrict)
+  date             DateTime            @db.Date
+  lessonNumber     Int
+  startsAt         DateTime            @db.Timestamptz(3)
+  endsAt           DateTime            @db.Timestamptz(3)
+  sequenceNo       Int
+  status           LessonSessionStatus @default(SCHEDULED)
+  source           LessonSessionSource @default(TIMETABLE)
+  timetableEntryId String?             @db.Uuid
+  timetableEntry   TimetableEntry?     @relation(fields: [timetableEntryId], references: [id], onDelete: Restrict)
+  planItemId       String?             @db.Uuid
+  planItem         PlanItem?           @relation(fields: [planItemId], references: [id], onDelete: Restrict)
+  actualTopicNote  String?
+  heldMarkedAt     DateTime?           @db.Timestamptz(3)
+  heldMarkedById   String?             @db.Uuid
+  cancelReason     String?
+  createdAt        DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime            @updatedAt @db.Timestamptz(3)
+
+  attendances  LessonAttendance[]
+  scoreEntries ScoreEntry[]
+
+  @@unique([teachingGroupId, date, lessonNumber])
+  @@index([tenantId, teacherId, date])
+  @@index([teachingGroupId, subjectId, sequenceNo])
+  @@index([periodId, teachingGroupId, subjectId])
+}
+
+model Topic {
+  id              String    @id @default(uuid()) @db.Uuid
+  tenantId        String    @db.Uuid
+  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  subjectId       String    @db.Uuid
+  subject         Subject   @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  gradeId         String    @db.Uuid
+  grade           Grade     @relation(fields: [gradeId], references: [id], onDelete: Restrict)
+  title           String
+  normalizedTitle String // import solishtirish uchun (packages/shared/text.normalize)
+  code            String?
+  parentTopicId   String?   @db.Uuid
+  parentTopic     Topic?    @relation("TopicTree", fields: [parentTopicId], references: [id], onDelete: Restrict)
+  children        Topic[]   @relation("TopicTree")
+  archivedAt      DateTime? @db.Timestamptz(3)
+  createdAt       DateTime  @default(now()) @db.Timestamptz(3)
+
+  planItems    PlanItem[]
+  scoreEntries ScoreEntry[]
+  questions    Question[]
+
+  @@unique([tenantId, subjectId, gradeId, normalizedTitle])
+}
+
+// Shablon reja (fan + parallel). Versiyalar `lineageId` bo'yicha guruhlanadi; APPROVED versiya tahrirlanmaydi.
+model CurriculumPlan {
+  id             String               @id @default(uuid()) @db.Uuid
+  tenantId       String               @db.Uuid
+  tenant         Tenant               @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  lineageId      String               @db.Uuid // bir rejaning barcha versiyalari uchun umumiy
+  version        Int
+  academicYearId String               @db.Uuid
+  academicYear   AcademicYear         @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+  subjectId      String               @db.Uuid
+  subject        Subject              @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  gradeId        String               @db.Uuid
+  grade          Grade                @relation(fields: [gradeId], references: [id], onDelete: Restrict)
+  authorId       String               @db.Uuid
+  author         Employee             @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  title          String
+  status         CurriculumPlanStatus @default(DRAFT)
+  submittedAt    DateTime?            @db.Timestamptz(3)
+  approvedById   String?              @db.Uuid
+  approvedAt     DateTime?            @db.Timestamptz(3)
+  rejectionNote  String?
+  sourceImportId String?              @db.Uuid
+  createdAt      DateTime             @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime             @updatedAt @db.Timestamptz(3)
+
+  items       PlanItem[]
+  assignments PlanAssignment[]
+
+  @@unique([lineageId, version])
+  @@index([tenantId, academicYearId, subjectId, gradeId])
+}
+
+model PlanItem {
+  id         String          @id @default(uuid()) @db.Uuid
+  tenantId   String          @db.Uuid
+  tenant     Tenant          @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  planId     String          @db.Uuid
+  plan       CurriculumPlan  @relation(fields: [planId], references: [id], onDelete: Restrict)
+  order      Int
+  periodId   String?         @db.Uuid
+  period     AcademicPeriod? @relation(fields: [periodId], references: [id], onDelete: Restrict)
+  topicId    String          @db.Uuid
+  topic      Topic           @relation(fields: [topicId], references: [id], onDelete: Restrict)
+  hours      Int // >= 1 (SQL: CHECK)
+  lessonType LessonType      @default(NEW)
+  objectives String?
+  homework   String?
+  resources  String?
+  notes      String?
+
+  lessonSessions LessonSession[]
+  tests          Test[]
+
+  @@unique([planId, order])
+}
+
+model PlanAssignment {
+  id              String               @id @default(uuid()) @db.Uuid
+  tenantId        String               @db.Uuid
+  tenant          Tenant               @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  planId          String               @db.Uuid
+  plan            CurriculumPlan       @relation(fields: [planId], references: [id], onDelete: Restrict)
+  teachingGroupId String               @db.Uuid
+  teachingGroup   TeachingGroup        @relation(fields: [teachingGroupId], references: [id], onDelete: Restrict)
+  subjectId       String               @db.Uuid // plan.subjectId nusxasi — partial unique uchun
+  status          PlanAssignmentStatus @default(ACTIVE)
+  appliedAt       DateTime             @default(now()) @db.Timestamptz(3)
+  appliedById     String               @db.Uuid
+
+  // SQL: partial unique (teachingGroupId, subjectId) WHERE status = 'ACTIVE' — guruh+fan uchun bitta faol reja
+  @@index([planId])
+}
+
+// =====================================================================================================================
+// M3 — BALL ENGINE VA DAVRIY BAHOLASH
+// =====================================================================================================================
+
+model ScoreCriterion {
+  id           String       @id @default(uuid()) @db.Uuid
+  tenantId     String       @db.Uuid
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  name         String
+  description  String?
+  isActive     Boolean      @default(true)
+  order        Int          @default(0)
+  scoreEntries ScoreEntry[]
+}
+
+// Bitta joriy holat; o'zgarish tarixi AuditLog'da (scoring.md §2).
+model LessonAttendance {
+  id              String           @id @default(uuid()) @db.Uuid
+  tenantId        String           @db.Uuid
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  lessonSessionId String           @db.Uuid
+  lessonSession   LessonSession    @relation(fields: [lessonSessionId], references: [id], onDelete: Restrict)
+  studentId       String           @db.Uuid
+  student         Student          @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  status          AttendanceStatus
+  note            String?
+  markedById      String           @db.Uuid
+  markedAt        DateTime         @db.Timestamptz(3)
+
+  @@unique([lessonSessionId, studentId])
+  @@index([tenantId, studentId])
+}
+
+// LEDGER: faqat INSERT (SQL: trigger UPDATE/DELETE ni rad etadi). Tuzatish = REVERSAL (manfiy summa) + kerak bo'lsa yangi NORMAL.
+model ScoreEntry {
+  id              String          @id @default(uuid()) @db.Uuid
+  tenantId        String          @db.Uuid
+  tenant          Tenant          @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  studentId       String          @db.Uuid
+  student         Student         @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  teacherId       String          @db.Uuid
+  teacher         Employee        @relation(fields: [teacherId], references: [id], onDelete: Restrict)
+  subjectId       String          @db.Uuid
+  subject         Subject         @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  teachingGroupId String          @db.Uuid
+  teachingGroup   TeachingGroup   @relation(fields: [teachingGroupId], references: [id], onDelete: Restrict)
+  lessonSessionId String          @db.Uuid
+  lessonSession   LessonSession   @relation(fields: [lessonSessionId], references: [id], onDelete: Restrict)
+  topicId         String?         @db.Uuid
+  topic           Topic?          @relation(fields: [topicId], references: [id], onDelete: Restrict)
+  academicYearId  String          @db.Uuid
+  academicYear    AcademicYear    @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+  periodId        String          @db.Uuid
+  period          AcademicPeriod  @relation(fields: [periodId], references: [id], onDelete: Restrict)
+  schoolDate      DateTime        @db.Date // = lessonSession.date (yozish vaqtidan EMAS)
+  criterionId     String?         @db.Uuid
+  criterion       ScoreCriterion? @relation(fields: [criterionId], references: [id], onDelete: Restrict)
+  points          Decimal         @db.Decimal(8, 2) // NORMAL > 0, REVERSAL < 0 (SQL: CHECK)
+  note            String?
+  kind            ScoreEntryKind  @default(NORMAL)
+  reversesEntryId String?         @unique @db.Uuid // bir yozuv faqat bir marta reverse qilinadi
+  reversesEntry   ScoreEntry?     @relation("ScoreReversal", fields: [reversesEntryId], references: [id], onDelete: Restrict)
+  reversedBy      ScoreEntry?     @relation("ScoreReversal")
+  reason          String? // REVERSAL'da majburiy (SQL: CHECK)
+  idempotencyKey  String
+  createdById     String          @db.Uuid
+  createdAt       DateTime        @default(now()) @db.Timestamptz(3)
+
+  @@unique([tenantId, idempotencyKey])
+  @@index([tenantId, studentId, schoolDate])
+  @@index([tenantId, studentId, subjectId, schoolDate])
+  @@index([lessonSessionId, studentId])
+  @@index([periodId, subjectId, studentId])
+  @@index([teacherId, schoolDate])
+}
+
+model ScoreLimitRule {
+  id              String           @id @default(uuid()) @db.Uuid
+  tenantId        String           @db.Uuid
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  window          ScoreLimitWindow
+  scopeType       ScoreLimitScope
+  // scopeId turi scopeType'ga bog'liq. Polimorf FK o'rniga alohida ustunlar — FK yaxlitligi uchun.
+  subjectId       String?          @db.Uuid
+  gradeId         String?          @db.Uuid
+  teacherId       String?          @db.Uuid
+  teacher         Employee?        @relation(fields: [teacherId], references: [id], onDelete: Restrict)
+  teachingGroupId String?          @db.Uuid
+  teachingGroup   TeachingGroup?   @relation(fields: [teachingGroupId], references: [id], onDelete: Restrict)
+  maxPoints       Decimal          @db.Decimal(8, 2)
+  isActive        Boolean          @default(true)
+  createdAt       DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime         @updatedAt @db.Timestamptz(3)
+
+  // SQL: CHECK — scopeType ga mos faqat bitta ustun to'ldirilgan (GLOBAL: hammasi null; default qoida: hammasi null)
+  // SQL: partial unique (tenantId, window, scopeType, COALESCE(scope ustuni)) WHERE isActive
+  @@index([tenantId, window, scopeType, isActive])
+}
+
+model ScoreSettings {
+  id                 String   @id @default(uuid()) @db.Uuid
+  tenantId           String   @unique @db.Uuid
+  tenant             Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  hardCapPerLesson   Decimal  @db.Decimal(8, 2)
+  hardCapPerDay      Decimal  @db.Decimal(8, 2)
+  lessonMaxPoints    Decimal  @default(10) @db.Decimal(8, 2)
+  allowScoreOnAbsent Boolean  @default(false)
+  lateEntryDays      Int      @default(3)
+  updatedById        String?  @db.Uuid
+  updatedAt          DateTime @updatedAt @db.Timestamptz(3)
+}
+
+model AssessmentPolicy {
+  id        String                    @id @default(uuid()) @db.Uuid
+  tenantId  String                    @db.Uuid
+  tenant    Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  name      String
+  isDefault Boolean                   @default(false)
+  createdAt DateTime                  @default(now()) @db.Timestamptz(3)
+  versions  AssessmentPolicyVersion[]
+
+  // SQL: partial unique (tenantId) WHERE isDefault
+}
+
+// PUBLISHED versiya o'zgarmaydi. config = packages/shared AssessmentPolicyConfig (zod) — scoring.md §6.
+model AssessmentPolicyVersion {
+  id            String              @id @default(uuid()) @db.Uuid
+  policyId      String              @db.Uuid
+  policy        AssessmentPolicy    @relation(fields: [policyId], references: [id], onDelete: Restrict)
+  version       Int
+  status        PolicyVersionStatus @default(DRAFT)
+  config        Json
+  configHash    String
+  createdById   String              @db.Uuid
+  createdAt     DateTime            @default(now()) @db.Timestamptz(3)
+  publishedById String?             @db.Uuid
+  publishedAt   DateTime?           @db.Timestamptz(3)
+
+  bindings      PolicyBinding[]
+  periodResults PeriodResult[]
+
+  @@unique([policyId, version])
+}
+
+model PolicyBinding {
+  id              String                  @id @default(uuid()) @db.Uuid
+  tenantId        String                  @db.Uuid
+  tenant          Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  periodId        String                  @db.Uuid
+  period          AcademicPeriod          @relation(fields: [periodId], references: [id], onDelete: Restrict)
+  subjectId       String?                 @db.Uuid // null = barcha fanlar
+  subject         Subject?                @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  policyVersionId String                  @db.Uuid
+  policyVersion   AssessmentPolicyVersion @relation(fields: [policyVersionId], references: [id], onDelete: Restrict)
+  boundAt         DateTime                @default(now()) @db.Timestamptz(3)
+  boundById       String                  @db.Uuid
+  supersededAt    DateTime?               @db.Timestamptz(3) // "joriy davrga qo'llash" eski bog'lanishni yopadi
+  reason          String?
+
+  // SQL: partial unique (periodId, COALESCE(subjectId, '00000000-...')) WHERE supersededAt IS NULL
+  @@index([periodId])
+}
+
+model GradeScale {
+  id       String           @id @default(uuid()) @db.Uuid
+  tenantId String           @db.Uuid
+  tenant   Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  name     String
+  isActive Boolean          @default(true)
+  bands    GradeScaleBand[]
+}
+
+model GradeScaleBand {
+  id         String     @id @default(uuid()) @db.Uuid
+  scaleId    String     @db.Uuid
+  scale      GradeScale @relation(fields: [scaleId], references: [id], onDelete: Cascade)
+  minPercent Decimal    @db.Decimal(5, 2)
+  maxPercent Decimal    @db.Decimal(5, 2)
+  label      String // "5", "4", ...
+  order      Int
+
+  @@unique([scaleId, order])
+}
+
+// MANUAL komponent kirishi (scoring.md §5.1). Spec'da model yo'q edi — open-questions.md Q-12.
+// Ledger emas, lekin tarix saqlanadi: tuzatish = yangi qator + eski qatorda supersededById.
+model ManualAssessmentScore {
+  id             String                 @id @default(uuid()) @db.Uuid
+  tenantId       String                 @db.Uuid
+  tenant         Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  periodId       String                 @db.Uuid
+  period         AcademicPeriod         @relation(fields: [periodId], references: [id], onDelete: Restrict)
+  subjectId      String                 @db.Uuid
+  subject        Subject                @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  studentId      String                 @db.Uuid
+  student        Student                @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  componentKey   String // policy config'dagi komponent kaliti
+  points         Decimal                @db.Decimal(8, 2)
+  maxPoints      Decimal                @db.Decimal(8, 2)
+  note           String?
+  enteredById    String                 @db.Uuid
+  enteredAt      DateTime               @default(now()) @db.Timestamptz(3)
+  supersededById String?                @unique @db.Uuid
+  supersededBy   ManualAssessmentScore? @relation("ManualScoreHistory", fields: [supersededById], references: [id], onDelete: Restrict)
+  supersedes     ManualAssessmentScore? @relation("ManualScoreHistory")
+
+  // SQL: partial unique (periodId, subjectId, studentId, componentKey) WHERE supersededById IS NULL
+  @@index([periodId, subjectId])
+}
+
+// FINAL yozuv o'zgarmaydi. Qayta hisob = yangi version. isStale: kirish ma'lumotlari o'zgargan (inputsHash mos emas).
+model PeriodResult {
+  id              String                  @id @default(uuid()) @db.Uuid
+  tenantId        String                  @db.Uuid
+  tenant          Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  studentId       String                  @db.Uuid
+  student         Student                 @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  subjectId       String?                 @db.Uuid // null = umumiy natija
+  subject         Subject?                @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  periodId        String                  @db.Uuid
+  period          AcademicPeriod          @relation(fields: [periodId], references: [id], onDelete: Restrict)
+  policyVersionId String                  @db.Uuid
+  policyVersion   AssessmentPolicyVersion @relation(fields: [policyVersionId], references: [id], onDelete: Restrict)
+  status          PeriodResultStatus      @default(DRAFT)
+  version         Int
+  isCurrent       Boolean                 @default(true)
+  isComplete      Boolean                 @default(true) // emptyComponent = PENDING holati
+  isStale         Boolean                 @default(false)
+  components      Json
+  totalPoints     Decimal?                @db.Decimal(8, 2)
+  maxPoints       Decimal                 @db.Decimal(8, 2)
+  percent         Decimal?                @db.Decimal(7, 4) // to'liq aniqlik; yaxlitlash faqat ko'rsatishda
+  displayPercent  Decimal?                @db.Decimal(5, 2) // policy rounding qo'llangan
+  gradeLabel      String?
+  inputsHash      String
+  computedAt      DateTime                @db.Timestamptz(3)
+  finalizedById   String?                 @db.Uuid
+  finalizedAt     DateTime?               @db.Timestamptz(3)
+
+  // SQL: partial unique (studentId, periodId, COALESCE(subjectId, '0000...')) WHERE isCurrent
+  @@index([tenantId, periodId, subjectId])
+  @@index([studentId, periodId])
+}
+
+model PeriodCloseRun {
+  id           String               @id @default(uuid()) @db.Uuid
+  tenantId     String               @db.Uuid
+  tenant       Tenant               @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  periodId     String               @db.Uuid
+  period       AcademicPeriod       @relation(fields: [periodId], references: [id], onDelete: Restrict)
+  status       PeriodCloseRunStatus @default(PREPARED)
+  report       Json // to'liqmaslik hisoboti (scoring.md §7.1)
+  preparedById String               @db.Uuid
+  preparedAt   DateTime             @default(now()) @db.Timestamptz(3)
+  closedById   String?              @db.Uuid
+  closedAt     DateTime?            @db.Timestamptz(3)
+
+  @@index([periodId])
+}
+
+// =====================================================================================================================
+// M4 — TEST TIZIMI
+// =====================================================================================================================
+
+model TestType {
+  id       String  @id @default(uuid()) @db.Uuid
+  tenantId String  @db.Uuid
+  tenant   Tenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  name     String
+  code     String // CHSB, BSB, CONTROL_WORK, TRIAL, REGULAR, ...
+  isSystem Boolean @default(false)
+  isActive Boolean @default(true)
+  tests    Test[]
+
+  @@unique([tenantId, code])
+}
+
+model Question {
+  id                String            @id @default(uuid()) @db.Uuid
+  tenantId          String            @db.Uuid
+  tenant            Tenant            @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  ownerId           String            @db.Uuid
+  owner             Employee          @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  subjectId         String            @db.Uuid
+  subject           Subject           @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  gradeId           String            @db.Uuid
+  grade             Grade             @relation(fields: [gradeId], references: [id], onDelete: Restrict)
+  topicId           String?           @db.Uuid
+  topic             Topic?            @relation(fields: [topicId], references: [id], onDelete: Restrict)
+  type              QuestionType
+  difficulty        Difficulty        @default(MEDIUM)
+  status            QuestionStatus    @default(ACTIVE)
+  sharedWithSubject Boolean           @default(false)
+  currentVersionId  String?           @unique @db.Uuid
+  currentVersion    QuestionVersion?  @relation("CurrentQuestionVersion", fields: [currentVersionId], references: [id], onDelete: Restrict)
+  versions          QuestionVersion[] @relation("QuestionVersions")
+  createdAt         DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime          @updatedAt @db.Timestamptz(3)
+
+  @@index([tenantId, ownerId, subjectId])
+  @@index([tenantId, subjectId, gradeId, topicId])
+}
+
+// Testda ishlatilgan versiya hech qachon o'zgarmaydi. Tahrir = yangi versiya.
+model QuestionVersion {
+  id              String         @id @default(uuid()) @db.Uuid
+  questionId      String         @db.Uuid
+  question        Question       @relation("QuestionVersions", fields: [questionId], references: [id], onDelete: Restrict)
+  currentOf       Question?      @relation("CurrentQuestionVersion")
+  version         Int
+  text            String
+  imageAssetId    String?        @db.Uuid
+  imageAsset      FileAsset?     @relation(fields: [imageAssetId], references: [id], onDelete: Restrict)
+  points          Decimal        @default(1) @db.Decimal(6, 2)
+  options         Json? // [{ id, text, imageAssetId?, isCorrect }] — option id barqaror (uuid)
+  acceptedAnswers String[] // SHORT_TEXT
+  pairs           Json? // MATCHING: [{ leftId, left, rightId, right }]
+  explanation     String?
+  contentHash     String // normalizatsiyalangan matn + variantlar — dublikat tekshiruvi
+  createdById     String         @db.Uuid
+  createdAt       DateTime       @default(now()) @db.Timestamptz(3)
+  testQuestions   TestQuestion[]
+
+  @@unique([questionId, version])
+  @@index([contentHash])
+}
+
+model Test {
+  id                   String           @id @default(uuid()) @db.Uuid
+  tenantId             String           @db.Uuid
+  tenant               Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  title                String
+  description          String?
+  subjectId            String           @db.Uuid
+  subject              Subject          @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  gradeId              String           @db.Uuid
+  grade                Grade            @relation(fields: [gradeId], references: [id], onDelete: Restrict)
+  teacherId            String           @db.Uuid
+  teacher              Employee         @relation(fields: [teacherId], references: [id], onDelete: Restrict)
+  testTypeId           String           @db.Uuid
+  testType             TestType         @relation(fields: [testTypeId], references: [id], onDelete: Restrict)
+  format               TestFormat
+  purpose              TestPurpose
+  audience             TestAudience     @default(STUDENT)
+  status               TestStatus       @default(DRAFT)
+  startsAt             DateTime?        @db.Timestamptz(3)
+  endsAt               DateTime?        @db.Timestamptz(3)
+  timeLimitMinutes     Int?
+  questionCount        Int?
+  shuffleQuestions     Boolean          @default(true)
+  shuffleOptions       Boolean          @default(true)
+  multipleScoring      MultipleScoring  @default(ALL_OR_NOTHING) // tests.md §4.6 (modelda yo'q edi)
+  selection            Json? // { mode: MANUAL } | { mode: POOL, rules: [{ topicId, difficulty?, count }] }
+  maxScore             Decimal          @db.Decimal(8, 2)
+  periodId             String?          @db.Uuid
+  period               AcademicPeriod?  @relation(fields: [periodId], references: [id], onDelete: Restrict)
+  weight               Decimal?         @db.Decimal(6, 3)
+  includedInAssessment Boolean          @default(false)
+  retakePolicy         RetakePolicy     @default(LAST)
+  violationThreshold   Int              @default(3) // 0 = o'chiq
+  showResultToStudent  ResultVisibility @default(AFTER_CLOSE)
+  revealCorrectAnswers Boolean          @default(false) // open-questions.md
+  planItemId           String?          @db.Uuid
+  planItem             PlanItem?        @relation(fields: [planItemId], references: [id], onDelete: SetNull)
+  takenOn              DateTime?        @db.Date // OFFLINE: test o'tkazilgan schoolDate
+  publishedAt          DateTime?        @db.Timestamptz(3)
+  closedAt             DateTime?        @db.Timestamptz(3)
+  createdAt            DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt            DateTime         @updatedAt @db.Timestamptz(3)
+
+  questions      TestQuestion[]
+  assignments    TestAssignment[]
+  overrides      TestWindowOverride[]
+  attempts       TestAttempt[]
+  offlineResults OfflineResult[]
+
+  // SQL: CHECK purpose = 'WEIGHTED' → periodId IS NOT NULL AND weight > 0
+  // SQL: CHECK format = 'OFFLINE' → maxScore IN (5,10,20,25,40,50,100)
+  @@index([tenantId, subjectId, gradeId, status])
+  @@index([tenantId, teacherId, createdAt])
+  @@index([periodId])
+}
+
+model TestQuestion {
+  id                String          @id @default(uuid()) @db.Uuid
+  testId            String          @db.Uuid
+  test              Test            @relation(fields: [testId], references: [id], onDelete: Restrict)
+  questionVersionId String          @db.Uuid
+  questionVersion   QuestionVersion @relation(fields: [questionVersionId], references: [id], onDelete: Restrict)
+  order             Int
+  points            Decimal         @db.Decimal(6, 2)
+  answers           TestAnswer[]
+
+  @@unique([testId, questionVersionId])
+  @@unique([testId, order])
+}
+
+model TestAssignment {
+  id              String         @id @default(uuid()) @db.Uuid
+  testId          String         @db.Uuid
+  test            Test           @relation(fields: [testId], references: [id], onDelete: Restrict)
+  teachingGroupId String?        @db.Uuid
+  teachingGroup   TeachingGroup? @relation(fields: [teachingGroupId], references: [id], onDelete: Restrict)
+  studentId       String?        @db.Uuid
+  student         Student?       @relation(fields: [studentId], references: [id], onDelete: Restrict)
+
+  // SQL: CHECK (teachingGroupId IS NULL) <> (studentId IS NULL)
+  @@unique([testId, teachingGroupId])
+  @@unique([testId, studentId])
+}
+
+model TestWindowOverride {
+  id               String        @id @default(uuid()) @db.Uuid
+  tenantId         String        @db.Uuid
+  tenant           Tenant        @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  testId           String        @db.Uuid
+  test             Test          @relation(fields: [testId], references: [id], onDelete: Restrict)
+  studentId        String        @db.Uuid
+  student          Student       @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  startsAt         DateTime      @db.Timestamptz(3)
+  endsAt           DateTime      @db.Timestamptz(3)
+  timeLimitMinutes Int?
+  reason           String
+  createdById      String        @db.Uuid
+  createdAt        DateTime      @default(now()) @db.Timestamptz(3)
+  cancelledAt      DateTime?     @db.Timestamptz(3)
+  attempts         TestAttempt[]
+
+  @@index([testId, studentId])
+}
+
+// Test sessiyasi serverda: deadline, tartib, javoblar, buzilishlar. Klient faqat ko'rsatadi va hodisa yuboradi.
+model TestAttempt {
+  id               String              @id @default(uuid()) @db.Uuid
+  tenantId         String              @db.Uuid
+  tenant           Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  testId           String              @db.Uuid
+  test             Test                @relation(fields: [testId], references: [id], onDelete: Restrict)
+  studentId        String              @db.Uuid
+  student          Student             @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  attemptNo        Int
+  windowOverrideId String?             @db.Uuid
+  windowOverride   TestWindowOverride? @relation(fields: [windowOverrideId], references: [id], onDelete: Restrict)
+  status           AttemptStatus       @default(IN_PROGRESS)
+  finishReason     FinishReason?
+  startedAt        DateTime            @db.Timestamptz(3)
+  deadline         DateTime            @db.Timestamptz(3)
+  finishedAt       DateTime?           @db.Timestamptz(3)
+  currentIndex     Int                 @default(0)
+  questionOrder    Json // testQuestion id lar
+  optionOrder      Json // { testQuestionId: optionId[] }
+  violationCount   Int                 @default(0)
+  score            Decimal?            @db.Decimal(8, 2)
+  maxScore         Decimal             @db.Decimal(8, 2)
+  percent          Decimal?            @db.Decimal(7, 4)
+  gradedAt         DateTime?           @db.Timestamptz(3)
+  reopenCount      Int                 @default(0)
+  lastReopenedAt   DateTime?           @db.Timestamptz(3)
+  createdAt        DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime            @updatedAt @db.Timestamptz(3)
+
+  answers TestAnswer[]
+  events  TestEvent[]
+
+  // SQL: partial unique (testId, studentId) WHERE status = 'IN_PROGRESS' — bitta faol urinish
+  @@unique([testId, studentId, attemptNo])
+  @@index([status, deadline])
+}
+
+model TestAnswer {
+  id             String       @id @default(uuid()) @db.Uuid
+  attemptId      String       @db.Uuid
+  attempt        TestAttempt  @relation(fields: [attemptId], references: [id], onDelete: Restrict)
+  testQuestionId String       @db.Uuid
+  testQuestion   TestQuestion @relation(fields: [testQuestionId], references: [id], onDelete: Restrict)
+  answer         Json // { optionIds } | { text } | { pairs } — option ID, matn emas
+  clientSeq      Int
+  savedAt        DateTime     @db.Timestamptz(3)
+  isCorrect      Boolean?
+  pointsAwarded  Decimal?     @db.Decimal(6, 2)
+
+  @@unique([attemptId, testQuestionId])
+}
+
+model TestEvent {
+  id            String        @id @default(uuid()) @db.Uuid
+  attemptId     String        @db.Uuid
+  attempt       TestAttempt   @relation(fields: [attemptId], references: [id], onDelete: Restrict)
+  clientEventId String        @db.Uuid // qayta yuborishda dublikat bo'lmasligi uchun
+  type          TestEventType
+  clientTs      DateTime?     @db.Timestamptz(3)
+  serverTs      DateTime      @default(now()) @db.Timestamptz(3)
+  counted       Boolean
+  meta          Json?
+
+  @@unique([attemptId, clientEventId])
+  @@index([attemptId, type, serverTs])
+}
+
+// Tuzatish: yangi qator + eski qatorda supersededById (tarix saqlanadi).
+model OfflineResult {
+  id             String              @id @default(uuid()) @db.Uuid
+  tenantId       String              @db.Uuid
+  tenant         Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  testId         String              @db.Uuid
+  test           Test                @relation(fields: [testId], references: [id], onDelete: Restrict)
+  studentId      String              @db.Uuid
+  student        Student             @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  rawScore       Decimal?            @db.Decimal(8, 2)
+  status         OfflineResultStatus
+  note           String?
+  enteredById    String              @db.Uuid
+  enteredAt      DateTime            @default(now()) @db.Timestamptz(3)
+  supersededById String?             @unique @db.Uuid
+  supersededBy   OfflineResult?      @relation("OfflineResultHistory", fields: [supersededById], references: [id], onDelete: Restrict)
+  supersedes     OfflineResult?      @relation("OfflineResultHistory")
+
+  // SQL: partial unique (testId, studentId) WHERE supersededById IS NULL
+  // SQL: CHECK status = 'SCORED' ⇔ rawScore IS NOT NULL
+  @@index([testId])
+}
+
+// =====================================================================================================================
+// M5 — COIN
+// =====================================================================================================================
+
+model CoinSettings {
+  id                       String   @id @default(uuid()) @db.Uuid
+  tenantId                 String   @unique @db.Uuid
+  tenant                   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  isEnabled                Boolean  @default(false)
+  rewardsEnabled           Boolean  @default(true)
+  penaltiesEnabled         Boolean  @default(true)
+  teacherEvaluationEnabled Boolean  @default(true)
+  adminAdjustmentEnabled   Boolean  @default(true)
+  shopEnabled              Boolean  @default(false)
+  newOrdersEnabled         Boolean  @default(true)
+  orderApprovalRequired    Boolean  @default(true)
+  allowNegativeBalance     Boolean  @default(false)
+  maxDebt                  Int?
+  activityWindowDays       Int      @default(7)
+  activityMinCoverage      Int      @default(30) // %
+  activityStaleDays        Int      @default(3)
+  updatedById              String?  @db.Uuid
+  updatedAt                DateTime @updatedAt @db.Timestamptz(3)
+}
+
+model CoinCriterion {
+  id          String            @id @default(uuid()) @db.Uuid
+  tenantId    String            @db.Uuid
+  tenant      Tenant            @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  name        String
+  description String?
+  type        CoinCriterionType
+  minAmount   Int
+  maxAmount   Int
+  subjectId   String?           @db.Uuid
+  subject     Subject?          @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  eligibility CoinEligibility   @default(SELECTED_TEACHERS)
+  isAutomatic Boolean           @default(false)
+  isActive    Boolean           @default(true)
+  createdAt   DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime          @updatedAt @db.Timestamptz(3)
+
+  teachers     CoinCriterionTeacher[]
+  limitRules   CoinLimitRule[]
+  transactions CoinTransaction[]
+  autoRules    CoinAutoRule[]
+}
+
+model CoinCriterionTeacher {
+  criterionId String        @db.Uuid
+  criterion   CoinCriterion @relation(fields: [criterionId], references: [id], onDelete: Cascade)
+  teacherId   String        @db.Uuid
+  teacher     Employee      @relation(fields: [teacherId], references: [id], onDelete: Restrict)
+  isActive    Boolean       @default(true)
+
+  @@id([criterionId, teacherId])
+}
+
+model CoinLimitRule {
+  id                   String             @id @default(uuid()) @db.Uuid
+  tenantId             String             @db.Uuid
+  tenant               Tenant             @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  scope                CoinLimitScope
+  criterionId          String?            @db.Uuid
+  criterion            CoinCriterion?     @relation(fields: [criterionId], references: [id], onDelete: Restrict)
+  teacherId            String?            @db.Uuid
+  teacher              Employee?          @relation(fields: [teacherId], references: [id], onDelete: Restrict)
+  type                 CoinCriterionType? // null/BOTH = ikkala tur
+  period               CoinLimitPeriod
+  durationMinutes      Int? // ROLLING
+  maxAmount            Int?
+  maxCount             Int?
+  countTypesSeparately Boolean            @default(false)
+  isActive             Boolean            @default(true)
+  createdAt            DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt            DateTime           @updatedAt @db.Timestamptz(3)
+
+  // SQL: CHECK maxAmount IS NOT NULL OR maxCount IS NOT NULL
+  @@index([tenantId, isActive])
+}
+
+// Balans keshi. Har tranzaksiya shu qatorni lock qilib yangilaydi (SELECT ... FOR UPDATE). Manba — ledger.
+model CoinAccount {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @db.Uuid
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  studentId String   @unique @db.Uuid
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  balance   Int      @default(0)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+}
+
+// LEDGER: faqat INSERT. Tuzatish = REVERSAL yoki CORRECTION yozuv. Coin akademik ballga hech qachon qo'shilmaydi.
+model CoinTransaction {
+  id                    String            @id @default(uuid()) @db.Uuid
+  tenantId              String            @db.Uuid
+  tenant                Tenant            @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  studentId             String            @db.Uuid
+  student               Student           @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  type                  CoinTxType
+  source                CoinTxSource
+  amount                Int // ishorali: + kirim, − chiqim
+  balanceAfter          Int
+  schoolDate            DateTime          @db.Date
+  academicYearId        String            @db.Uuid
+  academicYear          AcademicYear      @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+  criterionId           String?           @db.Uuid
+  criterion             CoinCriterion?    @relation(fields: [criterionId], references: [id], onDelete: Restrict)
+  criterionNameSnapshot String?
+  teacherId             String?           @db.Uuid
+  teacher               Employee?         @relation(fields: [teacherId], references: [id], onDelete: Restrict)
+  actorUserId           String            @db.Uuid
+  orderId               String?           @db.Uuid
+  order                 CoinOrder?        @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  reversesTransactionId String?           @unique @db.Uuid
+  reversesTransaction   CoinTransaction?  @relation("CoinReversal", fields: [reversesTransactionId], references: [id], onDelete: Restrict)
+  reversedBy            CoinTransaction?  @relation("CoinReversal")
+  correctsTransactionId String?           @db.Uuid
+  correctsTransaction   CoinTransaction?  @relation("CoinCorrection", fields: [correctsTransactionId], references: [id], onDelete: Restrict)
+  corrections           CoinTransaction[] @relation("CoinCorrection")
+  sourceRef             String? // avtomatik coin: masalan "attempt:<id>" — takror berilmasligi uchun
+  reason                String?
+  idempotencyKey        String
+  createdAt             DateTime          @default(now()) @db.Timestamptz(3)
+
+  @@unique([tenantId, idempotencyKey])
+  @@unique([tenantId, source, sourceRef])
+  @@index([tenantId, studentId, schoolDate])
+  @@index([tenantId, teacherId, schoolDate])
+  @@index([tenantId, type, schoolDate])
+  @@index([criterionId])
+}
+
+model CoinProduct {
+  id           String      @id @default(uuid()) @db.Uuid
+  tenantId     String      @db.Uuid
+  tenant       Tenant      @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  name         String
+  description  String?
+  imageAssetId String?     @db.Uuid
+  imageAsset   FileAsset?  @relation(fields: [imageAssetId], references: [id], onDelete: SetNull)
+  price        Int
+  stock        Int         @default(0)
+  isVisible    Boolean     @default(true)
+  archivedAt   DateTime?   @db.Timestamptz(3)
+  createdAt    DateTime    @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime    @updatedAt @db.Timestamptz(3)
+  orders       CoinOrder[]
+}
+
+model CoinOrder {
+  id                  String            @id @default(uuid()) @db.Uuid
+  tenantId            String            @db.Uuid
+  tenant              Tenant            @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  studentId           String            @db.Uuid
+  student             Student           @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  productId           String            @db.Uuid
+  product             CoinProduct       @relation(fields: [productId], references: [id], onDelete: Restrict)
+  productNameSnapshot String
+  priceAtOrder        Int
+  status              CoinOrderStatus   @default(PENDING)
+  note                String?
+  processedById       String?           @db.Uuid
+  approvedAt          DateTime?         @db.Timestamptz(3)
+  deliveredAt         DateTime?         @db.Timestamptz(3)
+  closedAt            DateTime?         @db.Timestamptz(3)
+  idempotencyKey      String
+  createdAt           DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime          @updatedAt @db.Timestamptz(3)
+  transactions        CoinTransaction[]
+
+  @@unique([tenantId, idempotencyKey])
+  @@index([tenantId, status, createdAt])
+  @@index([studentId, createdAt])
+}
+
+// Avtomatik coin qoidasi (test natijasi; davomat M6 dan keyin). config: zod sxema packages/shared da.
+model CoinAutoRule {
+  id          String         @id @default(uuid()) @db.Uuid
+  tenantId    String         @db.Uuid
+  tenant      Tenant         @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  source      CoinAutoSource
+  criterionId String         @db.Uuid
+  criterion   CoinCriterion  @relation(fields: [criterionId], references: [id], onDelete: Restrict)
+  config      Json // masalan { minPercent: 90, amount: 5, testPurpose: ["WEIGHTED"] }
+  isActive    Boolean        @default(true)
+  createdAt   DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime       @updatedAt @db.Timestamptz(3)
+}
