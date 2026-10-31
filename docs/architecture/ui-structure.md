@@ -175,7 +175,7 @@ Tepada farzand tanlagich (bitta bo'lsa yashirin). Tablar: Bosh (bugungi darslar,
 - Tekshiruv serverdagi `POST /policy-versions/:id/validate` (formula frontendda takrorlanmaydi; forma faqat zod sxema bilan).
 - Versiyalar tarixi (o'ng panel), "joriy davrga qo'llash" alohida tasdiq oynasi (sabab majburiy).
 
-## 4. Dizayn prinsiplari (`references/design-reference.png` asosida)
+## 4. Dizayn prinsiplari (`docs/references/design-reference.png` asosida)
 
 1. **Och, havodor sirtlar:** sahifa foni `--color-background` (juda och ko'k-kulrang), kartalar oq, katta radius (12px), yengil soya yoki 1px chegara. Juda zich emas (COMFORTABLE).
 2. **Bitta ko'k aksent:** asosiy amallar, faol menyu, KPI "hero" kartasi to'liq `primary` fonda oq matn bilan (namunadagi CGPA kartasi). Qolgan KPI kartalar oq, raqam katta va qalin, izoh kichik `muted`.
