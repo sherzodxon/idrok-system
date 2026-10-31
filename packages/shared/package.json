@@ -10,17 +10,20 @@
   },
   "scripts": {
     "lint": "eslint .",
-    "typecheck": "tsc -p tsconfig.json",
-    "test": "vitest run"
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.node.json",
+    "test": "vitest run",
+    "rbac:matrix": "tsx scripts/rbac-matrix.ts"
   },
   "devDependencies": {
     "@idrok/config": "workspace:*",
     "@types/node": "26.6.6",
     "eslint": "10.14.0",
     "typescript": "6.0.3",
-    "vitest": "5.0.5"
+    "vitest": "5.0.5",
+    "tsx": "4.23.15"
   },
   "dependencies": {
-    "decimal.js": "10.6.0"
+    "decimal.js": "10.6.0",
+    "zod": "4.6.7"
   }
 }

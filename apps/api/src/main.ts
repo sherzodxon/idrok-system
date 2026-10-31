@@ -1,27 +1,14 @@
-import { createRootClient } from "@idrok/db";
-import { Redis } from "ioredis";
 import { createApp } from "./app";
+import { buildDeps, closeDeps } from "./bootstrap";
 import { loadEnv } from "./config/env";
-import type { ReadinessCheck } from "./http/health";
-import { createLogger } from "./logger";
 
 const env = loadEnv();
-const logger = createLogger(env.LOG_LEVEL);
+const deps = buildDeps(env);
+const server = createApp(deps).listen(env.PORT, () => deps.logger.info({ port: env.PORT }, "api listening"));
 
-const readiness: Record<string, ReadinessCheck> = {};
-if (env.DATABASE_URL) {
-  const db = createRootClient({ url: env.DATABASE_URL, max: env.DATABASE_POOL_MAX });
-  readiness.db = async () => {
-    await db.$queryRaw`SELECT 1`;
-  };
-}
-if (env.REDIS_URL) {
-  const redis = new Redis(env.REDIS_URL, { lazyConnect: true, maxRetriesPerRequest: 1 });
-  readiness.redis = async () => {
-    if (redis.status === "wait") await redis.connect();
-    await redis.ping();
-  };
-}
-
-const app = createApp({ logger, readiness });
-app.listen(env.PORT, () => logger.info({ port: env.PORT }, "api listening"));
+const shutdown = (signal: string) => {
+  deps.logger.info({ signal }, "api stopping");
+  server.close(() => void closeDeps(deps).then(() => process.exit(0)));
+};
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));
