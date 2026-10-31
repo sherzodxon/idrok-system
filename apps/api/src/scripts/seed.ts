@@ -5,6 +5,14 @@ import { createRootClient } from "@idrok/db";
 import { ensureSystemRoles, syncPermissions } from "@idrok/db/seed";
 import { generateTemporaryPassword, hashPassword } from "../modules/auth/password";
 
+// The temporary admin password is printed once, only to an interactive terminal (security-baseline.md S3), and a
+// production run needs an explicit acknowledgement.
+const interactive = process.stdout.isTTY === true;
+if (process.env.NODE_ENV === "production" && !process.argv.includes("--yes-i-understand")) {
+  console.error("Refusing to seed in production without --yes-i-understand.");
+  process.exit(1);
+}
+
 const url = process.env.DATABASE_URL;
 if (!url) throw new Error("DATABASE_URL is required");
 const slug = process.env.DEFAULT_TENANT_SLUG ?? "idrok";
@@ -29,6 +37,10 @@ try {
   });
   if (existing) {
     console.log(`Tenant "${slug}" is ready; admin account already exists.`);
+  } else if (!interactive) {
+    // Never write a password into CI output, log files or pipes.
+    console.error("Admin account not created: run the seed in an interactive terminal to see its temporary password.");
+    process.exitCode = 1;
   } else {
     const password = generateTemporaryPassword();
     await root.$transaction(async (tx) => {

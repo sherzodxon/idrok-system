@@ -1,0 +1,10 @@
+# Secret scanning (security-baseline.md S3). Default gitleaks rules, plus an allowlist for obviously fake values used
+# by automated tests (they are asserted to be fake by name: demo/test/secret-value).
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Test fixtures"
+paths = [
+  '''(apps|packages)/[^/]+/test/''',
+]
