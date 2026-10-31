@@ -39,7 +39,7 @@ export const importLabelsUz = {
     "2. * belgili ustunlar majburiy.",
     "3. Sana: YYYY-MM-DD yoki KK.OO.YYYY. Telefon: +998 90 123 45 67 (istalgan ko'rinishda).",
     "4. Sinf: masalan 7-A. Vasiy kimi: ona, ota, buvi, bobo, aka, opa, boshqa.",
-    "5. Dars beradi: \"Matematika: 7-A, 7-B; Fizika: 8-A\". Rollar: TEACHER, CLASS_TEACHER, DEPUTY_DIRECTOR ...",
+    '5. Dars beradi: "Matematika: 7-A, 7-B; Fizika: 8-A". Rollar: TEACHER, CLASS_TEACHER, DEPUTY_DIRECTOR ...',
     "6. Faqat sun'iy (demo) ma'lumot kiriting, toki tizim maktab serveriga ko'chirilmaguncha.",
   ],
 };

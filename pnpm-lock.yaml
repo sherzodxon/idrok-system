@@ -321,16 +321,67 @@ importers:
 
   apps/worker:
     dependencies:
+      '@idrok/api':
+        specifier: workspace:*
+        version: link:../api
+      '@idrok/db':
+        specifier: workspace:*
+        version: link:../../packages/db
       '@idrok/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@prisma/adapter-pg':
+        specifier: 7.10.1
+        version: 7.10.1
+      '@prisma/client':
+        specifier: 7.10.1
+        version: 7.10.1(prisma@7.10.1(@types/node@26.6.6)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(typescript@6.0.3))(typescript@6.0.3)
+      argon2:
+        specifier: 0.45.1
+        version: 0.45.1
+      bullmq:
+        specifier: 6.5.3
+        version: 6.5.3(ioredis@6.0.0)(pg@8.23.1)
+      exceljs:
+        specifier: 4.4.0
+        version: 4.4.0
+      express:
+        specifier: 5.3.0
+        version: 5.3.0
+      ioredis:
+        specifier: 6.0.0
+        version: 6.0.0
+      jose:
+        specifier: 6.2.14
+        version: 6.2.14
+      pg:
+        specifier: 8.23.1
+        version: 8.23.1
       pino:
         specifier: 10.4.0
         version: 10.4.0
+      pino-http:
+        specifier: 11.0.0
+        version: 11.0.0
+      zod:
+        specifier: 4.6.7
+        version: 4.6.7
     devDependencies:
       '@idrok/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@types/cookie-parser':
+        specifier: 1.4.10
+        version: 1.4.10(@types/express@5.0.6)
+      '@types/cors':
+        specifier: 2.8.19
+        version: 2.8.19
+      '@types/express':
+        specifier: 5.0.6
+        version: 5.0.6
+      '@types/multer':
+        specifier: 2.3.0
+        version: 2.3.0
       '@types/node':
         specifier: 26.6.6
         version: 26.6.6

@@ -179,12 +179,18 @@ export const ImportJobSchema = z.object({
   committedAt: z.string().nullable(),
 });
 export type ImportJobDto = z.infer<typeof ImportJobSchema>;
-export const ImportMessageSchema = z.object({ code: z.string(), field: z.string().optional(), params: z.record(z.string(), z.unknown()).optional() });
+export const ImportMessageSchema = z.object({
+  code: z.string(),
+  field: z.string().optional(),
+  params: z.record(z.string(), z.unknown()).optional(),
+});
 export const ImportRowSchema = z.object({
   rowNumber: z.number().int(),
   status: z.enum(["OK", "WARNING", "ERROR", "SKIPPED"]),
   data: z.record(z.string(), z.unknown()),
   messages: z.array(ImportMessageSchema),
 });
-export const ImportRowsQuerySchema = ListQuerySchema.extend({ status: z.enum(["OK", "WARNING", "ERROR", "SKIPPED"]).optional() });
+export const ImportRowsQuerySchema = ListQuerySchema.extend({
+  status: z.enum(["OK", "WARNING", "ERROR", "SKIPPED"]).optional(),
+});
 export const CommitImportSchema = z.object({ skipErrors: z.boolean().default(false) }).strict();

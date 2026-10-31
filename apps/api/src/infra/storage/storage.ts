@@ -18,5 +18,6 @@ export const storageKey = (tenantId: string, kind: string, id: string, ext: stri
   `${tenantId}/${kind.toLowerCase()}/${id}.${ext.replace(/[^a-z0-9]/gi, "").toLowerCase()}`;
 
 export function assertSafeKey(key: string) {
-  if (!/^[0-9a-f-]{36}\/[a-z_]+\/[0-9a-f-]{36}\.[a-z0-9]{1,8}$/.test(key)) throw new Error(`Unsafe storage key: ${key}`);
+  if (!/^[0-9a-f-]{36}\/[a-z_]+\/[0-9a-f-]{36}\.[a-z0-9]{1,8}$/.test(key))
+    throw new Error(`Unsafe storage key: ${key}`);
 }

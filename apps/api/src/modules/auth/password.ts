@@ -1,11 +1,15 @@
 import { randomInt } from "node:crypto";
-import argon2 from "argon2";
+import argon2, { type HashOptions } from "argon2";
 import { PASSWORD_MIN_LENGTH } from "@idrok/shared";
 
-// OWASP minimum for argon2id: m=19 MiB, t=2, p=1.
-const OPTIONS = { type: argon2.argon2id, memoryCost: 19_456, timeCost: 2, parallelism: 1 } as const;
+// OWASP minimum for argon2id: m=19 MiB, t=2, p=1. The memory cost comes from ARGON2_MEMORY_KIB (lowered only in tests).
+let options: HashOptions & { raw?: false } = { type: argon2.argon2id, memoryCost: 19_456, timeCost: 2, parallelism: 1 };
 
-export const hashPassword = (plain: string) => argon2.hash(plain, OPTIONS);
+export function configurePasswordHashing(memoryKib: number) {
+  options = { ...options, memoryCost: memoryKib };
+}
+
+export const hashPassword = (plain: string) => argon2.hash(plain, options);
 
 /** Verified against a dummy hash when the user does not exist, so timing does not reveal valid usernames. */
 let dummyHash: Promise<string> | undefined;

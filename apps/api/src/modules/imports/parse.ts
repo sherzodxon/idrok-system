@@ -70,7 +70,12 @@ export interface StudentRowData {
   phone: string | null;
   address: string | null;
   createAccount: boolean | null;
-  guardians: { lastName: string; firstName: string; phone: string; relation: "MOTHER" | "FATHER" | "GRANDPARENT" | "SIBLING" | "OTHER" }[];
+  guardians: {
+    lastName: string;
+    firstName: string;
+    phone: string;
+    relation: "MOTHER" | "FATHER" | "GRANDPARENT" | "SIBLING" | "OTHER";
+  }[];
   /** Existing student this row updates (matched by code, or by name + date of birth). */
   matchedStudentId: string | null;
 }
@@ -120,7 +125,8 @@ export function parseStudentRows(rows: SheetRow[], ctx: StudentLookup): PreviewR
       const gfirst = name(fn, `${field}FirstName`, true, errors);
       const relation = rel ? RELATION_ALIASES[normalizeText(rel)] : "OTHER";
       if (!relation) errors.push({ code: "INVALID_RELATION", field: `${field}Relation` });
-      if (gPhone && glast && gfirst && relation) guardians.push({ lastName: glast, firstName: gfirst, phone: gPhone, relation });
+      if (gPhone && glast && gfirst && relation)
+        guardians.push({ lastName: glast, firstName: gfirst, phone: gPhone, relation });
     }
     if (guardians.length === 2 && guardians[0]!.phone === guardians[1]!.phone) {
       errors.push({ code: "DUPLICATE_GUARDIAN_PHONE", field: "guardian2Phone" });
@@ -134,7 +140,8 @@ export function parseStudentRows(rows: SheetRow[], ctx: StudentLookup): PreviewR
       if (prev) errors.push({ code: "DUPLICATE_IN_FILE", field: "studentCode", params: { row: prev } });
       seenCodes.set(code, rowNumber);
       matchedStudentId = ctx.studentIdByCode.get(code) ?? null;
-      if (!matchedStudentId) errors.push({ code: "UNKNOWN_STUDENT_CODE", field: "studentCode", params: { value: code } });
+      if (!matchedStudentId)
+        errors.push({ code: "UNKNOWN_STUDENT_CODE", field: "studentCode", params: { value: code } });
     } else if (lastName && firstName) {
       const base = `${normalizeText(lastName)}|${normalizeText(firstName)}`;
       if (dateOfBirth) matchedStudentId = ctx.studentIdByNameDob.get(`${base}|${dateOfBirth}`) ?? null;
@@ -205,25 +212,40 @@ export function parseEmployeeRows(rows: SheetRow[], ctx: EmployeeLookup): Previe
       .split(/[,;\s]+/)
       .map((r) => r.trim().toUpperCase())
       .filter(Boolean);
-    const unknownRoles = roles.filter((r) => !(SYSTEM_ROLES as readonly string[]).includes(r) || r === "SUPER_ADMIN" || r === "STUDENT" || r === "GUARDIAN");
-    if (unknownRoles.length) errors.push({ code: "UNKNOWN_ROLE", field: "roles", params: { value: unknownRoles.join(", ") } });
+    const unknownRoles = roles.filter(
+      (r) =>
+        !(SYSTEM_ROLES as readonly string[]).includes(r) || r === "SUPER_ADMIN" || r === "STUDENT" || r === "GUARDIAN",
+    );
+    if (unknownRoles.length)
+      errors.push({ code: "UNKNOWN_ROLE", field: "roles", params: { value: unknownRoles.join(", ") } });
 
     let homeroomClassId: string | null = null;
     if (v.homeroomClass) {
       homeroomClassId = ctx.classIdByKey.get(classKey(v.homeroomClass)) ?? null;
-      if (!homeroomClassId) errors.push({ code: "UNKNOWN_CLASS", field: "homeroomClass", params: { value: v.homeroomClass } });
+      if (!homeroomClassId)
+        errors.push({ code: "UNKNOWN_CLASS", field: "homeroomClass", params: { value: v.homeroomClass } });
     }
 
     // "Matematika: 7-A, 7-B; Fizika: 8-A"
     const assignments: EmployeeRowData["assignments"] = [];
-    for (const part of (v.assignments ?? "").split(";").map((p) => p.trim()).filter(Boolean)) {
+    for (const part of (v.assignments ?? "")
+      .split(";")
+      .map((p) => p.trim())
+      .filter(Boolean)) {
       const [subjectName, groups] = part.split(":").map((p) => p?.trim() ?? "");
       const subjectId = subjectName ? ctx.subjectIdByKey.get(normalizeText(subjectName)) : undefined;
       if (!subjectId || !groups) {
-        errors.push({ code: subjectId ? "INVALID_ASSIGNMENT" : "UNKNOWN_SUBJECT", field: "assignments", params: { value: part } });
+        errors.push({
+          code: subjectId ? "INVALID_ASSIGNMENT" : "UNKNOWN_SUBJECT",
+          field: "assignments",
+          params: { value: part },
+        });
         continue;
       }
-      for (const g of groups.split(",").map((x) => x.trim()).filter(Boolean)) {
+      for (const g of groups
+        .split(",")
+        .map((x) => x.trim())
+        .filter(Boolean)) {
         const teachingGroupId = ctx.groupIdByKey.get(classKey(g));
         if (!teachingGroupId) errors.push({ code: "UNKNOWN_GROUP", field: "assignments", params: { value: g } });
         else assignments.push({ subjectId, teachingGroupId, label: `${subjectName}: ${g}` });
@@ -287,7 +309,8 @@ export function parseClassRows(
     const section = (v.section ?? "").trim().toUpperCase();
     if (!section || section.length > 10) errors.push({ code: section ? "TOO_LONG" : "REQUIRED", field: "section" });
     const capacity = v.capacity ? Number(v.capacity) : null;
-    if (capacity !== null && (!Number.isInteger(capacity) || capacity < 1 || capacity > 60)) errors.push({ code: "INVALID_NUMBER", field: "capacity" });
+    if (capacity !== null && (!Number.isInteger(capacity) || capacity < 1 || capacity > 60))
+      errors.push({ code: "INVALID_NUMBER", field: "capacity" });
     let homeroomEmployeeId: string | null = null;
     if (v.homeroomEmployeeCode) {
       homeroomEmployeeId = ctx.employeeIdByCode.get(v.homeroomEmployeeCode.trim()) ?? null;
@@ -299,7 +322,12 @@ export function parseClassRows(
     const exists = ctx.existingClassKeys.has(key);
     if (exists) warnings.push({ code: "ALREADY_EXISTS" });
     const messages = [...errors, ...warnings];
-    return { rowNumber, status: status(messages, errors), messages, data: { level, section, capacity, homeroomEmployeeId, exists } };
+    return {
+      rowNumber,
+      status: status(messages, errors),
+      messages,
+      data: { level, section, capacity, homeroomEmployeeId, exists },
+    };
   });
 }
 
@@ -310,7 +338,10 @@ export interface SubjectRowData {
   exists: boolean;
 }
 
-export function parseSubjectRows(rows: SheetRow[], ctx: { existingNameKeys: Set<string> }): PreviewRow<SubjectRowData>[] {
+export function parseSubjectRows(
+  rows: SheetRow[],
+  ctx: { existingNameKeys: Set<string> },
+): PreviewRow<SubjectRowData>[] {
   const seen = new Set<string>();
   return rows.map(({ rowNumber, values: v }) => {
     const errors: Message[] = [];
@@ -326,7 +357,12 @@ export function parseSubjectRows(rows: SheetRow[], ctx: { existingNameKeys: Set<
       rowNumber,
       status: status(messages, errors),
       messages,
-      data: { name: subjectName, shortName: v.shortName?.slice(0, 20) || null, code: v.code?.slice(0, 20) || null, exists },
+      data: {
+        name: subjectName,
+        shortName: v.shortName?.slice(0, 20) || null,
+        code: v.code?.slice(0, 20) || null,
+        exists,
+      },
     };
   });
 }

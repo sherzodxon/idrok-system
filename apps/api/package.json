@@ -47,5 +47,9 @@
     "tsx": "4.23.15",
     "typescript": "6.0.3",
     "vitest": "5.0.5"
+  },
+  "exports": {
+    "./worker": "./src/worker/index.ts",
+    "./config": "./src/config/env.ts"
   }
 }

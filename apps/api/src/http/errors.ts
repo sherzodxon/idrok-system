@@ -1,4 +1,6 @@
 import type { ErrorRequestHandler, RequestHandler } from "express";
+// Brings in pino-http's `req.log` / `req.id` typings for every compilation that includes this file (e.g. the worker).
+import type {} from "pino-http";
 import { ZodError } from "zod";
 import { Prisma, TenantContextMissingError, TenantMismatchError } from "@idrok/db";
 import { errorMessageKey, type ApiErrorBody, type ErrorCode } from "@idrok/shared";

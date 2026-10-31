@@ -9,7 +9,9 @@ export const FIRST_DATA_ROW = 3;
 export const MAX_IMPORT_ROWS = 2_000;
 
 export class ImportFileError extends Error {
-  constructor(readonly code: "IMPORT_FILE_UNREADABLE" | "IMPORT_TEMPLATE_MISMATCH" | "IMPORT_TOO_MANY_ROWS" | "IMPORT_EMPTY") {
+  constructor(
+    readonly code: "IMPORT_FILE_UNREADABLE" | "IMPORT_TEMPLATE_MISMATCH" | "IMPORT_TOO_MANY_ROWS" | "IMPORT_EMPTY",
+  ) {
     super(code);
   }
 }
