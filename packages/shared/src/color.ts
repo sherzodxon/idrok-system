@@ -8,7 +8,15 @@ function toRgb(hex: string): [number, number, number] {
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
 
-const toHex = (rgb: number[]) => `#${rgb.map((c) => Math.round(Math.min(255, Math.max(0, c))).toString(16).padStart(2, "0")).join("").toUpperCase()}`;
+const toHex = (rgb: number[]) =>
+  `#${rgb
+    .map((c) =>
+      Math.round(Math.min(255, Math.max(0, c)))
+        .toString(16)
+        .padStart(2, "0"),
+    )
+    .join("")
+    .toUpperCase()}`;
 
 /** Mixes `hex` with white (amount > 0) or black (amount < 0); amount in [-1, 1]. */
 export function shade(hex: string, amount: number): string {

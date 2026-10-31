@@ -19,7 +19,17 @@ describe("public branding", () => {
     const res = await request(t.app).get("/api/v1/branding");
     expect(res.status).toBe(200);
     expect(Object.keys(res.body).sort()).toEqual(
-      ["defaultLocale", "defaultThemeMode", "platformName", "primaryColor", "primaryHoverColor", "primarySoftColor", "primaryStrongColor", "schoolName", "secondaryColor"].sort(),
+      [
+        "defaultLocale",
+        "defaultThemeMode",
+        "platformName",
+        "primaryColor",
+        "primaryHoverColor",
+        "primarySoftColor",
+        "primaryStrongColor",
+        "schoolName",
+        "secondaryColor",
+      ].sort(),
     );
     expect(res.body.primaryColor).toBe("#4E92CF");
     expect(res.headers["cache-control"]).toBe("public, max-age=60");
@@ -52,7 +62,10 @@ describe("branding settings", () => {
   });
 
   it("teachers cannot change branding", async () => {
-    const res = await request(t.app).put("/api/v1/settings/branding").set(teacherAuth).send({ primaryColor: "#000000" });
+    const res = await request(t.app)
+      .put("/api/v1/settings/branding")
+      .set(teacherAuth)
+      .send({ primaryColor: "#000000" });
     expect(res.status).toBe(403);
   });
 });

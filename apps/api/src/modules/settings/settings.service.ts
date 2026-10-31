@@ -78,7 +78,12 @@ export class SettingsService {
       const existing = await tx.schoolBranding.findFirst({ select: { id: true } });
       if (existing) await tx.schoolBranding.update({ where: { id: existing.id }, data: next });
       else await tx.schoolBranding.create({ data: { tenantId: requireTenantId(), ...next } });
-      await writeAudit(tx, { action: "settings.branding.update", entityType: "SchoolBranding", before: current, after: next });
+      await writeAudit(tx, {
+        action: "settings.branding.update",
+        entityType: "SchoolBranding",
+        before: current,
+        after: next,
+      });
     });
     const ratio = contrastRatio(next.primaryColor, "#FFFFFF");
     const warnings = ratio < 4.5 ? [{ code: "LOW_CONTRAST", params: { ratio: Math.round(ratio * 100) / 100 } }] : [];
@@ -103,7 +108,8 @@ export class SettingsService {
     const before = await this.school();
     await this.db.$transaction(async (tx) => {
       const existing = await tx.schoolSettings.findFirst({ select: { id: true } });
-      if (existing) await tx.schoolSettings.update({ where: { id: existing.id }, data: { ...input, updatedById: userId } });
+      if (existing)
+        await tx.schoolSettings.update({ where: { id: existing.id }, data: { ...input, updatedById: userId } });
       else await tx.schoolSettings.create({ data: { tenantId: requireTenantId(), ...input, updatedById: userId } });
       await writeAudit(tx, { action: "settings.school.update", entityType: "SchoolSettings", before, after: input });
     });

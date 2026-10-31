@@ -1,6 +1,7 @@
 packages:
   - apps/*
   - packages/*
+  - e2e
 
 allowBuilds:
   "@embedded-postgres/darwin-arm64": true
@@ -12,6 +13,9 @@ allowBuilds:
   esbuild: true
   prisma: true
   redis-memory-server: true
+  "@parcel/watcher": false
+  "@swc/core": false
+  msgpackr-extract: false
 
 minimumReleaseAgeExclude:
   - eslint@10.14.0

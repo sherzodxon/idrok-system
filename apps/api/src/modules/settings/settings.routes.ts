@@ -33,19 +33,49 @@ export function settingsRoutes(router: Router, registry: OpenApiRegistry, deps: 
     },
   );
   route(
-    { method: "get", path: "/settings/branding", summary: "Branding settings", tags, access: "settings.view", responses: { 200: { description: "Branding", schema: BrandingSchema } } },
+    {
+      method: "get",
+      path: "/settings/branding",
+      summary: "Branding settings",
+      tags,
+      access: "settings.view",
+      responses: { 200: { description: "Branding", schema: BrandingSchema } },
+    },
     async ({ res }) => res.json(await service.branding()),
   );
   route(
-    { method: "put", path: "/settings/branding", summary: "Change name, colours and default theme", tags, access: "branding.manage", body: UpdateBrandingSchema, responses: { 200: { description: "Saved, with contrast warnings", schema: BrandingUpdatedSchema } } },
+    {
+      method: "put",
+      path: "/settings/branding",
+      summary: "Change name, colours and default theme",
+      tags,
+      access: "branding.manage",
+      body: UpdateBrandingSchema,
+      responses: { 200: { description: "Saved, with contrast warnings", schema: BrandingUpdatedSchema } },
+    },
     async ({ res, body }) => res.json(await service.updateBranding(body)),
   );
   route(
-    { method: "get", path: "/settings/school", summary: "School settings", tags, access: "settings.view", responses: { 200: { description: "Settings", schema: SchoolSettingsSchema } } },
+    {
+      method: "get",
+      path: "/settings/school",
+      summary: "School settings",
+      tags,
+      access: "settings.view",
+      responses: { 200: { description: "Settings", schema: SchoolSettingsSchema } },
+    },
     async ({ res }) => res.json(await service.school()),
   );
   route(
-    { method: "put", path: "/settings/school", summary: "Change school settings", tags, access: "settings.manage", body: UpdateSchoolSettingsSchema, responses: { 200: { description: "Saved", schema: SchoolSettingsSchema } } },
+    {
+      method: "put",
+      path: "/settings/school",
+      summary: "Change school settings",
+      tags,
+      access: "settings.manage",
+      body: UpdateSchoolSettingsSchema,
+      responses: { 200: { description: "Saved", schema: SchoolSettingsSchema } },
+    },
     async ({ res, auth, body }) => res.json(await service.updateSchool(auth.userId, body)),
   );
 }
