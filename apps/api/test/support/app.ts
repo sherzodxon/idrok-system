@@ -2,7 +2,7 @@
 import { randomUUID } from "node:crypto";
 import { ensureSystemRoles, syncPermissions } from "@idrok/db/seed";
 import type { SystemRoleCode } from "@idrok/shared";
-import { pino } from "pino";
+import { pino, type Logger } from "pino";
 import { inject } from "vitest";
 import { createApp } from "../../src/app";
 import { buildDeps, closeDeps } from "../../src/bootstrap";
@@ -11,7 +11,10 @@ import { hashPassword } from "../../src/modules/auth/password";
 
 export const PASSWORD = "Demo-parol-2026";
 
-export async function createTestApp(envOverrides: Record<string, string> = {}) {
+export async function createTestApp(
+  envOverrides: Record<string, string> = {},
+  logger: Logger = pino({ level: "silent" }),
+) {
   const env = loadEnv({
     NODE_ENV: "test",
     DATABASE_URL: inject("databaseUrl"),
@@ -22,7 +25,7 @@ export async function createTestApp(envOverrides: Record<string, string> = {}) {
     DEFAULT_TENANT_SLUG: `t-${randomUUID()}`,
     ...envOverrides,
   });
-  const deps = buildDeps(env, pino({ level: "silent" }));
+  const deps = buildDeps(env, logger);
   await deps.redis.flushdb();
   await syncPermissions(deps.root);
   const app = createApp(deps);

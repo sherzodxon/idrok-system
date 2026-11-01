@@ -27,10 +27,13 @@ const slug = (s: string) =>
     .replace(/[ʻʼ'‘’`]/g, "")
     .replace(/[^a-z0-9]/g, "");
 
+/** What account changes need from the auth cache: revoking sessions and dropping cached state. */
+export type AuthStateSink = Pick<AuthStateStore, "markRevoked" | "invalidate">;
+
 export class AccountsService {
   constructor(
     private readonly db: Db,
-    private readonly authState: AuthStateStore,
+    private readonly authState: AuthStateSink,
   ) {}
 
   private async roleIds(tx: DbTransaction, codes: SystemRoleCode[]) {

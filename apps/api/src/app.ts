@@ -36,7 +36,23 @@ export function createApp(deps: AppDeps): express.Express {
       },
     }),
   );
-  app.use(helmet());
+  // A JSON API: nothing may be rendered, framed or cached (CSP 'none'); same-site so the web app may show files.
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        useDefaults: false,
+        directives: { defaultSrc: ["'none'"], frameAncestors: ["'none'"], baseUri: ["'none'"], formAction: ["'none'"] },
+      },
+      crossOriginResourcePolicy: { policy: "same-site" },
+      strictTransportSecurity: { maxAge: 31_536_000, includeSubDomains: true },
+      referrerPolicy: { policy: "no-referrer" },
+    }),
+  );
+  app.use((_req, res, next) => {
+    // Responses carry personal data; routes that are safe to cache (public branding) override this.
+    res.setHeader("Cache-Control", "no-store");
+    next();
+  });
   app.use(
     cors({
       origin: deps.env.CORS_ORIGINS,

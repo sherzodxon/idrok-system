@@ -37,3 +37,18 @@ test("a failing API shows the error state with a retry", async ({ page }) => {
   await alert.getByRole("button", { name: "Qayta urinish" }).click();
   await expect(alert).toHaveCount(0);
 });
+
+test("pages are served with a nonce CSP and run without violations", async ({ page }) => {
+  const violations: string[] = [];
+  page.on("console", (m) => {
+    if (m.type() === "error" && /Content Security Policy/i.test(m.text())) violations.push(m.text());
+  });
+  const res = await page.goto("/login");
+  const csp = res?.headers()["content-security-policy"] ?? "";
+  expect(csp).toMatch(/script-src 'self' 'nonce-[A-Za-z0-9+/=]+' 'strict-dynamic'/);
+  expect(res?.headers()["x-frame-options"]).toBe("DENY");
+  await loginToDashboard(page, USERS.importer);
+  await page.goto("/admin/students");
+  await expect(page.getByTestId("students-table")).toBeVisible();
+  expect(violations).toEqual([]);
+});
