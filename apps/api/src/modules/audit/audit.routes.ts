@@ -51,7 +51,9 @@ export function auditRoutes(router: Router, registry: OpenApiRegistry, deps: App
       ]);
       const actorIds = [...new Set(rows.map((r) => r.actorUserId).filter((v): v is string => !!v))];
       const actors = new Map(
-        (await deps.db.user.findMany({ where: { id: { in: actorIds } }, select: { id: true, username: true } })).map((u) => [u.id, u]),
+        (await deps.db.user.findMany({ where: { id: { in: actorIds } }, select: { id: true, username: true } })).map(
+          (u) => [u.id, u],
+        ),
       );
       res.json(
         page(

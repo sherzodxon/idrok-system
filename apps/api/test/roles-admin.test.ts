@@ -16,7 +16,11 @@ afterAll(() => t.close());
 
 describe("role management", () => {
   it("creates a custom role, and a permission change applies to holders on their next request", async () => {
-    const role = await admin.post("/roles", { code: "KUTUBXONACHI", name: "Kutubxonachi", permissions: ["students.view"] });
+    const role = await admin.post("/roles", {
+      code: "KUTUBXONACHI",
+      name: "Kutubxonachi",
+      permissions: ["students.view"],
+    });
     expect(role).toMatchObject({ code: "KUTUBXONACHI", isSystem: false, permissions: ["students.view"] });
 
     const holder = await t.defaultTenant.createUser(null);
@@ -33,7 +37,9 @@ describe("role management", () => {
 
   it("rejects reserved codes and unknown permissions", async () => {
     expect((await admin.raw("post", "/roles", { code: "TEACHER", name: "x" })).status).toBe(409);
-    expect((await admin.raw("post", "/roles", { code: "YANGI", name: "x", permissions: ["students.fly"] })).status).toBe(400);
+    expect(
+      (await admin.raw("post", "/roles", { code: "YANGI", name: "x", permissions: ["students.fly"] })).status,
+    ).toBe(400);
   });
 
   it("an admin cannot lock themselves out of role management", async () => {
@@ -66,6 +72,12 @@ describe("audit log", () => {
 
   it("needs audit_logs.view", async () => {
     const teacher = await t.defaultTenant.createUser("TEACHER");
-    expect((await request(t.app).get("/api/v1/audit-logs").set(await bearerFor(t, teacher.username))).status).toBe(403);
+    expect(
+      (
+        await request(t.app)
+          .get("/api/v1/audit-logs")
+          .set(await bearerFor(t, teacher.username))
+      ).status,
+    ).toBe(403);
   });
 });

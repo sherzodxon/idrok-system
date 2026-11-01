@@ -7,6 +7,10 @@ import { ApiError, createApiClient, readBrowserCookie, type ApiClient } from "@/
 import { ToastProvider } from "@/components/ui/toast";
 
 const ApiContext = createContext<ApiClient | null>(null);
+const ApiUrlContext = createContext("");
+
+/** API base URL for plain links (template downloads use the session cookie). */
+export const useApiUrl = () => useContext(ApiUrlContext);
 
 export function useApi(): ApiClient {
   const api = useContext(ApiContext);
@@ -38,10 +42,12 @@ export function AppProviders({ apiUrl, children }: { apiUrl: string; children: R
       }),
   );
   return (
-    <ApiContext.Provider value={api}>
-      <QueryClientProvider client={queryClient}>
-        <ToastProvider>{children}</ToastProvider>
-      </QueryClientProvider>
-    </ApiContext.Provider>
+    <ApiUrlContext.Provider value={apiUrl}>
+      <ApiContext.Provider value={api}>
+        <QueryClientProvider client={queryClient}>
+          <ToastProvider>{children}</ToastProvider>
+        </QueryClientProvider>
+      </ApiContext.Provider>
+    </ApiUrlContext.Provider>
   );
 }

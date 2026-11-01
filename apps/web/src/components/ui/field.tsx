@@ -48,6 +48,10 @@ export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputE
 );
 
 /** `compact`: toolbar size, as wide as its content. */
-export function Select({ className, compact, ...rest }: SelectHTMLAttributes<HTMLSelectElement> & { compact?: boolean }) {
+export function Select({
+  className,
+  compact,
+  ...rest
+}: SelectHTMLAttributes<HTMLSelectElement> & { compact?: boolean }) {
   return <select className={cn(compact ? compactControl : control, "pr-8", className)} {...rest} />;
 }

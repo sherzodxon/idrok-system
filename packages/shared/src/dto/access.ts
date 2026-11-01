@@ -13,7 +13,11 @@ export const AssignRolesSchema = z.object({ roleIds: z.array(z.uuid()).max(20) }
 
 export const RoleCodeSchema = z.string().regex(/^[A-Z][A-Z0-9_]{1,39}$/);
 export const CreateRoleSchema = z
-  .object({ code: RoleCodeSchema, name: z.string().trim().min(1).max(80), permissions: z.array(z.string()).max(200).default([]) })
+  .object({
+    code: RoleCodeSchema,
+    name: z.string().trim().min(1).max(80),
+    permissions: z.array(z.string()).max(200).default([]),
+  })
   .strict();
 export const UpdateRoleSchema = z.object({ name: z.string().trim().min(1).max(80) }).strict();
 export const SetRolePermissionsSchema = z.object({ permissions: z.array(z.string()).max(200) }).strict();

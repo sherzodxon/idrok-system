@@ -19,6 +19,9 @@ export function useErrorText() {
     ) {
       return t(`passwordReasons.${error.details.reason}`);
     }
+    // Business conflicts carry a reason code (e.g. STUDENT_BELOW_MIN_GRADE) with its own sentence.
+    const reason = typeof error.details?.reason === "string" ? error.details.reason : undefined;
+    if (reason && t.has(`reasons.${reason}`)) return t(`reasons.${reason}`, error.details as Record<string, string>);
     return t.has(error.code) ? t(error.code) : t("INTERNAL_ERROR");
   };
 }
