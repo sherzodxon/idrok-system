@@ -32,6 +32,10 @@ applied migration — add a new one.
 | `TimetableEntry_frozen` | TRIGGER | ″ | entries of a non-`DRAFT` timetable cannot be inserted, changed or deleted |
 | `LessonSession_times_check` | CHECK | `20261102150000_m2_lesson_sessions` | starts before it ends; lesson 0..20; `HELD` has `heldMarkedAt` |
 | `LessonSession_no_delete` | TRIGGER | ″ | lessons are never deleted (`CANCELLED` instead) |
+| `CurriculumPlan_one_open` | partial unique | `20261102180000_m2_curriculum` | one `DRAFT`/`SUBMITTED`/`REJECTED` version per plan lineage |
+| `CurriculumPlan_one_approved` | partial unique | ″ | one `APPROVED` version per plan lineage |
+| `PlanItem_hours_check` | CHECK | ″ | `hours` 1..100, `order >= 1` |
+| `PlanItem_frozen` | TRIGGER | ″ | items of a submitted/approved/archived plan cannot change |
 
 Checking a new migration does not touch them:
 

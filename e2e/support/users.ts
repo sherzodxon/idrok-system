@@ -10,6 +10,7 @@ export const USERS = {
   mobile: "e2e.mobil",
   importer: "e2e.import",
   teacher: "e2e.ustoz",
+  planner: "e2e.rejachi",
   guardian: "+998900000001",
 } as const;
 

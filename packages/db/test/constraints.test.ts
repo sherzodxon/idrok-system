@@ -315,3 +315,41 @@ describe("lesson sessions (M2)", () => {
     await root.lessonSession.update({ where: { id: lesson.id }, data: { status: "HELD", heldMarkedAt: new Date() } });
   });
 });
+
+describe("curriculum plans (M2)", () => {
+  it("one open and one approved version per lineage; approved items are frozen", async () => {
+    const { year } = await yearAndClass();
+    const grade = await root.grade.findFirstOrThrow({ where: { tenantId, level: 7 } });
+    const subject = await root.subject.create({ data: { tenantId, name: `Demo fan ${crypto.randomUUID()}` } });
+    const topic = await root.topic.create({
+      data: { tenantId, subjectId: subject.id, gradeId: grade.id, title: "Demo mavzu", normalizedTitle: "demo mavzu" },
+    });
+    const lineageId = crypto.randomUUID();
+    const plan = (version: number, status: "DRAFT" | "APPROVED" = "DRAFT") =>
+      root.curriculumPlan.create({
+        data: {
+          tenantId,
+          lineageId,
+          version,
+          status,
+          academicYearId: year.id,
+          subjectId: subject.id,
+          gradeId: grade.id,
+          createdById: crypto.randomUUID(),
+          title: "Demo reja",
+        },
+      });
+    const v1 = await plan(1);
+    await expect(plan(2)).rejects.toThrow();
+    const item = await root.planItem.create({
+      data: { tenantId, planId: v1.id, order: 1, topicId: topic.id, hours: 2 },
+    });
+    await expect(
+      root.planItem.create({ data: { tenantId, planId: v1.id, order: 2, topicId: topic.id, hours: 0 } }),
+    ).rejects.toThrow();
+    await root.curriculumPlan.update({ where: { id: v1.id }, data: { status: "APPROVED" } });
+    await expect(root.planItem.update({ where: { id: item.id }, data: { hours: 3 } })).rejects.toThrow();
+    await expect(plan(2, "APPROVED")).rejects.toThrow();
+    await plan(2); // a new open version next to the approved one is fine
+  });
+});

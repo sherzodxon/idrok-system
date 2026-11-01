@@ -187,6 +187,25 @@ enum LessonSessionSource {
   MANUAL
 }
 
+enum CurriculumPlanStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+  ARCHIVED
+}
+
+enum LessonType {
+  NEW
+  PRACTICE
+  REVIEW
+  CONTROL_WORK
+  BSB
+  CHSB
+  LAB
+  OTHER
+}
+
 // =====================================================================================================================
 // TENANT, SETTINGS, BRANDING
 // =====================================================================================================================
@@ -232,6 +251,9 @@ model Tenant {
   timetables           Timetable[]
   timetableEntries     TimetableEntry[]
   lessonSessions       LessonSession[]
+  topics               Topic[]
+  curriculumPlans      CurriculumPlan[]
+  planItems            PlanItem[]
 }
 
 model SchoolSettings {
@@ -536,6 +558,7 @@ model AcademicYear {
   bellSchedules      BellSchedule[]
   timetables         Timetable[]
   lessonSessions     LessonSession[]
+  curriculumPlans    CurriculumPlan[]
 
   // SQL: AcademicYear_one_active, AcademicYear_dates_check
   @@unique([tenantId, name])
@@ -550,8 +573,10 @@ model Grade {
   name       String
   archivedAt DateTime? @db.Timestamptz(3)
 
-  classGroups  ClassGroup[]
-  calendarDays CalendarDayGrade[]
+  classGroups     ClassGroup[]
+  calendarDays    CalendarDayGrade[]
+  topics          Topic[]
+  curriculumPlans CurriculumPlan[]
 
   // SQL: Grade_level_check (0..11)
   @@unique([tenantId, level])
@@ -642,6 +667,8 @@ model Subject {
   teacherAssignments TeacherAssignment[]
   timetableEntries   TimetableEntry[]
   lessonSessions     LessonSession[]
+  topics             Topic[]
+  curriculumPlans    CurriculumPlan[]
 
   @@unique([tenantId, name])
 }
@@ -668,6 +695,7 @@ model Employee {
   teacherAssignments TeacherAssignment[]
   timetableEntries   TimetableEntry[]
   lessons            LessonSession[]     @relation("LessonTeacher")
+  curriculumPlans    CurriculumPlan[]
   substituteLessons  LessonSession[]     @relation("LessonSubstitute")
 
   @@unique([tenantId, employeeCode])
@@ -814,6 +842,7 @@ model AcademicPeriod {
   updatedAt      DateTime             @updatedAt @db.Timestamptz(3)
 
   lessonSessions LessonSession[]
+  planItems      PlanItem[]
 
   // SQL: AcademicPeriod_dates_check, AcademicPeriod_no_overlap (same type)
   @@unique([academicYearId, type, order])
@@ -1025,4 +1054,90 @@ model LessonSession {
   @@index([teachingGroupId, subjectId, sequenceNo])
   @@index([periodId, teachingGroupId, subjectId])
   @@index([academicYearId, date])
+}
+
+// =====================================================================================================================
+// M2 — CURRICULUM PLANS (lesson-plan.md §4). A plan is a template for a subject + grade; versions share a lineage.
+// Only a DRAFT (or REJECTED) version is edited; an APPROVED one is changed through a new version.
+// =====================================================================================================================
+
+// A topic is its own object: scores (M3), questions (M4) and AI feedback refer to it.
+model Topic {
+  id              String    @id @default(uuid(7)) @db.Uuid
+  tenantId        String    @db.Uuid
+  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  subjectId       String    @db.Uuid
+  subject         Subject   @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  gradeId         String    @db.Uuid
+  grade           Grade     @relation(fields: [gradeId], references: [id], onDelete: Restrict)
+  title           String
+  // packages/shared normalizeText(title): import matching
+  normalizedTitle String
+  code            String?
+  parentTopicId   String?   @db.Uuid
+  parentTopic     Topic?    @relation("TopicTree", fields: [parentTopicId], references: [id], onDelete: Restrict)
+  children        Topic[]   @relation("TopicTree")
+  archivedAt      DateTime? @db.Timestamptz(3)
+  createdAt       DateTime  @default(now()) @db.Timestamptz(3)
+
+  planItems PlanItem[]
+
+  @@unique([tenantId, subjectId, gradeId, normalizedTitle])
+}
+
+model CurriculumPlan {
+  id             String               @id @default(uuid(7)) @db.Uuid
+  tenantId       String               @db.Uuid
+  tenant         Tenant               @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  // shared by every version of one plan
+  lineageId      String               @db.Uuid
+  version        Int
+  academicYearId String               @db.Uuid
+  academicYear   AcademicYear         @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+  subjectId      String               @db.Uuid
+  subject        Subject              @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  gradeId        String               @db.Uuid
+  grade          Grade                @relation(fields: [gradeId], references: [id], onDelete: Restrict)
+  // the teacher who wrote it (null when written by an administrator without an employee record)
+  authorId       String?              @db.Uuid
+  author         Employee?            @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  createdById    String               @db.Uuid
+  title          String
+  status         CurriculumPlanStatus @default(DRAFT)
+  submittedAt    DateTime?            @db.Timestamptz(3)
+  approvedById   String?              @db.Uuid
+  approvedAt     DateTime?            @db.Timestamptz(3)
+  rejectionNote  String?
+  sourceImportId String?              @db.Uuid
+  createdAt      DateTime             @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime             @updatedAt @db.Timestamptz(3)
+
+  items PlanItem[]
+
+  // SQL: CurriculumPlan_one_open, CurriculumPlan_one_approved (per lineage)
+  @@unique([lineageId, version])
+  @@index([tenantId, academicYearId, subjectId, gradeId])
+}
+
+model PlanItem {
+  id         String          @id @default(uuid(7)) @db.Uuid
+  tenantId   String          @db.Uuid
+  tenant     Tenant          @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  // replaced as a whole while the plan is editable (SQL trigger PlanItem_frozen otherwise)
+  planId     String          @db.Uuid
+  plan       CurriculumPlan  @relation(fields: [planId], references: [id], onDelete: Restrict)
+  order      Int
+  periodId   String?         @db.Uuid
+  period     AcademicPeriod? @relation(fields: [periodId], references: [id], onDelete: Restrict)
+  topicId    String          @db.Uuid
+  topic      Topic           @relation(fields: [topicId], references: [id], onDelete: Restrict)
+  hours      Int
+  lessonType LessonType      @default(NEW)
+  objectives String?
+  homework   String?
+  resources  String?
+  notes      String?
+
+  // SQL: PlanItem_hours_check, PlanItem_frozen
+  @@unique([planId, order])
 }

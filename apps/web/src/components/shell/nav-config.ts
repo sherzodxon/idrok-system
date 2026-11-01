@@ -4,6 +4,7 @@ import {
   CalendarRange,
   FileSpreadsheet,
   LayoutDashboard,
+  NotebookText,
   Settings,
   UserRound,
   Users,
@@ -23,6 +24,8 @@ export interface NavItem {
     | "structure"
     | "calendar"
     | "timetable"
+    | "plans"
+    | "myPlans"
     | "imports"
     | "settings"
     | "myGroups";
@@ -41,6 +44,7 @@ export const NAV: Record<NavContext, NavItem[]> = {
     { key: "structure", href: "/admin/structure", icon: BookOpen, permission: "class_groups.view" },
     { key: "calendar", href: "/admin/calendar", icon: CalendarDays, permission: "calendar.manage" },
     { key: "timetable", href: "/admin/timetable", icon: CalendarRange, permission: "timetable.manage" },
+    { key: "plans", href: "/admin/plans", icon: NotebookText, permission: "curriculum.approve" },
     { key: "imports", href: "/admin/imports", icon: FileSpreadsheet, permission: "imports.run" },
     { key: "settings", href: "/admin/settings", icon: Settings, permission: "settings.view" },
   ],
@@ -48,6 +52,7 @@ export const NAV: Record<NavContext, NavItem[]> = {
     { key: "dashboard", href: "/dashboard", icon: LayoutDashboard },
     { key: "myGroups", href: "/teacher/groups", icon: BookOpen, permission: "class_groups.view" },
     { key: "students", href: "/teacher/students", icon: Users, permission: "students.view" },
+    { key: "myPlans", href: "/teacher/plans", icon: NotebookText, permission: "curriculum.create" },
   ],
 };
 
