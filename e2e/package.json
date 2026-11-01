@@ -12,6 +12,7 @@
     "@idrok/db": "workspace:*",
     "@idrok/shared": "workspace:*",
     "argon2": "0.45.1",
+    "exceljs": "4.4.0",
     "redis-memory-server": "0.17.1"
   },
   "devDependencies": {

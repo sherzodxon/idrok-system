@@ -8,6 +8,8 @@ export const USERS = {
   branding: "e2e.brend",
   sidebar: "e2e.menyu",
   mobile: "e2e.mobil",
+  importer: "e2e.import",
+  teacher: "e2e.ustoz",
   guardian: "+998900000001",
 } as const;
 

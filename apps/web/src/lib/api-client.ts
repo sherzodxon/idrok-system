@@ -83,7 +83,18 @@ export function createApiClient(deps: ApiClientDeps) {
     return (await res.json()) as T;
   }
 
+  /** Binary download (one-time files); same auth and refresh rules. */
+  async function download(path: string): Promise<{ blob: Blob; fileName: string }> {
+    let res = await send("GET", path);
+    if (res.status === 401 && (await refresh())) res = await send("GET", path);
+    if (!res.ok) throw await toError(res);
+    const disposition = res.headers.get("Content-Disposition") ?? "";
+    const fileName = /filename="([^"]+)"/.exec(disposition)?.[1] ?? "download";
+    return { blob: await res.blob(), fileName };
+  }
+
   return {
+    download,
     get: <T>(path: string) => request<T>("GET", path),
     post: <T>(path: string, body: unknown = {}, headers?: Record<string, string>) =>
       request<T>("POST", path, body, headers),

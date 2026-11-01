@@ -1,6 +1,8 @@
 // Starts the whole stack for end-to-end tests: embedded Postgres, Redis, demo seed, the API (tsx) and the built web
 // app (`next start`). Only synthetic data; never touches a real database (startTestDatabase refuses non-local hosts).
 import { spawn, type ChildProcess } from "node:child_process";
+import { mkdtempSync, rmSync } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import argon2 from "argon2";
 import { createRootClient } from "@idrok/db";
@@ -54,7 +56,13 @@ async function seed(url: string) {
       });
     };
     await staff(USERS.firstLogin, true);
-    for (const u of [USERS.theme, USERS.branding, USERS.sidebar, USERS.mobile]) await staff(u, false);
+    for (const u of [USERS.theme, USERS.branding, USERS.sidebar, USERS.mobile, USERS.importer]) await staff(u, false);
+    // A teacher with no groups yet: sees the teacher menu only, and empty states.
+    const teacher = await root.user.create({
+      data: { tenantId, username: USERS.teacher, passwordHash: await hash(PASSWORD), mustChangePassword: false },
+    });
+    await root.userRole.create({ data: { tenantId, userId: teacher.id, roleId: roles.TEACHER } });
+    await root.employee.create({ data: { tenantId, userId: teacher.id, firstName: "Demo", lastName: "Ustoz" } });
 
     // A guardian with one enrolled child for the portal.
     const year = await root.academicYear.create({
@@ -63,6 +71,10 @@ async function seed(url: string) {
     const grade = await root.grade.create({ data: { tenantId, level: 7, name: "7" } });
     const cls = await root.classGroup.create({
       data: { tenantId, academicYearId: year.id, gradeId: grade.id, section: "A", name: "7-A" },
+    });
+    // Every class has its whole-class teaching group, as the API creates it.
+    await root.teachingGroup.create({
+      data: { tenantId, academicYearId: year.id, classGroupId: cls.id, kind: "CLASS", name: "7-A" },
     });
     const student = await root.student.create({
       data: { tenantId, studentCode: "STD-0001", firstName: "Demo", lastName: "Farzand" },
@@ -105,7 +117,9 @@ export async function startStack() {
   const redisUrl = process.env.TEST_REDIS_URL ?? `redis://127.0.0.1:${await redis!.getPort()}`;
   await seed(db.url);
 
-  const api = start("api", process.execPath, ["--import", "tsx", "src/main.ts"], path.join(ROOT, "apps/api"), {
+  // API and worker share one storage folder (uploads written by the API are parsed by the worker).
+  const storageDir = mkdtempSync(path.join(os.tmpdir(), "idrok-e2e-storage-"));
+  const serverEnv = {
     NODE_ENV: "test",
     PORT: String(PORTS.api),
     DATABASE_URL: db.url,
@@ -115,7 +129,25 @@ export async function startStack() {
     COOKIE_SECURE: "false",
     LOG_LEVEL: "silent",
     DEFAULT_TENANT_SLUG: "idrok",
-  });
+    STORAGE_DRIVER: "local",
+    STORAGE_LOCAL_DIR: storageDir,
+    // Imports hash hundreds of temporary passwords; production keeps the default cost.
+    ARGON2_MEMORY_KIB: "4096",
+  };
+  const api = start(
+    "api",
+    process.execPath,
+    ["--import", "tsx", "src/main.ts"],
+    path.join(ROOT, "apps/api"),
+    serverEnv,
+  );
+  const worker = start(
+    "worker",
+    process.execPath,
+    ["--import", "tsx", "src/main.ts"],
+    path.join(ROOT, "apps/worker"),
+    serverEnv,
+  );
   await waitFor(`${API_URL}/healthz`);
 
   const nextBin = path.join(ROOT, "apps/web/node_modules/next/dist/bin/next");
@@ -126,8 +158,9 @@ export async function startStack() {
   await waitFor(`${WEB_URL}/login`);
 
   return async () => {
-    for (const p of [web, api]) p.kill("SIGTERM");
+    for (const p of [web, worker, api]) p.kill("SIGTERM");
     await redis?.stop();
     await db.stop();
+    rmSync(storageDir, { recursive: true, force: true });
   };
 }

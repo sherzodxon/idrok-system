@@ -9,7 +9,8 @@ import { errorHandler, notFoundHandler } from "./http/errors";
 import { healthRouter } from "./http/health";
 import { idempotency } from "./http/idempotency";
 import { requestId } from "./http/request-id";
-import { accessRoutes } from "./modules/access/access.routes";
+import { accessRoutes, roleAdminRoutes } from "./modules/access/access.routes";
+import { auditRoutes } from "./modules/audit/audit.routes";
 import { authRoutes } from "./modules/auth/auth.routes";
 import { importsRoutes } from "./modules/imports/imports.routes";
 import { settingsRoutes } from "./modules/settings/settings.routes";
@@ -55,6 +56,8 @@ export function createApp(deps: AppDeps): express.Express {
   authRoutes(v1, registry, deps);
   meRoutes(v1, registry, deps);
   accessRoutes(v1, registry, deps);
+  roleAdminRoutes(v1, registry, deps);
+  auditRoutes(v1, registry, deps);
   structureRoutes(v1, registry, deps);
   peopleRoutes(v1, registry, deps);
   usersRoutes(v1, registry, deps);
