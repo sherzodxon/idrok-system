@@ -30,9 +30,11 @@ applied migration — add a new one.
 | `Timetable_no_overlap` | EXCLUDE (btree_gist, partial) | ″ | published versions of a year never cover the same date |
 | `TimetableEntry_slot_check` | CHECK | ″ | weekday 1..7, lesson number 0..20 |
 | `TimetableEntry_frozen` | TRIGGER | ″ | entries of a non-`DRAFT` timetable cannot be inserted, changed or deleted |
+| `LessonSession_times_check` | CHECK | `20261102150000_m2_lesson_sessions` | starts before it ends; lesson 0..20; `HELD` has `heldMarkedAt` |
+| `LessonSession_no_delete` | TRIGGER | ″ | lessons are never deleted (`CANCELLED` instead) |
 
 Checking a new migration does not touch them:
 
 ```bash
-grep -nE '_one_|_check|_no_overlap|_append_only|_active_unique|_frozen' packages/db/prisma/migrations/<new>/migration.sql
+grep -nE '_one_|_check|_no_overlap|_append_only|_active_unique|_frozen|_no_delete' packages/db/prisma/migrations/<new>/migration.sql
 ```

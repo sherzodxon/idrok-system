@@ -6,3 +6,4 @@ export * from "./structure";
 export * from "./settings";
 export * from "./calendar";
 export * from "./timetable";
+export * from "./lessons";

@@ -88,7 +88,11 @@
       "TIMETABLE_NOT_DRAFT": "E'lon qilingan jadval o'zgarmaydi — yangi versiya yarating",
       "TIMETABLE_HAS_CONFLICTS": "Avval to'qnashuvlarni tuzating",
       "TIMETABLE_EMPTY": "Jadvalda dars yo'q",
-      "TIMETABLE_OVERLAP": "Bu sanaga boshqa e'lon qilingan versiya amal qiladi"
+      "TIMETABLE_OVERLAP": "Bu sanaga boshqa e'lon qilingan versiya amal qiladi",
+      "PREVIEW_STALE": "Ko'rib chiqilgandan keyin ma'lumot o'zgardi — oynani qayta oching",
+      "PAST_ALREADY_GENERATED": "Darslar allaqachon yaratilgan — o'tgan kunlar qayta to'ldirilmaydi",
+      "YEAR_CLOSED": "O'quv yili yopilgan",
+      "LESSON_CANCELLED": "Dars bekor qilingan"
     }
   },
   "states": {
@@ -711,5 +715,23 @@
       "ROOM_BUSY": "{weekday}, {lesson}-dars: xona band",
       "CLASS_AND_SUBGROUP": "{weekday}, {lesson}-dars: butun sinf va uning guruhchasi bir vaqtda"
     }
+  },
+  "lessons": {
+    "generate": "Darslarni yangilash",
+    "generateHint": "E'lon qilingan jadval va kalendar bo'yicha aniq darslar hisoblanadi. Faqat ertangi kundan boshlab o'zgaradi; o'tilgan darslarga tegilmaydi",
+    "includePast": "O'tgan kunlarni ham to'ldirish (faqat birinchi marta)",
+    "range": "{from} — {to}",
+    "counts": {
+      "add": "Qo'shiladi",
+      "update": "O'zgaradi",
+      "cancel": "Bekor bo'ladi",
+      "unchanged": "O'zgarmaydi"
+    },
+    "nothingToDo": "Darslar jadvalga mos — o'zgartirish kerak emas",
+    "willCancel": "Bekor bo'ladigan darslar:",
+    "blocked": "{count} ta dars o'tilgan yoki qo'lda o'zgartirilgan — ularga tegilmaydi",
+    "noPeriod": "{count} ta ish kuni hech qaysi davrga kirmaydi (birinchisi {first}) — ularda dars yaratilmaydi",
+    "noBellSlot": "{count} ta dars uchun qo'ng'iroq vaqti yo'q — ular yaratilmaydi",
+    "apply": "Qo'llash"
   }
 }

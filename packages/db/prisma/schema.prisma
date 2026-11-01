@@ -175,6 +175,18 @@ enum WeekType {
   EVEN
 }
 
+enum LessonSessionStatus {
+  SCHEDULED
+  HELD
+  CANCELLED
+  MOVED
+}
+
+enum LessonSessionSource {
+  TIMETABLE
+  MANUAL
+}
+
 // =====================================================================================================================
 // TENANT, SETTINGS, BRANDING
 // =====================================================================================================================
@@ -219,6 +231,7 @@ model Tenant {
   rooms                Room[]
   timetables           Timetable[]
   timetableEntries     TimetableEntry[]
+  lessonSessions       LessonSession[]
 }
 
 model SchoolSettings {
@@ -522,6 +535,7 @@ model AcademicYear {
   calendarDays       CalendarDay[]
   bellSchedules      BellSchedule[]
   timetables         Timetable[]
+  lessonSessions     LessonSession[]
 
   // SQL: AcademicYear_one_active, AcademicYear_dates_check
   @@unique([tenantId, name])
@@ -590,6 +604,7 @@ model TeachingGroup {
   members            TeachingGroupMember[]
   teacherAssignments TeacherAssignment[]
   timetableEntries   TimetableEntry[]
+  lessonSessions     LessonSession[]
 
   // SQL: TeachingGroup_one_class_group, TeachingGroup_class_check
   @@index([tenantId, academicYearId])
@@ -626,6 +641,7 @@ model Subject {
   teachingGroups     TeachingGroup[]
   teacherAssignments TeacherAssignment[]
   timetableEntries   TimetableEntry[]
+  lessonSessions     LessonSession[]
 
   @@unique([tenantId, name])
 }
@@ -651,6 +667,8 @@ model Employee {
   homeroomClasses    ClassGroup[]
   teacherAssignments TeacherAssignment[]
   timetableEntries   TimetableEntry[]
+  lessons            LessonSession[]     @relation("LessonTeacher")
+  substituteLessons  LessonSession[]     @relation("LessonSubstitute")
 
   @@unique([tenantId, employeeCode])
   @@index([tenantId, lastName, firstName])
@@ -795,6 +813,8 @@ model AcademicPeriod {
   createdAt      DateTime             @default(now()) @db.Timestamptz(3)
   updatedAt      DateTime             @updatedAt @db.Timestamptz(3)
 
+  lessonSessions LessonSession[]
+
   // SQL: AcademicPeriod_dates_check, AcademicPeriod_no_overlap (same type)
   @@unique([academicYearId, type, order])
   @@index([tenantId, academicYearId])
@@ -932,26 +952,77 @@ model Timetable {
 }
 
 model TimetableEntry {
-  id              String        @id @default(uuid(7)) @db.Uuid
-  tenantId        String        @db.Uuid
-  tenant          Tenant        @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  id              String          @id @default(uuid(7)) @db.Uuid
+  tenantId        String          @db.Uuid
+  tenant          Tenant          @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   // Entries are replaced only while the timetable is a DRAFT (service rule; published entries are frozen).
-  timetableId     String        @db.Uuid
-  timetable       Timetable     @relation(fields: [timetableId], references: [id], onDelete: Cascade)
-  teachingGroupId String        @db.Uuid
-  teachingGroup   TeachingGroup @relation(fields: [teachingGroupId], references: [id], onDelete: Restrict)
-  subjectId       String        @db.Uuid
-  subject         Subject       @relation(fields: [subjectId], references: [id], onDelete: Restrict)
-  teacherId       String        @db.Uuid
-  teacher         Employee      @relation(fields: [teacherId], references: [id], onDelete: Restrict)
-  roomId          String?       @db.Uuid
-  room            Room?         @relation(fields: [roomId], references: [id], onDelete: Restrict)
+  timetableId     String          @db.Uuid
+  timetable       Timetable       @relation(fields: [timetableId], references: [id], onDelete: Cascade)
+  teachingGroupId String          @db.Uuid
+  teachingGroup   TeachingGroup   @relation(fields: [teachingGroupId], references: [id], onDelete: Restrict)
+  subjectId       String          @db.Uuid
+  subject         Subject         @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  teacherId       String          @db.Uuid
+  teacher         Employee        @relation(fields: [teacherId], references: [id], onDelete: Restrict)
+  roomId          String?         @db.Uuid
+  room            Room?           @relation(fields: [roomId], references: [id], onDelete: Restrict)
   // ISO 1..7
   weekday         Int
   lessonNumber    Int
-  weekType        WeekType      @default(ALL)
+  weekType        WeekType        @default(ALL)
+  lessonSessions  LessonSession[]
 
   // SQL: TimetableEntry_slot_check
   @@index([timetableId, teachingGroupId])
   @@index([timetableId, teacherId, weekday, lessonNumber])
+}
+
+// =====================================================================================================================
+// M2 — LESSON SESSIONS (lesson-plan.md §3). A concrete lesson on a school date. Never deleted: a lesson the timetable
+// drops becomes CANCELLED; HELD or locked lessons are never changed by regeneration.
+// =====================================================================================================================
+
+model LessonSession {
+  id                  String              @id @default(uuid(7)) @db.Uuid
+  tenantId            String              @db.Uuid
+  tenant              Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  academicYearId      String              @db.Uuid
+  academicYear        AcademicYear        @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+  periodId            String              @db.Uuid
+  period              AcademicPeriod      @relation(fields: [periodId], references: [id], onDelete: Restrict)
+  teachingGroupId     String              @db.Uuid
+  teachingGroup       TeachingGroup       @relation(fields: [teachingGroupId], references: [id], onDelete: Restrict)
+  subjectId           String              @db.Uuid
+  subject             Subject             @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  teacherId           String              @db.Uuid
+  teacher             Employee            @relation("LessonTeacher", fields: [teacherId], references: [id], onDelete: Restrict)
+  // Q-40 (T-33): who actually teaches it this time
+  substituteTeacherId String?             @db.Uuid
+  substituteTeacher   Employee?           @relation("LessonSubstitute", fields: [substituteTeacherId], references: [id], onDelete: Restrict)
+  // schoolDate
+  date                DateTime            @db.Date
+  lessonNumber        Int
+  startsAt            DateTime            @db.Timestamptz(3)
+  endsAt              DateTime            @db.Timestamptz(3)
+  // order of this group + subject's lessons in the year (1, 2, 3 …), cancelled ones excluded
+  sequenceNo          Int
+  status              LessonSessionStatus @default(SCHEDULED)
+  source              LessonSessionSource @default(TIMETABLE)
+  timetableEntryId    String?             @db.Uuid
+  timetableEntry      TimetableEntry?     @relation(fields: [timetableEntryId], references: [id], onDelete: Restrict)
+  actualTopicNote     String?
+  heldMarkedAt        DateTime?           @db.Timestamptz(3)
+  heldMarkedById      String?             @db.Uuid
+  // Set when cancelled by hand; regeneration cancels without a reason (and may bring the lesson back)
+  cancelReason        String?
+  createdAt           DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime            @updatedAt @db.Timestamptz(3)
+
+  // SQL: LessonSession_times_check, LessonSession_no_delete
+  @@unique([teachingGroupId, date, lessonNumber])
+  @@index([tenantId, teacherId, date])
+  @@index([tenantId, substituteTeacherId, date])
+  @@index([teachingGroupId, subjectId, sequenceNo])
+  @@index([periodId, teachingGroupId, subjectId])
+  @@index([academicYearId, date])
 }

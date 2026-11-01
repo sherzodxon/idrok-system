@@ -27,8 +27,9 @@ const CONSTRAINTS = [
   "Timetable_published_check",
   "Timetable_no_overlap",
   "TimetableEntry_slot_check",
+  "LessonSession_times_check",
 ];
-const TRIGGERS = ["AuditLog_append_only", "TimetableEntry_frozen"];
+const TRIGGERS = ["AuditLog_append_only", "TimetableEntry_frozen", "LessonSession_no_delete"];
 
 let client: pg.Client;
 beforeAll(async () => {

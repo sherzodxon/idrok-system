@@ -1,6 +1,6 @@
 // Behaviour of the SQL-only invariants, including under concurrency.
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { schoolDateToDb, parseSchoolDate } from "@idrok/shared/time";
+import { atSchoolTime, parseSchoolDate, schoolDateToDb } from "@idrok/shared/time";
 import { clients } from "./helpers";
 
 const { root } = clients();
@@ -262,5 +262,56 @@ describe("timetable (M2)", () => {
     await expect(root.timetableEntry.delete({ where: { id: e.id } })).rejects.toThrow();
     await expect(root.timetable.delete({ where: { id: tt.id } })).rejects.toThrow();
     await expect(root.timetableEntry.create({ data: { ...entry((await draft(2)).id), weekday: 8 } })).rejects.toThrow();
+  });
+});
+
+describe("lesson sessions (M2)", () => {
+  const at = (minute: number) => atSchoolTime(parseSchoolDate("2026-09-07"), minute);
+
+  it("are never deleted and hold their times in order", async () => {
+    const { year, cls } = await yearAndClass();
+    const group = await root.teachingGroup.create({
+      data: { tenantId, academicYearId: year.id, classGroupId: cls.id, kind: "CLASS", name: cls.name },
+    });
+    const subject = await root.subject.create({ data: { tenantId, name: `Demo fan ${crypto.randomUUID()}` } });
+    const teacher = await root.employee.create({ data: { tenantId, firstName: "Demo", lastName: "Ustoz" } });
+    const period = await root.academicPeriod.create({
+      data: {
+        tenantId,
+        academicYearId: year.id,
+        type: "YEAR",
+        name: "Y",
+        order: 1,
+        startDate: day("2026-09-01"),
+        endDate: day("2027-06-30"),
+      },
+    });
+    const base = {
+      tenantId,
+      academicYearId: year.id,
+      periodId: period.id,
+      teachingGroupId: group.id,
+      subjectId: subject.id,
+      teacherId: teacher.id,
+      date: day("2026-09-07"),
+      lessonNumber: 1,
+      sequenceNo: 1,
+    };
+    const lesson = await root.lessonSession.create({
+      data: { ...base, startsAt: at(480), endsAt: at(525) },
+    });
+    await expect(root.lessonSession.delete({ where: { id: lesson.id } })).rejects.toThrow();
+    await expect(
+      root.lessonSession.create({
+        data: {
+          ...base,
+          lessonNumber: 2,
+          startsAt: at(540),
+          endsAt: at(530),
+        },
+      }),
+    ).rejects.toThrow();
+    await expect(root.lessonSession.update({ where: { id: lesson.id }, data: { status: "HELD" } })).rejects.toThrow();
+    await root.lessonSession.update({ where: { id: lesson.id }, data: { status: "HELD", heldMarkedAt: new Date() } });
   });
 });
