@@ -10,6 +10,7 @@ const INDEXES = [
   "StudentEnrollment_one_active",
   "CurriculumPlan_one_open",
   "CurriculumPlan_one_approved",
+  "PlanAssignment_one_active",
 ];
 const CONSTRAINTS = [
   "AcademicYear_dates_check",

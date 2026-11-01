@@ -8,6 +8,8 @@ import {
   normalizeText,
   type CreateCurriculumPlanSchema,
   type CreateTopicSchema,
+  type PlanImportOptions,
+  type PlanTemplateQuerySchema,
   type CurriculumPlanListQuerySchema,
   type PlanItemInput,
   type TopicQuerySchema,
@@ -19,6 +21,9 @@ import { page, skipTake } from "../../http/pagination";
 import { schoolClock } from "../access/school-clock";
 import { activeOn, resolveScope } from "../access/scope";
 import { writeAudit } from "../audit/audit.service";
+import { schoolDateFromDb } from "@idrok/shared/time";
+import { clearPlanFromGroup, placePlanOnGroup } from "./placement";
+import { buildPlanTemplate } from "./plan-template";
 
 const conflict = (reason: string, details: Record<string, unknown> = {}) =>
   new AppError("CONFLICT", 409, { reason, ...details });
@@ -148,6 +153,7 @@ export class CurriculumService {
         q.status ? { status: q.status } : { status: { not: "ARCHIVED" } },
         q.mine ? { authorId: scope.employeeId ?? "00000000-0000-0000-0000-000000000000" } : {},
         q.q ? { title: { contains: q.q, mode: "insensitive" } } : {},
+        q.sourceImportId ? { sourceImportId: q.sourceImportId } : {},
       ],
     };
     const [rows, total] = await Promise.all([
@@ -281,6 +287,64 @@ export class CurriculumService {
     });
   }
 
+  /**
+   * A plan from an import (lesson-plan.md §4.3): a new plan, or — with `planId` — a new DRAFT version of that plan's
+   * lineage. The previous versions are not touched. Runs in the worker inside the importer's tenant context.
+   */
+  async createFromImport(
+    tx: DbTransaction,
+    input: {
+      academicYearId: string;
+      subjectId: string;
+      gradeId: string;
+      planId?: string;
+      title: string;
+      userId: string;
+      importJobId: string;
+      items: PlanItemInput[];
+    },
+  ) {
+    const employee = await tx.employee.findUnique({ where: { userId: input.userId }, select: { id: true } });
+    let lineageId: string = randomUUID();
+    let version = 1;
+    let title = input.title;
+    if (input.planId) {
+      const base = await tx.curriculumPlan.findUnique({ where: { id: input.planId } });
+      if (!base) throw notFound();
+      const open = await tx.curriculumPlan.findFirst({
+        where: { lineageId: base.lineageId, status: { in: ["DRAFT", "SUBMITTED", "REJECTED"] } },
+        select: { id: true },
+      });
+      if (open) throw conflict("PLAN_HAS_OPEN_VERSION", { planId: open.id });
+      const last = await tx.curriculumPlan.aggregate({ where: { lineageId: base.lineageId }, _max: { version: true } });
+      lineageId = base.lineageId;
+      version = (last._max.version ?? base.version) + 1;
+      title = base.title;
+    }
+    const plan = await tx.curriculumPlan.create({
+      data: {
+        tenantId: requireTenantId(),
+        lineageId,
+        version,
+        academicYearId: input.academicYearId,
+        subjectId: input.subjectId,
+        gradeId: input.gradeId,
+        authorId: employee?.id ?? null,
+        createdById: input.userId,
+        title,
+        sourceImportId: input.importJobId,
+      },
+    });
+    await this.writeItems(tx, plan, input.items);
+    await writeAudit(tx, {
+      action: "curriculum_plan.import",
+      entityType: "CurriculumPlan",
+      entityId: plan.id,
+      after: { importJobId: input.importJobId, version, items: input.items.length },
+    });
+    return plan;
+  }
+
   private async editable(tx: DbTransaction, auth: RequestAuth, id: string) {
     const scope = await this.writeScope(auth);
     const plan = await tx.curriculumPlan.findUnique({ where: { id } });
@@ -306,13 +370,50 @@ export class CurriculumService {
     });
   }
 
-  /** The approved version before this one is archived; its group assignments move with it (step 5). */
+  /**
+   * The approved version before this one is archived and its groups move to this version (acceptance 12: until this
+   * moment the old version stays in force). Lessons with a fixed topic keep it; the rest are placed anew.
+   */
   private async approveIn(tx: DbTransaction, id: string, lineageId: string, approvedById: string | null) {
+    const previous = await tx.curriculumPlan.findMany({
+      where: { lineageId, status: "APPROVED" },
+      select: { id: true },
+    });
+    const moving = await tx.planAssignment.findMany({
+      where: { planId: { in: previous.map((p) => p.id) }, status: "ACTIVE" },
+    });
+    await tx.planAssignment.updateMany({
+      where: { id: { in: moving.map((a) => a.id) } },
+      data: { status: "SUPERSEDED", endedAt: new Date() },
+    });
     await tx.curriculumPlan.updateMany({ where: { lineageId, status: "APPROVED" }, data: { status: "ARCHIVED" } });
-    await tx.curriculumPlan.update({
+    const plan = await tx.curriculumPlan.update({
       where: { id },
       data: { status: "APPROVED", approvedAt: new Date(), approvedById, rejectionNote: null },
     });
+    const { today } = await schoolClock(this.db);
+    for (const a of moving) {
+      await tx.planAssignment.create({
+        data: {
+          tenantId: a.tenantId,
+          planId: id,
+          teachingGroupId: a.teachingGroupId,
+          subjectId: a.subjectId,
+          appliedById: approvedById ?? a.appliedById,
+        },
+      });
+      await placePlanOnGroup(
+        tx,
+        {
+          planId: id,
+          teachingGroupId: a.teachingGroupId,
+          subjectId: a.subjectId,
+          academicYearId: plan.academicYearId,
+          today,
+        },
+        true,
+      );
+    }
   }
 
   async submit(auth: RequestAuth, id: string) {
@@ -398,5 +499,210 @@ export class CurriculumService {
       });
       return this.detail(tx, next.id, scope);
     });
+  }
+
+  // ---------------------------------------------------------------- applying to groups
+
+  private async assignmentDto(
+    tx: DbTransaction | Db,
+    a: { id: string; planId: string; teachingGroupId: string; subjectId: string; status: string; appliedAt: Date },
+    plan: { academicYearId: string },
+  ) {
+    const { today } = await schoolClock(this.db);
+    const group = await tx.teachingGroup.findUniqueOrThrow({
+      where: { id: a.teachingGroupId },
+      select: { name: true, kind: true, classGroup: { select: { name: true } } },
+    });
+    const stats = await placePlanOnGroup(
+      tx as DbTransaction,
+      {
+        planId: a.planId,
+        teachingGroupId: a.teachingGroupId,
+        subjectId: a.subjectId,
+        academicYearId: plan.academicYearId,
+        today,
+      },
+      false,
+    );
+    return {
+      id: a.id,
+      planId: a.planId,
+      teachingGroupId: a.teachingGroupId,
+      teachingGroupName:
+        group.kind === "SUBGROUP" && group.classGroup ? `${group.classGroup.name} · ${group.name}` : group.name,
+      status: a.status as "ACTIVE" | "SUPERSEDED" | "REMOVED",
+      appliedAt: a.appliedAt.toISOString(),
+      lessons: stats.lessons,
+      plannedHours: stats.plannedHours,
+      placed: stats.placed,
+      freeLessons: stats.freeLessons,
+      warnings: stats.warnings,
+    };
+  }
+
+  /**
+   * Applies an approved plan to groups (acceptance 10: one template, each group its own dates, the same topics).
+   * A teacher only to groups where they teach the plan's subject (acceptance 11). Another plan in force for the same
+   * group and subject is replaced.
+   */
+  async assign(auth: RequestAuth, planId: string, groupIds: string[]) {
+    const scope = await this.writeScope(auth);
+    const { timezone, today } = await schoolClock(this.db);
+    const teacherScope = await resolveScope(this.db, auth, timezone);
+    return this.db.$transaction(async (tx) => {
+      const plan = await tx.curriculumPlan.findUnique({ where: { id: planId } });
+      if (!plan) throw notFound();
+      if (plan.status !== "APPROVED") throw conflict("PLAN_NOT_APPROVED");
+      const groups = await tx.teachingGroup.findMany({
+        where: { id: { in: groupIds } },
+        select: { id: true, academicYearId: true, archivedAt: true, classGroup: { select: { gradeId: true } } },
+      });
+      if (groups.length !== new Set(groupIds).size) throw notFound();
+      for (const [i, g] of groups.entries()) {
+        if (g.academicYearId !== plan.academicYearId || g.archivedAt || g.classGroup?.gradeId !== plan.gradeId)
+          throw fieldError(`teachingGroupIds.${i}`, "group_grade_mismatch");
+      }
+      if (!scope.school) {
+        const own =
+          teacherScope.kind === "teacher"
+            ? await tx.teacherAssignment.findMany({
+                where: {
+                  teacherId: teacherScope.employeeId,
+                  subjectId: plan.subjectId,
+                  teachingGroupId: { in: groupIds },
+                  ...activeOn(today),
+                },
+                select: { teachingGroupId: true },
+              })
+            : [];
+        const allowed = new Set(own.map((a) => a.teachingGroupId));
+        if (groupIds.some((id) => !allowed.has(id))) throw forbidden();
+      }
+      const results = [];
+      for (const groupId of new Set(groupIds)) {
+        const current = await tx.planAssignment.findFirst({
+          where: { teachingGroupId: groupId, subjectId: plan.subjectId, status: "ACTIVE" },
+        });
+        let assignment = current?.planId === planId ? current : null;
+        if (!assignment) {
+          if (current)
+            await tx.planAssignment.update({
+              where: { id: current.id },
+              data: { status: "SUPERSEDED", endedAt: new Date() },
+            });
+          assignment = await tx.planAssignment.create({
+            data: {
+              tenantId: requireTenantId(),
+              planId,
+              teachingGroupId: groupId,
+              subjectId: plan.subjectId,
+              appliedById: auth.userId,
+            },
+          });
+        }
+        await placePlanOnGroup(
+          tx,
+          { planId, teachingGroupId: groupId, subjectId: plan.subjectId, academicYearId: plan.academicYearId, today },
+          true,
+        );
+        results.push(await this.assignmentDto(tx, assignment, plan));
+      }
+      await writeAudit(tx, {
+        action: "curriculum_plan.assign",
+        entityType: "CurriculumPlan",
+        entityId: planId,
+        after: { teachingGroupIds: [...new Set(groupIds)] },
+      });
+      return results;
+    });
+  }
+
+  async listAssignments(planId: string) {
+    const plan = await this.db.curriculumPlan.findUnique({ where: { id: planId } });
+    if (!plan) throw notFound();
+    const rows = await this.db.planAssignment.findMany({
+      where: { planId, status: "ACTIVE" },
+      orderBy: { appliedAt: "asc" },
+    });
+    const result = [];
+    for (const a of rows) result.push(await this.assignmentDto(this.db, a, plan));
+    return result;
+  }
+
+  async removeAssignment(auth: RequestAuth, id: string) {
+    const { timezone, today } = await schoolClock(this.db);
+    const scope = await this.writeScope(auth);
+    const teacherScope = await resolveScope(this.db, auth, timezone);
+    await this.db.$transaction(async (tx) => {
+      const a = await tx.planAssignment.findUnique({ where: { id }, include: { plan: true } });
+      if (!a || a.status !== "ACTIVE") throw notFound();
+      if (!scope.school) {
+        const own =
+          teacherScope.kind === "teacher" &&
+          (await tx.teacherAssignment.count({
+            where: {
+              teacherId: teacherScope.employeeId,
+              subjectId: a.subjectId,
+              teachingGroupId: a.teachingGroupId,
+              ...activeOn(today),
+            },
+          }));
+        if (!own) throw forbidden();
+      }
+      await tx.planAssignment.update({ where: { id }, data: { status: "REMOVED", endedAt: new Date() } });
+      await clearPlanFromGroup(tx, {
+        teachingGroupId: a.teachingGroupId,
+        subjectId: a.subjectId,
+        academicYearId: a.plan.academicYearId,
+        today,
+      });
+      await writeAudit(tx, {
+        action: "curriculum_plan.unassign",
+        entityType: "PlanAssignment",
+        entityId: id,
+        before: { planId: a.planId, teachingGroupId: a.teachingGroupId },
+      });
+    });
+  }
+
+  // ---------------------------------------------------------------- Excel
+
+  async template(q: z.infer<typeof PlanTemplateQuerySchema>) {
+    if (q.mode === "TOPICS") return buildPlanTemplate(q.locale, null);
+    if (!q.teachingGroupId) throw fieldError("teachingGroupId", "required");
+    const lessons = await this.db.lessonSession.findMany({
+      where: {
+        teachingGroupId: q.teachingGroupId,
+        subjectId: q.subjectId,
+        academicYearId: q.academicYearId,
+        status: { not: "CANCELLED" },
+      },
+      orderBy: [{ sequenceNo: "asc" }, { date: "asc" }],
+      select: { date: true, period: { select: { name: true } } },
+    });
+    return buildPlanTemplate(
+      q.locale,
+      lessons.map((l) => ({ date: schoolDateFromDb(l.date), periodName: l.period.name })),
+    );
+  }
+
+  /** The importer may write this plan (subject + grade, and the plan to version if any). */
+  async checkImport(auth: RequestAuth, options: PlanImportOptions) {
+    const scope = await this.writeScope(auth);
+    if (!scope.school && !scope.pairs.has(pairKey(options.subjectId, options.gradeId))) throw forbidden();
+    const year = await this.db.academicYear.findUnique({ where: { id: options.academicYearId } });
+    if (!year) throw notFound();
+    if (options.planId) {
+      const plan = await this.db.curriculumPlan.findUnique({ where: { id: options.planId } });
+      if (!plan) throw notFound();
+      if (plan.subjectId !== options.subjectId || plan.gradeId !== options.gradeId)
+        throw fieldError("planId", "invalid");
+      if (!this.canWrite(scope, plan)) throw forbidden();
+      const open = await this.db.curriculumPlan.findFirst({
+        where: { lineageId: plan.lineageId, status: { in: ["DRAFT", "SUBMITTED", "REJECTED"] } },
+        select: { id: true },
+      });
+      if (open) throw conflict("PLAN_HAS_OPEN_VERSION", { planId: open.id });
+    }
   }
 }

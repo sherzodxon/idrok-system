@@ -218,7 +218,8 @@
     "duplicate": "Takrorlangan",
     "invalid_time": "Vaqt SS:DD ko'rinishida bo'lsin",
     "not_after_previous": "Sana oldingi e'lon qilingan versiyadan keyin bo'lsin",
-    "topic_required": "Mavzuni kiriting"
+    "topic_required": "Mavzuni kiriting",
+    "group_grade_mismatch": "Guruh rejaning paralleliga tegishli emas"
   },
   "people": {
     "lastName": "Familiya",
@@ -396,13 +397,15 @@
       "STUDENTS_GUARDIANS": "O'quvchilar va vasiylar",
       "EMPLOYEES_ASSIGNMENTS": "Xodimlar va biriktirishlar",
       "CLASS_GROUPS": "Sinflar",
-      "SUBJECTS": "Fanlar"
+      "SUBJECTS": "Fanlar",
+      "CURRICULUM_PLAN": "Dars rejasi"
     },
     "kindHints": {
       "STUDENTS_GUARDIANS": "Sinfi, ikki vasiyi bilan; 5-sinfdan login",
       "EMPLOYEES_ASSIGNMENTS": "Rollar, sinf rahbarligi, dars beradigan sinflar",
       "CLASS_GROUPS": "Parallel, bo'lim, sig'im",
-      "SUBJECTS": "Fan nomlari"
+      "SUBJECTS": "Fan nomlari",
+      "CURRICULUM_PLAN": "Mavzular, soatlar, dars turlari"
     },
     "status": {
       "UPLOADED": "Navbatda",
@@ -422,7 +425,10 @@
       "updated": "Yangilandi",
       "skipped": "O'tkazib yuborildi",
       "accounts": "Loginlar",
-      "failed": "Saqlanmadi"
+      "failed": "Saqlanmadi",
+      "hours": "Rejada soat",
+      "lessons": "Jadvalda dars",
+      "items": "Mavzular"
     },
     "filter": {
       "ALL": "Hammasi",
@@ -441,7 +447,8 @@
       "IMPORT_TEMPLATE_MISMATCH": "Bu shablon emas: yuklab olingan shablonni ishlating",
       "IMPORT_TOO_MANY_ROWS": "Qatorlar juda ko'p (2000 gacha)",
       "IMPORT_EMPTY": "Faylda ma'lumot yo'q",
-      "IMPORT_YEAR_REQUIRED": "Avval o'quv yilini yarating"
+      "IMPORT_YEAR_REQUIRED": "Avval o'quv yilini yarating",
+      "PLAN_HAS_OPEN_VERSION": "Bu rejaning tahrirlanayotgan versiyasi bor — avval uni tugating"
     },
     "messages": {
       "REQUIRED": "to'ldirilmagan",
@@ -466,8 +473,13 @@
       "INVALID_NUMBER": "son noto'g'ri",
       "UNKNOWN_EMPLOYEE_CODE": "xodim kodi topilmadi",
       "ALREADY_EXISTS": "allaqachon mavjud — o'zgarmaydi",
-      "COMMIT_FAILED": "saqlab bo'lmadi"
-    }
+      "COMMIT_FAILED": "saqlab bo'lmadi",
+      "INVALID_HOURS": "soat 1 dan 100 gacha butun son bo'lsin",
+      "INVALID_LESSON_TYPE": "noma'lum dars turi: {value}",
+      "UNKNOWN_PERIOD": "davr topilmadi: {value} — davrsiz qo'shiladi"
+    },
+    "hoursMismatch": "Rejada {hours} soat, jadval bo'yicha {lessons} dars. Davom etsangiz bo'ladi — farq rejada ko'rinadi",
+    "planHasErrors": "Xatoli qatorlarni faylda tuzatib, qayta yuklang — reja qisman saqlanmaydi"
   },
   "settings": {
     "title": "Sozlamalar",
@@ -790,6 +802,30 @@
       "CHSB": "ChSB",
       "LAB": "Laboratoriya",
       "OTHER": "Boshqa"
-    }
+    },
+    "importExcel": "Excel'dan import",
+    "importVersion": "Excel'dan yangi versiya",
+    "importMode": "Shablon turi",
+    "modes": {
+      "TOPICS": "Mavzular ro'yxati",
+      "ROWS": "Darslar bo'yicha"
+    },
+    "modeHints": {
+      "TOPICS": "Faqat mavzu va soat — tizim ketma-ket joylaydi",
+      "ROWS": "Har qator — bitta dars, sanasi bilan (guruhni tanlang)"
+    },
+    "group": "Guruh",
+    "groupRowsHint": "Shablondagi qatorlar shu guruh darslari bo'yicha",
+    "groupTopicsHint": "Ixtiyoriy: soatlarni shu guruh darslari soni bilan solishtirish",
+    "downloadTemplate": "Shablonni yuklab olish",
+    "groups": "Qo'llangan guruhlar",
+    "assign": "Guruhlarga qo'llash",
+    "assignHint": "Mavzular guruhning darslariga ketma-ket joylanadi. O'tilgan darslar mavzusi o'zgarmaydi",
+    "noGroups": "Reja hali hech qaysi guruhga qo'llanmagan",
+    "placement": "{placed}/{lessons} dars mavzuli · rejada {hours} soat",
+    "notPlaced": "{count} soat sig'madi",
+    "unassign": "Olib tashlash",
+    "unassignConfirm": "Kelgusi darslardan bu reja mavzulari olib tashlanadi; o'tilganlari qoladi",
+    "openCreated": "Yaratilgan rejani ochish"
   }
 }

@@ -19,7 +19,10 @@ import {
   type CommitContext,
   type Credential,
 } from "./commit";
+import { AppError } from "../../http/errors";
+import { CurriculumService } from "../curriculum/curriculum.service";
 import { ImportFileError, buildCredentialsFile, readImportSheet } from "./excel";
+import { mergePlanRows, parsePlanRows, type PlanImportMode, type PlanRowData } from "./plan-parse";
 import { employeeLookup, studentLookup } from "./lookups";
 import {
   classKey,
@@ -45,9 +48,16 @@ export interface ImportDeps {
 interface Options {
   academicYearId?: string;
   validFrom?: string;
+  // curriculum plans (PlanImportOptions)
+  subjectId?: string;
+  gradeId?: string;
+  mode?: PlanImportMode;
+  planId?: string;
+  teachingGroupId?: string;
+  title?: string;
 }
 
-const NEEDS_YEAR: ImportKindCode[] = ["STUDENTS_GUARDIANS", "EMPLOYEES_ASSIGNMENTS", "CLASS_GROUPS"];
+const NEEDS_YEAR: ImportKindCode[] = ["STUDENTS_GUARDIANS", "EMPLOYEES_ASSIGNMENTS", "CLASS_GROUPS", "CURRICULUM_PLAN"];
 
 async function resolveYear(db: Db, options: Options) {
   const year = options.academicYearId
@@ -107,7 +117,40 @@ export async function parseImport(deps: ImportDeps, importJobId: string): Promis
       rows = parseSubjectRows(sheet, { existingNameKeys: new Set(subjects.map((s) => normalizeText(s.name))) });
       break;
     }
+    case "CURRICULUM_PLAN": {
+      const periods = await db.academicPeriod.findMany({
+        where: { academicYearId: year!.id },
+        select: { id: true, name: true },
+      });
+      rows = parsePlanRows(sheet, {
+        mode: options.mode ?? "TOPICS",
+        periodIdByName: new Map(periods.map((p) => [normalizeText(p.name), p.id])),
+      });
+      break;
+    }
   }
+  // Curriculum plans: planned hours against the group's lessons (a warning when they differ, §4.3).
+  const planTotals =
+    kind === "CURRICULUM_PLAN"
+      ? {
+          hours: rows.reduce(
+            (sum, r) => sum + (r.status === "OK" || r.status === "WARNING" ? ((r.data as PlanRowData).hours ?? 0) : 0),
+            0,
+          ),
+          ...(options.teachingGroupId && options.subjectId
+            ? {
+                lessons: await db.lessonSession.count({
+                  where: {
+                    teachingGroupId: options.teachingGroupId,
+                    subjectId: options.subjectId,
+                    academicYearId: year!.id,
+                    status: { not: "CANCELLED" },
+                  },
+                }),
+              }
+            : {}),
+        }
+      : {};
 
   const count = (s: string) => rows.filter((r) => r.status === s).length;
   await db.$transaction(async (tx) => {
@@ -127,17 +170,74 @@ export async function parseImport(deps: ImportDeps, importJobId: string): Promis
         status: "PREVIEW_READY",
         errorCount: count("ERROR"),
         warningCount: count("WARNING"),
-        summary: { total: rows.length, ok: count("OK"), warnings: count("WARNING"), errors: count("ERROR") },
+        summary: {
+          total: rows.length,
+          ok: count("OK"),
+          warnings: count("WARNING"),
+          errors: count("ERROR"),
+          ...(kind === "CURRICULUM_PLAN" ? { skipped: count("SKIPPED"), ...planTotals } : {}),
+        },
         ...(year ? { options: { ...options, academicYearId: year.id } } : {}),
       },
     });
   });
 }
 
+/** A curriculum plan is created as a whole: all rows in one transaction (it is one document, not many records). */
+async function commitPlanImport(
+  deps: ImportDeps,
+  job: { id: string; createdById: string; options: unknown; summary: unknown },
+) {
+  const { db } = deps;
+  const options = (job.options ?? {}) as Options;
+  const rows = await db.importRow.findMany({
+    where: { importJobId: job.id, status: { in: ["OK", "WARNING"] } },
+    orderBy: { rowNumber: "asc" },
+  });
+  const items = mergePlanRows(rows.map((r) => r.data as unknown as PlanRowData));
+  try {
+    await db.$transaction(async (tx) => {
+      const plan = await new CurriculumService(db).createFromImport(tx, {
+        academicYearId: options.academicYearId!,
+        subjectId: options.subjectId!,
+        gradeId: options.gradeId!,
+        planId: options.planId,
+        title: options.title ?? "Import",
+        userId: job.createdById,
+        importJobId: job.id,
+        items: items.map((i) => ({
+          topicTitle: i.topicTitle,
+          hours: i.hours,
+          lessonType: i.lessonType,
+          periodId: i.periodId,
+          objectives: i.objectives,
+          homework: i.homework,
+          resources: i.resources,
+          notes: i.notes,
+        })),
+      });
+      await tx.importRow.updateMany({
+        where: { importJobId: job.id, status: { in: ["OK", "WARNING"] } },
+        data: { targetEntityId: plan.id },
+      });
+      const summary = { ...((job.summary as Record<string, number> | null) ?? {}), created: 1, items: items.length };
+      await tx.importJob.update({
+        where: { id: job.id },
+        data: { status: "COMMITTED", committedAt: new Date(), summary },
+      });
+      await auditCommit(tx, job.id, summary);
+    });
+  } catch (err) {
+    if (err instanceof AppError) return fail(db, job.id, String(err.details?.reason ?? err.code));
+    throw err;
+  }
+}
+
 export async function commitImport(deps: ImportDeps, importJobId: string): Promise<void> {
   const { db } = deps;
   const job = await db.importJob.findUniqueOrThrow({ where: { id: importJobId } });
   if (job.status !== "COMMITTING") return;
+  if (job.kind === "CURRICULUM_PLAN") return commitPlanImport(deps, job);
   const kind = job.kind as ImportKindCode;
   const options = (job.options ?? {}) as Options & { skipErrors?: boolean };
   const accounts = new AccountsService(db, deps.authState);

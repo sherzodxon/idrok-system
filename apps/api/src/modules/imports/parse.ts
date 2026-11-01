@@ -11,7 +11,8 @@ export interface Message {
 }
 export interface PreviewRow<T> {
   rowNumber: number;
-  status: "OK" | "WARNING" | "ERROR";
+  /** SKIPPED: nothing to import (a spare lesson row of a curriculum template). */
+  status: "OK" | "WARNING" | "ERROR" | "SKIPPED";
   data: T;
   messages: Message[];
 }

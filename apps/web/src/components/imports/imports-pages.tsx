@@ -41,13 +41,10 @@ function StatusBadge({ status }: { status: ImportJobDto["status"] }) {
   return <Badge tone={tone}>{t(status)}</Badge>;
 }
 
-function BackLink() {
+function BackLink({ href = "/admin/imports" }: { href?: string }) {
   const t = useTranslations("common");
   return (
-    <Link
-      href="/admin/imports"
-      className="mb-1 inline-flex items-center gap-1 text-sm text-muted hover:text-foreground"
-    >
+    <Link href={href} className="mb-1 inline-flex items-center gap-1 text-sm text-muted hover:text-foreground">
       <ArrowLeft className="size-4" aria-hidden />
       {t("back")}
     </Link>
@@ -255,19 +252,34 @@ export function ImportWizard() {
 interface PreviewRow {
   rowNumber: number;
   status: "OK" | "WARNING" | "ERROR" | "SKIPPED";
-  data: Record<string, unknown>;
+  data: Record<string, unknown> | null;
   messages: { code: string; field?: string; params?: Record<string, unknown> }[];
 }
 
-function rowSummary(kind: Kind, d: Record<string, unknown>) {
+function rowSummary(kind: ImportJobDto["kind"], data: Record<string, unknown> | null) {
+  // Skipped rows (spare lessons of a plan template) have no data.
+  const d = data ?? {};
   const s = (k: string) => (typeof d[k] === "string" || typeof d[k] === "number" ? String(d[k]) : "");
+  if (kind === "CURRICULUM_PLAN") return d.topicTitle ? `${s("topicTitle")} · ${s("hours")}` : "—";
   if (kind === "STUDENTS_GUARDIANS") return `${s("lastName")} ${s("firstName")} · ${s("className")}`;
   if (kind === "EMPLOYEES_ASSIGNMENTS") return `${s("lastName")} ${s("firstName")}`;
   if (kind === "CLASS_GROUPS") return `${s("level")}-${s("section")}`;
   return s("name");
 }
 
-export function ImportDetail({ id }: { id: string }) {
+/**
+ * Preview, commit and result of one import. Curriculum plan imports reuse it from the plans pages (`backHref`,
+ * `committed` shows the link to the created plan).
+ */
+export function ImportDetail({
+  id,
+  backHref,
+  committed,
+}: {
+  id: string;
+  backHref?: string;
+  committed?: (job: ImportJobDto) => ReactNode;
+}) {
   const t = useTranslations();
   const locale = useLocale();
   const api = useApi();
@@ -319,7 +331,8 @@ export function ImportDetail({ id }: { id: string }) {
   if (job.isPending) return <LoadingState />;
   if (!job.data) return <ErrorState error={job.error} onRetry={() => void job.refetch()} />;
   const j = job.data;
-  const kind = j.kind as Kind;
+  const kind = j.kind;
+  const isPlan = kind === "CURRICULUM_PLAN";
   const message = (m: PreviewRow["messages"][number]) => {
     const field = m.field ? ((labels.columns as Record<string, string>)[m.field]?.replace("*", "") ?? m.field) : "";
     const text = t.has(`imports.messages.${m.code}`)
@@ -331,7 +344,7 @@ export function ImportDetail({ id }: { id: string }) {
   return (
     <>
       <PageHeader
-        back={<BackLink />}
+        back={<BackLink href={backHref} />}
         title={j.fileName}
         subtitle={
           <span className="flex items-center gap-2">
@@ -350,7 +363,22 @@ export function ImportDetail({ id }: { id: string }) {
         {j.status === "FAILED" && <ErrorStateBox code={j.failure?.code ?? "INTERNAL_ERROR"} />}
         {j.summary && (
           <div className="grid gap-3 sm:grid-cols-4" data-testid="import-summary">
-            {(["total", "ok", "warnings", "errors", "created", "updated", "skipped", "failed", "accounts"] as const)
+            {(
+              [
+                "total",
+                "ok",
+                "warnings",
+                "errors",
+                "created",
+                "updated",
+                "skipped",
+                "failed",
+                "accounts",
+                "hours",
+                "lessons",
+                "items",
+              ] as const
+            )
               .filter((k) => j.summary?.[k] !== undefined)
               .map((k) => (
                 <Card key={k} className="p-4">
@@ -362,9 +390,16 @@ export function ImportDetail({ id }: { id: string }) {
               ))}
           </div>
         )}
+        {isPlan && j.summary?.lessons !== undefined && j.summary.hours !== j.summary.lessons && (
+          <Card className="border-warning p-4 text-sm" data-testid="import-hours-mismatch">
+            {t("imports.hoursMismatch", { hours: j.summary.hours ?? 0, lessons: j.summary.lessons })}
+          </Card>
+        )}
+        {j.status === "COMMITTED" && committed?.(j)}
         {j.status === "PREVIEW_READY" && (
           <Card className="flex flex-col gap-3 p-5">
-            {j.errorCount > 0 && (
+            {isPlan && j.errorCount > 0 && <p className="text-sm text-danger">{t("imports.planHasErrors")}</p>}
+            {!isPlan && j.errorCount > 0 && (
               <label className="flex items-center gap-2 text-sm">
                 <input
                   type="checkbox"
