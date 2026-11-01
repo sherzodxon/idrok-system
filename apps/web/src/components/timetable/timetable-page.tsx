@@ -1,11 +1,12 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, Plus, Trash2 } from "lucide-react";
+import { AlertTriangle, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState, type FormEvent } from "react";
 import type {
   BellScheduleDto,
+  LessonGenerationPreviewDto,
   Page,
   SchoolWeekDto,
   TeacherAssignmentDto,
@@ -163,6 +164,7 @@ function Editor({ yearId, summary }: { yearId: string; summary: TimetableSummary
   const selected = list.filters.id || options[0]?.value || "";
   const [cell, setCell] = useState<{ weekday: number; lessonNumber: number } | null>(null);
   const [publishing, setPublishing] = useState(false);
+  const [generating, setGenerating] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const save = useSave(
     (entries: TimetableEntryInput[]) => api.put(`/timetables/${summary.id}/entries`, { entries }),
@@ -225,6 +227,12 @@ function Editor({ yearId, summary }: { yearId: string; summary: TimetableSummary
                     data-testid="timetable-publish"
                   >
                     {t("timetable.publish")}
+                  </Button>
+                )}
+                {summary.status !== "DRAFT" && can(me.data, "timetable.publish") && (
+                  <Button variant="secondary" onClick={() => setGenerating(true)} data-testid="lessons-generate">
+                    <RefreshCw className="size-4" aria-hidden />
+                    {t("lessons.generate")}
                   </Button>
                 )}
                 {editable && (
@@ -360,7 +368,14 @@ function Editor({ yearId, summary }: { yearId: string; summary: TimetableSummary
                 onClose={() => setCell(null)}
               />
             )}
-            {publishing && <PublishDialog summary={summary} onClose={() => setPublishing(false)} />}
+            {publishing && (
+              <PublishDialog
+                summary={summary}
+                onClose={() => setPublishing(false)}
+                onPublished={() => (setPublishing(false), setGenerating(true))}
+              />
+            )}
+            {generating && <GenerationDialog yearId={yearId} onClose={() => setGenerating(false)} />}
             <ConfirmDialog
               open={deleting}
               danger
@@ -558,14 +573,22 @@ function CellDrawer({
   );
 }
 
-function PublishDialog({ summary, onClose }: { summary: TimetableSummaryDto; onClose: () => void }) {
+function PublishDialog({
+  summary,
+  onClose,
+  onPublished,
+}: {
+  summary: TimetableSummaryDto;
+  onClose: () => void;
+  onPublished: () => void;
+}) {
   const t = useTranslations();
   const api = useApi();
   const [validFrom, setValidFrom] = useState("");
   const publish = useSave(
     (body: object) => api.post(`/timetables/${summary.id}/publish`, body),
     ["timetables"],
-    onClose,
+    onPublished,
   );
   return (
     <Modal
@@ -608,6 +631,101 @@ function PublishDialog({ summary, onClose }: { summary: TimetableSummaryDto; onC
           )}
         </Field>
       </form>
+    </Modal>
+  );
+}
+
+/** Review what the timetable and calendar change in the lessons, then apply (lesson-plan.md §3). */
+function GenerationDialog({ yearId, onClose }: { yearId: string; onClose: () => void }) {
+  const t = useTranslations();
+  const api = useApi();
+  const [includePast, setIncludePast] = useState(false);
+  const preview = useQuery({
+    queryKey: ["lesson-generation", yearId, includePast],
+    queryFn: () =>
+      api.post<LessonGenerationPreviewDto>(`/academic-years/${yearId}/lesson-generation/preview`, { includePast }),
+    gcTime: 0,
+  });
+  const apply = useSave(
+    (previewHash: string) =>
+      api.post(`/academic-years/${yearId}/lesson-generation/apply`, { includePast, previewHash }),
+    ["lesson-generation", "lesson-sessions"],
+    onClose,
+  );
+  const p = preview.data;
+  const nothing = p && p.add + p.update + p.cancel === 0;
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title={t("lessons.generate")}
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose}>
+            {t("common.cancel")}
+          </Button>
+          <Button
+            disabled={!p || nothing}
+            loading={apply.isPending}
+            onClick={() => p && apply.mutate(p.previewHash)}
+            data-testid="lessons-apply"
+          >
+            {t("lessons.apply")}
+          </Button>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-4 text-sm">
+        <p className="text-muted">{t("lessons.generateHint")}</p>
+        <label className="flex items-center gap-2">
+          <input type="checkbox" checked={includePast} onChange={(e) => setIncludePast(e.target.checked)} />
+          {t("lessons.includePast")}
+        </label>
+        <QueryBoundary query={preview}>
+          {(r) => (
+            <div className="flex flex-col gap-3" data-testid="lessons-preview">
+              <p className="text-muted">{t("lessons.range", { from: r.from, to: r.to })}</p>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {(["add", "update", "cancel", "unchanged"] as const).map((k) => (
+                  <Card key={k} className="p-3">
+                    <p className="text-xs text-muted">{t(`lessons.counts.${k}`)}</p>
+                    <p className="tabular text-xl font-bold" data-count={k}>
+                      {r[k]}
+                    </p>
+                  </Card>
+                ))}
+              </div>
+              {nothing && <p>{t("lessons.nothingToDo")}</p>}
+              {r.cancelSample.length > 0 && (
+                <div>
+                  <p className="mb-1 font-medium">{t("lessons.willCancel")}</p>
+                  <ul className="max-h-40 overflow-y-auto text-xs">
+                    {r.cancelSample.map((l) => (
+                      <li key={`${l.teachingGroupId}-${l.date}-${l.lessonNumber}`} className="tabular">
+                        {`${l.date} · ${l.lessonNumber} · ${l.teachingGroupName} · ${l.subjectName}`}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {r.blocked.length > 0 && (
+                <p className="text-warning">{t("lessons.blocked", { count: r.blocked.length })}</p>
+              )}
+              {r.warnings.noPeriodDates.length > 0 && (
+                <p className="text-warning">
+                  {t("lessons.noPeriod", {
+                    count: r.warnings.noPeriodDates.length,
+                    first: r.warnings.noPeriodDates[0]!,
+                  })}
+                </p>
+              )}
+              {r.warnings.noBellSlot > 0 && (
+                <p className="text-warning">{t("lessons.noBellSlot", { count: r.warnings.noBellSlot })}</p>
+              )}
+            </div>
+          )}
+        </QueryBoundary>
+      </div>
     </Modal>
   );
 }
