@@ -31,6 +31,8 @@ export const TENANT_SCOPED_MODELS = [
   "Shift",
   "BellSchedule",
   "Room",
+  "Timetable",
+  "TimetableEntry",
 ] as const;
 
 /** Child rows without tenantId: reached only through a tenant-checked parent (nested reads/writes). */
