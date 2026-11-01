@@ -11,6 +11,7 @@ import { idempotency } from "./http/idempotency";
 import { requestId } from "./http/request-id";
 import { accessRoutes, roleAdminRoutes } from "./modules/access/access.routes";
 import { auditRoutes } from "./modules/audit/audit.routes";
+import { calendarRoutes } from "./modules/calendar/calendar.routes";
 import { authRoutes } from "./modules/auth/auth.routes";
 import { importsRoutes } from "./modules/imports/imports.routes";
 import { settingsRoutes } from "./modules/settings/settings.routes";
@@ -75,6 +76,7 @@ export function createApp(deps: AppDeps): express.Express {
   roleAdminRoutes(v1, registry, deps);
   auditRoutes(v1, registry, deps);
   structureRoutes(v1, registry, deps);
+  calendarRoutes(v1, registry, deps);
   peopleRoutes(v1, registry, deps);
   usersRoutes(v1, registry, deps);
   importsRoutes(v1, registry, deps);

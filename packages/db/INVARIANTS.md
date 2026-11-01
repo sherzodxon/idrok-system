@@ -20,6 +20,12 @@ applied migration — add a new one.
 | `TeacherAssignment_dates_check` | CHECK | ″ | `validFrom <= validTo` |
 | `SchoolBranding_color_check` | CHECK | ″ | colours are `#RRGGBB` |
 | `AuditLog_append_only` | TRIGGER | ″ | `UPDATE`/`DELETE` raise `restrict_violation` |
+| `AcademicPeriod_dates_check` | CHECK | `20261102090000_m2_calendar` | `startDate <= endDate` |
+| `AcademicPeriod_no_overlap` | EXCLUDE (btree_gist) | ″ | periods of one type in one year never share a day |
+| `SchoolWeek_weekdays_check` | CHECK | ″ | 1–7 working weekdays, each ISO 1..7 |
+| `CalendarDay_override_check` | CHECK | ″ | `followsWeekday` (1..7) exactly on `WORKING_OVERRIDE` days |
+| `Shift_minutes_check` | CHECK | ″ | `0 <= startMinute < endMinute <= 1440` |
+| `BellSlot_minutes_check` | CHECK | ″ | lesson number 0..20, start before end within the day |
 
 Checking a new migration does not touch them:
 

@@ -141,3 +141,68 @@ describe("grade", () => {
     await expect(root.grade.create({ data: { tenantId, level: 12, name: "12" } })).rejects.toThrow();
   });
 });
+
+describe("calendar (M2)", () => {
+  it("periods of one type do not overlap; different types may nest", async () => {
+    const { year } = await yearAndClass();
+    const base = { tenantId, academicYearId: year.id };
+    await root.academicPeriod.create({
+      data: { ...base, type: "QUARTER", name: "1", order: 1, startDate: day("2026-09-01"), endDate: day("2026-10-31") },
+    });
+    await expect(
+      root.academicPeriod.create({
+        data: {
+          ...base,
+          type: "QUARTER",
+          name: "2",
+          order: 2,
+          startDate: day("2026-10-31"),
+          endDate: day("2026-12-28"),
+        },
+      }),
+    ).rejects.toThrow();
+    await root.academicPeriod.create({
+      data: { ...base, type: "HALF", name: "1", order: 1, startDate: day("2026-09-01"), endDate: day("2026-12-28") },
+    });
+    await expect(
+      root.academicPeriod.create({
+        data: { ...base, type: "YEAR", name: "Y", order: 1, startDate: day("2027-06-30"), endDate: day("2026-09-01") },
+      }),
+    ).rejects.toThrow();
+  });
+
+  it("working weekdays and override days are well-formed", async () => {
+    const { year } = await yearAndClass();
+    await expect(
+      root.schoolWeek.create({ data: { tenantId, academicYearId: year.id, workingWeekdays: [1, 8] } }),
+    ).rejects.toThrow();
+    await expect(
+      root.schoolWeek.create({ data: { tenantId, academicYearId: year.id, workingWeekdays: [] } }),
+    ).rejects.toThrow();
+    const base = { tenantId, academicYearId: year.id, title: "Demo" };
+    await expect(
+      root.calendarDay.create({ data: { ...base, date: day("2026-10-10"), kind: "WORKING_OVERRIDE" } }),
+    ).rejects.toThrow();
+    await expect(
+      root.calendarDay.create({ data: { ...base, date: day("2026-10-11"), kind: "HOLIDAY", followsWeekday: 1 } }),
+    ).rejects.toThrow();
+    await root.calendarDay.create({
+      data: { ...base, date: day("2026-10-10"), kind: "WORKING_OVERRIDE", followsWeekday: 1 },
+    });
+  });
+
+  it("shift and bell times stay inside the day", async () => {
+    await expect(
+      root.shift.create({ data: { tenantId, name: `S-${crypto.randomUUID()}`, startMinute: 600, endMinute: 500 } }),
+    ).rejects.toThrow();
+    const { year } = await yearAndClass();
+    const schedule = await root.bellSchedule.create({
+      data: { tenantId, academicYearId: year.id, name: "Demo", validFrom: day("2026-09-01") },
+    });
+    await expect(
+      root.bellSlot.create({
+        data: { bellScheduleId: schedule.id, lessonNumber: 1, startMinute: 530, endMinute: 520 },
+      }),
+    ).rejects.toThrow();
+  });
+});

@@ -34,6 +34,18 @@ export const PERMISSIONS = [
   { code: "imports.run", module: "infra" },
   { code: "exports.run", module: "infra" },
   { code: "audit_logs.view", module: "infra" },
+  // calendar, timetable and lessons (M2)
+  { code: "calendar.manage", module: "calendar" },
+  { code: "timetable.view", module: "calendar" },
+  { code: "timetable.manage", module: "calendar" },
+  { code: "timetable.publish", module: "calendar" },
+  { code: "lessons.view", module: "calendar" },
+  { code: "lessons.mark", module: "calendar" },
+  // curriculum plans (M2)
+  { code: "curriculum.view", module: "curriculum" },
+  { code: "curriculum.create", module: "curriculum" },
+  { code: "curriculum.approve", module: "curriculum" },
+  { code: "curriculum.export", module: "curriculum" },
   // self-service portals (data is always limited to the user's own child / own record)
   { code: "portal.student", module: "portal" },
   { code: "portal.guardian", module: "portal" },

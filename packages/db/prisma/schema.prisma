@@ -142,6 +142,27 @@ enum EnrollmentStatus {
   CANCELLED
 }
 
+enum AcademicPeriodType {
+  QUARTER
+  HALF
+  YEAR
+  CUSTOM
+}
+
+enum AcademicPeriodStatus {
+  DRAFT
+  ACTIVE
+  CLOSED
+}
+
+enum CalendarDayKind {
+  HOLIDAY
+  VACATION
+  NON_WORKING
+  WORKING_OVERRIDE
+  SHORTENED
+}
+
 // =====================================================================================================================
 // TENANT, SETTINGS, BRANDING
 // =====================================================================================================================
@@ -178,6 +199,12 @@ model Tenant {
   guardians            Guardian[]
   studentGuardians     StudentGuardian[]
   studentEnrollments   StudentEnrollment[]
+  academicPeriods      AcademicPeriod[]
+  schoolWeeks          SchoolWeek[]
+  calendarDays         CalendarDay[]
+  shifts               Shift[]
+  bellSchedules        BellSchedule[]
+  rooms                Room[]
 }
 
 model SchoolSettings {
@@ -476,6 +503,10 @@ model AcademicYear {
   teachingGroups     TeachingGroup[]
   teacherAssignments TeacherAssignment[]
   enrollments        StudentEnrollment[]
+  periods            AcademicPeriod[]
+  schoolWeek         SchoolWeek?
+  calendarDays       CalendarDay[]
+  bellSchedules      BellSchedule[]
 
   // SQL: AcademicYear_one_active, AcademicYear_dates_check
   @@unique([tenantId, name])
@@ -490,7 +521,8 @@ model Grade {
   name       String
   archivedAt DateTime? @db.Timestamptz(3)
 
-  classGroups ClassGroup[]
+  classGroups  ClassGroup[]
+  calendarDays CalendarDayGrade[]
 
   // SQL: Grade_level_check (0..11)
   @@unique([tenantId, level])
@@ -510,6 +542,9 @@ model ClassGroup {
   homeroomTeacherId String?      @db.Uuid
   homeroomTeacher   Employee?    @relation(fields: [homeroomTeacherId], references: [id], onDelete: SetNull)
   capacity          Int?
+  // Q-35: lesson times come from the shift's bell schedule (T-32)
+  shiftId           String?      @db.Uuid
+  shift             Shift?       @relation(fields: [shiftId], references: [id], onDelete: Restrict)
   archivedAt        DateTime?    @db.Timestamptz(3)
   createdAt         DateTime     @default(now()) @db.Timestamptz(3)
   updatedAt         DateTime     @updatedAt @db.Timestamptz(3)
@@ -715,4 +750,135 @@ model StudentEnrollment {
   // SQL: StudentEnrollment_one_active, StudentEnrollment_dates_check
   @@index([tenantId, classGroupId, status])
   @@index([studentId, academicYearId])
+}
+
+// =====================================================================================================================
+// M2 — CALENDAR (docs/spec/lesson-plan.md §2)
+// =====================================================================================================================
+
+// Quarter / half / year / custom. Lessons belong to the smallest period containing their date (T-29).
+model AcademicPeriod {
+  id             String               @id @default(uuid(7)) @db.Uuid
+  tenantId       String               @db.Uuid
+  tenant         Tenant               @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  academicYearId String               @db.Uuid
+  academicYear   AcademicYear         @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+  type           AcademicPeriodType
+  name           String
+  order          Int
+  startDate      DateTime             @db.Date
+  endDate        DateTime             @db.Date
+  parentId       String?              @db.Uuid
+  parent         AcademicPeriod?      @relation("PeriodHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
+  children       AcademicPeriod[]     @relation("PeriodHierarchy")
+  status         AcademicPeriodStatus @default(DRAFT)
+  closedAt       DateTime?            @db.Timestamptz(3)
+  closedById     String?              @db.Uuid
+  createdAt      DateTime             @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime             @updatedAt @db.Timestamptz(3)
+
+  // SQL: AcademicPeriod_dates_check, AcademicPeriod_no_overlap (same type)
+  @@unique([academicYearId, type, order])
+  @@index([tenantId, academicYearId])
+}
+
+model SchoolWeek {
+  id              String       @id @default(uuid(7)) @db.Uuid
+  tenantId        String       @db.Uuid
+  tenant          Tenant       @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  academicYearId  String       @unique @db.Uuid
+  academicYear    AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+  // ISO weekdays 1..7, e.g. [1,2,3,4,5,6] (Q-02 default)
+  workingWeekdays Int[]
+  updatedAt       DateTime     @updatedAt @db.Timestamptz(3)
+
+  // SQL: SchoolWeek_weekdays_check
+}
+
+// Holiday, vacation, non-working day, a working day that follows another weekday's timetable, or a shortened day.
+model CalendarDay {
+  id             String             @id @default(uuid(7)) @db.Uuid
+  tenantId       String             @db.Uuid
+  tenant         Tenant             @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  academicYearId String             @db.Uuid
+  academicYear   AcademicYear       @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+  date           DateTime           @db.Date
+  kind           CalendarDayKind
+  title          String
+  // WORKING_OVERRIDE: whose weekday's timetable runs that day (ISO 1..7)
+  followsWeekday Int?
+  appliesToAll   Boolean            @default(true)
+  grades         CalendarDayGrade[]
+  createdAt      DateTime           @default(now()) @db.Timestamptz(3)
+
+  // SQL: CalendarDay_override_check
+  @@unique([academicYearId, date])
+}
+
+model CalendarDayGrade {
+  calendarDayId String      @db.Uuid
+  calendarDay   CalendarDay @relation(fields: [calendarDayId], references: [id], onDelete: Cascade)
+  gradeId       String      @db.Uuid
+  grade         Grade       @relation(fields: [gradeId], references: [id], onDelete: Restrict)
+
+  @@id([calendarDayId, gradeId])
+}
+
+model Shift {
+  id          String    @id @default(uuid(7)) @db.Uuid
+  tenantId    String    @db.Uuid
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  name        String
+  // minutes from midnight, school time zone (08:30 → 510)
+  startMinute Int
+  endMinute   Int
+  archivedAt  DateTime? @db.Timestamptz(3)
+  createdAt   DateTime  @default(now()) @db.Timestamptz(3)
+
+  classGroups   ClassGroup[]
+  bellSchedules BellSchedule[]
+
+  // SQL: Shift_minutes_check
+  @@unique([tenantId, name])
+}
+
+// Bell times; a change is a new schedule with a later validFrom (old lessons keep their times).
+model BellSchedule {
+  id             String       @id @default(uuid(7)) @db.Uuid
+  tenantId       String       @db.Uuid
+  tenant         Tenant       @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  academicYearId String       @db.Uuid
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+  shiftId        String?      @db.Uuid
+  shift          Shift?       @relation(fields: [shiftId], references: [id], onDelete: Restrict)
+  name           String
+  validFrom      DateTime     @db.Date
+  slots          BellSlot[]
+  createdAt      DateTime     @default(now()) @db.Timestamptz(3)
+
+  @@index([academicYearId, shiftId, validFrom])
+}
+
+model BellSlot {
+  id             String       @id @default(uuid(7)) @db.Uuid
+  bellScheduleId String       @db.Uuid
+  bellSchedule   BellSchedule @relation(fields: [bellScheduleId], references: [id], onDelete: Cascade)
+  lessonNumber   Int
+  startMinute    Int
+  endMinute      Int
+
+  // SQL: BellSlot_minutes_check
+  @@unique([bellScheduleId, lessonNumber])
+}
+
+model Room {
+  id         String    @id @default(uuid(7)) @db.Uuid
+  tenantId   String    @db.Uuid
+  tenant     Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  name       String
+  capacity   Int?
+  archivedAt DateTime? @db.Timestamptz(3)
+  createdAt  DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@unique([tenantId, name])
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState, type FormEvent } from "react";
@@ -15,7 +15,6 @@ import { Field, Input, Select } from "@/components/ui/field";
 import { FormDrawer } from "@/components/ui/form-drawer";
 import { ConfirmDialog } from "@/components/ui/modal";
 import { EmptyState, QueryBoundary } from "@/components/ui/states";
-import { useToast } from "@/components/ui/toast";
 import { FilterSelect, PageHeader, Tabs, Toolbar } from "@/components/ui/toolbar";
 import {
   personName,
@@ -24,31 +23,15 @@ import {
   useEmployees,
   useGrades,
   useSubjects,
+  useShifts,
   useTeachingGroups,
   useYears,
 } from "@/lib/queries";
-import { useErrorText } from "@/lib/use-error-text";
 import { useListState } from "@/lib/use-list-state";
+import { useSave } from "@/lib/use-save";
 import { can, useMe } from "@/lib/use-me";
 
 type Tab = "years" | "classes" | "subjects" | "assignments";
-
-/** Shared mutation plumbing: invalidate, toast, close. */
-function useSave<T>(fn: (body: T) => Promise<unknown>, invalidate: string[], onDone?: () => void) {
-  const qc = useQueryClient();
-  const toast = useToast();
-  const t = useTranslations("common");
-  const errorText = useErrorText();
-  return useMutation({
-    mutationFn: fn,
-    onSuccess: () => {
-      for (const key of invalidate) void qc.invalidateQueries({ queryKey: [key] });
-      toast("success", t("saved"));
-      onDone?.();
-    },
-    onError: (err) => toast("error", errorText(err)),
-  });
-}
 
 export function StructurePage() {
   const t = useTranslations("structure");
@@ -306,6 +289,8 @@ function ClassDrawer({ yearId, cls, onClose }: { yearId: string; cls: ClassGroup
   const [section, setSection] = useState("");
   const [capacity, setCapacity] = useState(cls?.capacity ? String(cls.capacity) : "");
   const [homeroom, setHomeroom] = useState(cls?.homeroomTeacherId ?? "");
+  const [shiftId, setShiftId] = useState(cls?.shiftId ?? "");
+  const shifts = useShifts();
   const [subgroup, setSubgroup] = useState("");
   const save = useSave(
     (body: object) => (cls ? api.patch(`/class-groups/${cls.id}`, body) : api.post("/class-groups", body)),
@@ -319,7 +304,11 @@ function ClassDrawer({ yearId, cls, onClose }: { yearId: string; cls: ClassGroup
   );
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    const common = { capacity: capacity ? Number(capacity) : null, homeroomTeacherId: homeroom || null };
+    const common = {
+      capacity: capacity ? Number(capacity) : null,
+      homeroomTeacherId: homeroom || null,
+      shiftId: shiftId || null,
+    };
     save.mutate(cls ? common : { academicYearId: yearId, gradeId, section, ...common });
   };
   return (
@@ -357,6 +346,20 @@ function ClassDrawer({ yearId, cls, onClose }: { yearId: string; cls: ClassGroup
             </Field>
           </>
         )}
+        <Field label={t("calendar.shift")}>
+          {(id) => (
+            <Select id={id} value={shiftId} onChange={(e) => setShiftId(e.target.value)}>
+              <option value="">—</option>
+              {(shifts.data ?? [])
+                .filter((x) => !x.archived || x.id === shiftId)
+                .map((x) => (
+                  <option key={x.id} value={x.id}>
+                    {x.name}
+                  </option>
+                ))}
+            </Select>
+          )}
+        </Field>
         <Field label={t("structure.homeroom")}>
           {(id) => (
             <Select id={id} value={homeroom} onChange={(e) => setHomeroom(e.target.value)}>

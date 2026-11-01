@@ -77,7 +77,14 @@
       "STUDENT_NOT_ACTIVE": "O'quvchi faol emas",
       "NOT_IN_CLASS": "O'quvchi bu sinfda emas",
       "YEAR_ARCHIVED": "O'quv yili arxivda",
-      "CLASS_GROUP_FOLLOWS_ENROLLMENT": "Butun sinf guruhi sinf ro'yxatidan olinadi"
+      "CLASS_GROUP_FOLLOWS_ENROLLMENT": "Butun sinf guruhi sinf ro'yxatidan olinadi",
+      "PERIOD_OVERLAP": "Bu turdagi boshqa davr bilan sanalar kesishadi",
+      "PERIOD_ORDER_TAKEN": "Bu tartib raqami band",
+      "PERIOD_NOT_DRAFT": "Faol davr sanalarini o'zgartirib bo'lmaydi",
+      "PERIOD_CLOSED": "Davr yopilgan",
+      "DAY_EXISTS": "Bu sanalar allaqachon belgilangan",
+      "SHIFT_IN_USE": "Smenada sinflar bor — avval ularni boshqa smenaga o'tkazing",
+      "BELL_SCHEDULE_EXISTS": "Bu smena uchun shu sanadan jadval bor"
     }
   },
   "states": {
@@ -102,7 +109,8 @@
     "mainMenu": "Asosiy menyu",
     "openMenu": "Menyuni ochish",
     "collapse": "Menyuni yig'ish",
-    "expand": "Menyuni yoyish"
+    "expand": "Menyuni yoyish",
+    "calendar": "Kalendar"
   },
   "shell": {
     "context": "Ish rejimi",
@@ -186,7 +194,13 @@
     "before_valid_from": "Boshlanish sanasidan oldin bo'lmasin",
     "end_before_start": "Tugash sanasi boshlanishdan oldin",
     "invalid_timezone": "Vaqt mintaqasi noto'g'ri",
-    "invalid_color": "Rang #RRGGBB ko'rinishida bo'lsin"
+    "invalid_color": "Rang #RRGGBB ko'rinishida bo'lsin",
+    "outside_parent": "Yuqori davr sanalaridan tashqarida",
+    "follows_weekday_rule": "Almashtirilgan ish kuni uchun hafta kunini tanlang",
+    "range_too_long": "Oraliq juda uzun (120 kungacha)",
+    "overlaps_previous": "Oldingi dars bilan ustma-ust tushadi",
+    "duplicate": "Takrorlangan",
+    "invalid_time": "Vaqt SS:DD ko'rinishida bo'lsin"
   },
   "people": {
     "lastName": "Familiya",
@@ -498,7 +512,9 @@
       "structure": "O'quv tuzilmasi",
       "people": "Odamlar",
       "infra": "Import, eksport, audit",
-      "portal": "Portal"
+      "portal": "Portal",
+      "calendar": "Kalendar va jadval",
+      "curriculum": "Dars rejalari"
     },
     "codes": {
       "users_view": "Ko'rish",
@@ -529,7 +545,17 @@
       "exports_run": "Eksport",
       "audit_logs_view": "Audit jurnali",
       "portal_student": "O'quvchi portali",
-      "portal_guardian": "Vasiy portali"
+      "portal_guardian": "Vasiy portali",
+      "calendar_manage": "Kalendar, davrlar, qo'ng'iroqlar",
+      "timetable_view": "Jadvalni ko'rish",
+      "timetable_manage": "Jadvalni tahrirlash",
+      "timetable_publish": "Jadvalni e'lon qilish va darslarni qayta hisoblash",
+      "lessons_view": "Darslarni ko'rish",
+      "lessons_mark": "Darsni o'tildi deb belgilash",
+      "curriculum_view": "Rejalarni ko'rish",
+      "curriculum_create": "Reja yozish (o'z fanlari)",
+      "curriculum_approve": "Rejalarni tasdiqlash",
+      "curriculum_export": "Rejalarni yuklab olish"
     }
   },
   "audit": {
@@ -549,5 +575,95 @@
     "students": "Mening o'quvchilarim",
     "noGroups": "Sizga hali guruh biriktirilmagan",
     "studentsCount": "{count} o'quvchi"
+  },
+  "calendar": {
+    "title": "Kalendar",
+    "tabs": {
+      "month": "Oy",
+      "periods": "Davrlar",
+      "week": "Ish haftasi",
+      "bells": "Smena va qo'ng'iroqlar",
+      "rooms": "Xonalar"
+    },
+    "prevMonth": "Oldingi oy",
+    "nextMonth": "Keyingi oy",
+    "kind": "Kun turi",
+    "dayTitle": "Nomi",
+    "until": "Qaysi sanagacha",
+    "untilHint": "Ta'til kabi bir necha kun uchun; bir kun bo'lsa o'zgartirmang",
+    "followsWeekday": "Qaysi kun jadvali bo'yicha",
+    "appliesTo": "Qaysi parallellarga",
+    "appliesToHint": "Hech biri belgilanmasa — butun maktab",
+    "unmark": "Belgini olib tashlash",
+    "unmarkConfirm": "Kun odatdagi holatiga qaytadi. Darslar jadvali qayta hisoblanganda hisobga olinadi",
+    "kinds": {
+      "HOLIDAY": "Bayram",
+      "VACATION": "Ta'til",
+      "NON_WORKING": "Dam olish kuni",
+      "WORKING_OVERRIDE": "Almashtirilgan ish kuni",
+      "SHORTENED": "Qisqartirilgan kun"
+    },
+    "addPeriod": "Davr qo'shish",
+    "noPeriods": "Davrlar hali kiritilmagan",
+    "periodName": "Nomi",
+    "periodType": "Turi",
+    "order": "Tartib raqami",
+    "parent": "Yuqori davr",
+    "datesLocked": "Faol davr sanalari o'zgarmaydi",
+    "activatePeriodConfirm": "Davr faol bo'ladi; uning sanalarini endi o'zgartirib bo'lmaydi",
+    "periodTypes": {
+      "QUARTER": "Chorak",
+      "HALF": "Yarim yil",
+      "YEAR": "Yil",
+      "CUSTOM": "Boshqa"
+    },
+    "periodStatus": {
+      "DRAFT": "Qoralama",
+      "ACTIVE": "Faol",
+      "CLOSED": "Yopilgan"
+    },
+    "weekHint": "Belgilangan kunlarda darslar bo'ladi",
+    "weekDefault": "Hozir standart qiymat ko'rsatilmoqda (dushanba–shanba). Saqlang yoki o'zgartiring",
+    "weekdays": {
+      "1": "Dushanba",
+      "2": "Seshanba",
+      "3": "Chorshanba",
+      "4": "Payshanba",
+      "5": "Juma",
+      "6": "Shanba",
+      "7": "Yakshanba"
+    },
+    "weekdaysShort": {
+      "1": "Du",
+      "2": "Se",
+      "3": "Ch",
+      "4": "Pa",
+      "5": "Ju",
+      "6": "Sh",
+      "7": "Ya"
+    },
+    "shifts": "Smenalar",
+    "shift": "Smena",
+    "addShift": "Smena qo'shish",
+    "noShifts": "Smenalar yo'q — barcha sinflar bitta qo'ng'iroq jadvali bo'yicha",
+    "allShifts": "Barcha smenalar",
+    "time": "Vaqt",
+    "start": "Boshlanishi",
+    "end": "Tugashi",
+    "bells": "Qo'ng'iroq jadvallari",
+    "addBells": "Qo'ng'iroq jadvali qo'shish",
+    "noBells": "Qo'ng'iroq jadvali hali yo'q",
+    "bellsName": "Nomi",
+    "validFrom": "{date} dan",
+    "validFromLabel": "Amal qilish sanasi",
+    "validFromHint": "Vaqtlar o'zgarsa — yangi sana bilan yangi jadval qo'shing, eski darslar o'zgarmaydi",
+    "slots": "Darslar",
+    "lessonNumber": "Dars raqami",
+    "addSlot": "Dars qo'shish",
+    "removeSlot": "Olib tashlash",
+    "rooms": "Xonalar",
+    "room": "Xona",
+    "addRoom": "Xona qo'shish",
+    "noRooms": "Xonalar kiritilmagan"
   }
 }

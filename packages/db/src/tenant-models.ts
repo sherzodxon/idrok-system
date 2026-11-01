@@ -25,10 +25,22 @@ export const TENANT_SCOPED_MODELS = [
   "Guardian",
   "StudentGuardian",
   "StudentEnrollment",
+  "AcademicPeriod",
+  "SchoolWeek",
+  "CalendarDay",
+  "Shift",
+  "BellSchedule",
+  "Room",
 ] as const;
 
 /** Child rows without tenantId: reached only through a tenant-checked parent (nested reads/writes). */
-export const PARENT_SCOPED_MODELS = ["UserPreference", "RolePermission", "ImportRow"] as const;
+export const PARENT_SCOPED_MODELS = [
+  "UserPreference",
+  "RolePermission",
+  "ImportRow",
+  "CalendarDayGrade",
+  "BellSlot",
+] as const;
 
 /** Not tenant data at all. */
 export const GLOBAL_MODELS = ["Tenant", "Permission"] as const;

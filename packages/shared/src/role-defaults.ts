@@ -11,6 +11,9 @@ const STRUCTURE_VIEW: PermissionCode[] = [
   "teacher_assignments.view",
 ];
 const PEOPLE_VIEW: PermissionCode[] = ["students.view", "guardians.view", "employees.view"];
+const LESSONS_VIEW: PermissionCode[] = ["timetable.view", "lessons.view", "curriculum.view", "curriculum.export"];
+// Teachers plan and mark only their own groups (scope in the services).
+const TEACHING: PermissionCode[] = [...LESSONS_VIEW, "lessons.mark", "curriculum.create"];
 
 const SCHOOL_ADMIN: PermissionCode[] = PERMISSION_CODES.filter((c) => !c.startsWith("portal."));
 
@@ -23,6 +26,7 @@ export const ROLE_DEFAULT_PERMISSIONS: Record<SystemRoleCode, readonly Permissio
     "settings.view",
     ...STRUCTURE_VIEW,
     ...PEOPLE_VIEW,
+    ...LESSONS_VIEW,
     "exports.run",
     "audit_logs.view",
   ],
@@ -41,10 +45,23 @@ export const ROLE_DEFAULT_PERMISSIONS: Record<SystemRoleCode, readonly Permissio
     "imports.run",
     "exports.run",
     "audit_logs.view",
+    // Q-05: deputy director and methodist approve curriculum plans
+    "calendar.manage",
+    "timetable.manage",
+    "timetable.publish",
+    ...LESSONS_VIEW,
+    "curriculum.approve",
   ],
-  METHODIST: [...STRUCTURE_VIEW, "students.view", "employees.view", "exports.run"],
-  TEACHER: [...STRUCTURE_VIEW, "students.view"],
-  CLASS_TEACHER: [...STRUCTURE_VIEW, "students.view", "guardians.view"],
+  METHODIST: [
+    ...STRUCTURE_VIEW,
+    "students.view",
+    "employees.view",
+    "exports.run",
+    ...LESSONS_VIEW,
+    "curriculum.approve",
+  ],
+  TEACHER: [...STRUCTURE_VIEW, "students.view", ...TEACHING],
+  CLASS_TEACHER: [...STRUCTURE_VIEW, "students.view", "guardians.view", ...TEACHING],
   STUDENT: ["portal.student"],
   GUARDIAN: ["portal.guardian"],
 };
@@ -55,7 +72,7 @@ export const ROLE_SCOPE_NOTES: Record<SystemRoleCode, string> = {
   SCHOOL_ADMIN: "Butun maktab",
   DIRECTOR: "Butun maktab, faqat ko'rish va eksport",
   DEPUTY_DIRECTOR: "Butun maktab; foydalanuvchi va rollarni boshqarmaydi",
-  METHODIST: "Butun maktab, o'quv tuzilmasini ko'rish (M2 da reja tasdiqlash qo'shiladi)",
+  METHODIST: "Butun maktab: o'quv tuzilmasi va jadvalni ko'rish, dars rejalarini tasdiqlash",
   TEACHER: "Faqat o'ziga biriktirilgan guruhlar va ularning o'quvchilari",
   CLASS_TEACHER: "O'qituvchi doirasi + o'z sinfi o'quvchilari va ularning vasiylari",
   STUDENT: "Faqat o'zi",
