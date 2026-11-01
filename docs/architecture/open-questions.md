@@ -34,6 +34,8 @@ A–D bo'limlari ochiq qoladi — tegishli bosqichdan oldin maktab hal qiladi. J
 | Q-35 | Smenalar soni; qo'ng'iroq jadvali smenaga qarab farq qiladimi? | BellSchedule, ClassGroup.shiftId | 1 / 2 smena | 1 smena, model 2+ ni qo'llaydi | Maktab |
 | Q-40 | O'rinbosar o'qituvchi (zamena): kasal o'qituvchi o'rniga kim ball/davomat qo'yadi? | Spec'da yo'q; `LessonSession.teacherId` qat'iy | (a) sessiya `teacherId`ini almashtirish (audit bilan) (b) `substituteTeacherId` maydoni (c) ruxsat yo'q | (b) — M2 da `substituteTeacherId` qo'shish; ball `teacherId`=o'rinbosar | Maktab + Texnik |
 
+> **2026-11-02, egasi:** A bo'limidagi savollar (Q-01–Q-05, Q-35, Q-40) uchun "Tavsiya etilgan default" qabul qilindi. Har biri sozlama — maktab keyin o'zgartira oladi.
+
 ## B. Ball va davriy baholash (M3 dan oldin)
 
 | # | Savol | Nega muhim | Variantlar | Tavsiya etilgan default | Kim hal qiladi |
@@ -139,3 +141,13 @@ A–D bo'limlari ochiq qoladi — tegishli bosqichdan oldin maktab hal qiladi. J
 | T-26 | Staging uchun **o'z domeni shart** (`app.<domen>` + `api.<domen>`, `COOKIE_DOMAIN=<domen>`): cookie `SameSite=Lax`, `*.onrender.com` esa public suffix — web va API ikki xil sayt bo'lib qoladi. **Egasi: qaysi domen/subdomen?** Muqobil (tavsiya etilmaydi): API'ni Next.js rewrite orqali web domeniga proksilash — `TRUST_PROXY` zanjiri va rate limit IP'si murakkablashadi | DEPLOY.md §3 |
 | T-27 | Xavfsizlik headerlari: API — `helmet` (CSP `default-src 'none'`, HSTS 1 yil, `Referrer-Policy: no-referrer`, CORP `same-site`) + barcha javoblarda `Cache-Control: no-store` (ochiq brending bundan mustasno, 60 s). Web — har so'rovga nonce'li CSP (`script-src 'self' 'nonce-…' 'strict-dynamic'`, `connect-src` faqat o'zi va API), `X-Frame-Options: DENY`, `Permissions-Policy` (kamera, mikrofon, geolokatsiya o'chiq — Face ID M6'da qayta ko'riladi). `style-src 'unsafe-inline'` qoldirildi (brend CSS o'zgaruvchilari inline; stil kod bajarmaydi) | 8-qadam |
 | T-28 | Render rejalari: Starter (`worker` turi, `preDeployCommand` va Shell bepul rejada yo'q). Migratsiya API deploy'idan oldin `preDeployCommand`da; Supabase "direct" hosti IPv6 bo'lgani uchun `DIRECT_URL` = Session pooler (5432) | DEPLOY.md §1, §7 |
+
+## M2 davomida qabul qilingan texnik qarorlar (default, egasi tasdig'iga)
+
+| # | Qaror | Asos |
+|---|---|---|
+| T-29 | Dars qaysi davrga tegishli: sanani qamragan **eng kichik** davr (chorak yoki CUSTOM → yarim yil → yil). Hech qaysi davr qamramagan ish kunlarida dars yaratilmaydi va preview'da "davrsiz kunlar" ogohlantirishi chiqadi | lesson-plan.md §3; `LessonSession.periodId` majburiy |
+| T-30 | Juft/toq hafta: o'quv yili boshlangan hafta — 1-hafta (toq), hafta boshi `SchoolSettings.weekStartsOn` | Q-03 |
+| T-31 | `SHORTENED` kun — ish kuni, darslar odatdagidek; qisqartirilgan qo'ng'iroq jadvali keyinroq (sozlama) | spec'da qoida yo'q |
+| T-32 | Qo'ng'iroq vaqti: sinf smenasining (`ClassGroup.shiftId`) jadvali, bo'lmasa smenasiz jadval; sanadan oldingi eng so'nggi `validFrom` | Q-35 |
+| T-33 | O'rinbosar (Q-40): `LessonSession.substituteTeacherId`; admin (`timetable.manage`) belgilaydi. O'rinbosar shu darsni "Bugungi darslarim"da ko'radi va belgilay oladi; asosiy o'qituvchi ham ko'radi | Q-40 default (b) |
