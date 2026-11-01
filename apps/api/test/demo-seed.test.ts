@@ -1,0 +1,95 @@
+// Demo seed (implementation-plan step 8): a full synthetic school with the same invariants as imported data.
+import { runWithTenant } from "@idrok/db";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import {
+  DEMO_CLASSES,
+  DEMO_SUBJECTS,
+  STUDENTS_PER_CLASS,
+  TEACHER_COUNT,
+  studentRows,
+  teacherRows,
+} from "../src/modules/demo/demo-data";
+import { DemoAlreadySeededError, seedDemoSchool, type DemoSummary } from "../src/modules/demo/demo-seed";
+import { createTestApp } from "./support/app";
+
+let t: Awaited<ReturnType<typeof createTestApp>>;
+let tenantId: string;
+let actor: { userId: string; roles: string[] };
+let summary: DemoSummary;
+
+const seed = () => runWithTenant({ tenantId, userId: actor.userId }, () => seedDemoSchool(t.deps.db, actor));
+
+beforeAll(async () => {
+  t = await createTestApp({ ARGON2_MEMORY_KIB: "1024" });
+  tenantId = t.defaultTenant.tenant.id;
+  const admin = await t.defaultTenant.createUser("SCHOOL_ADMIN");
+  actor = { userId: admin.id, roles: ["SCHOOL_ADMIN"] };
+  summary = await seed();
+}, 300_000);
+afterAll(() => t.close());
+
+describe("demo data", () => {
+  it("is synthetic: every phone is on the unused +998 00 code and unique", () => {
+    const phones = [
+      ...studentRows().flatMap((r) => [r.values.guardian1Phone!, r.values.guardian2Phone!]),
+      ...teacherRows().map((r) => r.values.phone!),
+    ];
+    expect(phones.every((p) => /^\+99800\d{7}$/.test(p))).toBe(true);
+    expect(new Set(phones).size).toBe(phones.length);
+  });
+});
+
+describe("seedDemoSchool", () => {
+  const where = () => ({ tenantId });
+
+  it("creates the school: year, 10 classes, subjects, 40 teachers, 300 students, 600 guardians", async () => {
+    const root = t.deps.root;
+    const students = DEMO_CLASSES.length * STUDENTS_PER_CLASS;
+    expect(summary).toMatchObject({
+      subjects: DEMO_SUBJECTS.length,
+      classes: DEMO_CLASSES.length,
+      employees: TEACHER_COUNT,
+      students,
+    });
+    expect(await root.academicYear.count({ where: { ...where(), status: "ACTIVE" } })).toBe(1);
+    expect(await root.classGroup.count({ where: where() })).toBe(DEMO_CLASSES.length);
+    expect(await root.student.count({ where: where() })).toBe(students);
+    expect(await root.studentEnrollment.count({ where: { ...where(), status: "ACTIVE" } })).toBe(students);
+    expect(await root.guardian.count({ where: where() })).toBe(students * 2);
+    expect(await root.employee.count({ where: where() })).toBe(TEACHER_COUNT);
+  });
+
+  it("keeps the invariants real data has", async () => {
+    const root = t.deps.root;
+    // Every class has its whole-class group, a homeroom teacher, and every subject from exactly one teacher.
+    const classes = await root.classGroup.findMany({
+      where: where(),
+      select: {
+        homeroomTeacherId: true,
+        teachingGroups: { where: { kind: "CLASS" }, select: { id: true } },
+      },
+    });
+    expect(classes.every((c) => c.teachingGroups.length === 1 && c.homeroomTeacherId)).toBe(true);
+    const assignments = await root.teacherAssignment.findMany({
+      where: where(),
+      select: { subjectId: true, teachingGroupId: true },
+    });
+    const pairs = new Set(assignments.map((a) => `${a.subjectId}|${a.teachingGroupId}`));
+    expect(pairs.size).toBe(DEMO_CLASSES.length * DEMO_SUBJECTS.length);
+    expect(assignments).toHaveLength(pairs.size);
+  });
+
+  it("creates logins by the school's rules: guardians and teachers always, students from grade 5", async () => {
+    const studentsWithLogin = DEMO_CLASSES.filter((c) => Number(c.split("-")[0]) >= 5).length * STUDENTS_PER_CLASS;
+    const guardians = DEMO_CLASSES.length * STUDENTS_PER_CLASS * 2;
+    expect(summary.accounts).toBe(studentsWithLogin + guardians + TEACHER_COUNT);
+    expect(
+      await t.deps.root.user.count({ where: { ...where(), mustChangePassword: true, roles: { some: {} } } }),
+    ).toBeGreaterThanOrEqual(summary.accounts);
+  });
+
+  it("only fills an empty school", async () => {
+    await expect(seed()).rejects.toBeInstanceOf(DemoAlreadySeededError);
+    expect(await t.deps.root.student.count({ where: where() })).toBe(DEMO_CLASSES.length * STUDENTS_PER_CLASS);
+  });
+});

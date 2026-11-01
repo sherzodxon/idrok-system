@@ -1,0 +1,113 @@
+# Render Blueprint — staging (demo data only, Q-30). Step-by-step: docs/DEPLOY.md.
+# Secrets are never written here: every `sync: false` value is entered by the owner in the Render dashboard.
+# Region: Frankfurt (closest to Tashkent; create the Supabase project in eu-central-1 as well).
+# Builds install devDependencies explicitly (NODE_ENV=development): NODE_ENV=production is visible at build time too,
+# and pnpm would otherwise skip the build tools.
+
+envVarGroups:
+  - name: idrok-server
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: NODE_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: info
+      - key: DEFAULT_TENANT_SLUG
+        value: idrok
+      # Supabase pooler, transaction mode (port 6543, ?pgbouncer=true)
+      - key: DATABASE_URL
+        sync: false
+      # Supabase direct connection (port 5432) — migrations only
+      - key: DIRECT_URL
+        sync: false
+      # instances × DATABASE_POOL_MAX must stay under the pooler's limit
+      - key: DATABASE_POOL_MAX
+        value: "5"
+      # One random value shared by the API and the worker
+      - key: JWT_SECRET
+        generateValue: true
+      - key: STORAGE_DRIVER
+        value: supabase
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_STORAGE_BUCKET
+        value: idrok-files
+
+services:
+  - type: keyvalue
+    name: idrok-redis
+    region: frankfurt
+    plan: starter
+    # BullMQ requirement: never evict keys (docs/DEPLOY.md "Redis")
+    maxmemoryPolicy: noeviction
+    # Private network only
+    ipAllowList: []
+
+  - type: web
+    name: idrok-api
+    runtime: node
+    region: frankfurt
+    plan: starter
+    buildCommand: corepack enable && NODE_ENV=development pnpm install --frozen-lockfile && pnpm turbo run build --filter=@idrok/api
+    # Migrations run before the new version takes traffic; a failed migration stops the deploy.
+    preDeployCommand: cd packages/db && node node_modules/prisma/build/index.js migrate deploy
+    startCommand: node apps/api/dist/main.js
+    healthCheckPath: /api/v1/readyz
+    envVars:
+      - fromGroup: idrok-server
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: idrok-redis
+          property: connectionString
+      # Client → Render load balancer → API (docs/DEPLOY.md "TRUST_PROXY")
+      - key: TRUST_PROXY
+        value: "1"
+      # https://app.<domain>
+      - key: CORS_ORIGINS
+        sync: false
+      # <domain> shared by app.<domain> and api.<domain>
+      - key: COOKIE_DOMAIN
+        sync: false
+      - key: COOKIE_SECURE
+        value: "true"
+
+  - type: worker
+    name: idrok-worker
+    runtime: node
+    region: frankfurt
+    plan: starter
+    buildCommand: corepack enable && NODE_ENV=development pnpm install --frozen-lockfile && pnpm turbo run build --filter=@idrok/worker
+    startCommand: node apps/worker/dist/main.js
+    envVars:
+      - fromGroup: idrok-server
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: idrok-redis
+          property: connectionString
+
+  - type: web
+    name: idrok-web
+    runtime: node
+    region: frankfurt
+    plan: starter
+    buildCommand: corepack enable && NODE_ENV=development pnpm install --frozen-lockfile && pnpm turbo run build --filter=@idrok/web
+    startCommand: cd apps/web && node node_modules/next/dist/bin/next start -p $PORT
+    healthCheckPath: /login
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
+      # https://api.<domain>/api/v1
+      - key: API_PUBLIC_URL
+        sync: false
+      # Private network: http://idrok-api:10000/api/v1 (optional; falls back to API_PUBLIC_URL)
+      - key: API_INTERNAL_URL
+        sync: false
+      - key: TENANT_SLUG
+        value: idrok
