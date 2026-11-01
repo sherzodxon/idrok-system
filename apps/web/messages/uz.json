@@ -92,7 +92,12 @@
       "PREVIEW_STALE": "Ko'rib chiqilgandan keyin ma'lumot o'zgardi — oynani qayta oching",
       "PAST_ALREADY_GENERATED": "Darslar allaqachon yaratilgan — o'tgan kunlar qayta to'ldirilmaydi",
       "YEAR_CLOSED": "O'quv yili yopilgan",
-      "LESSON_CANCELLED": "Dars bekor qilingan"
+      "LESSON_CANCELLED": "Dars bekor qilingan",
+      "PLAN_NOT_EDITABLE": "Bu versiyani tahrirlab bo'lmaydi — yangi versiya yarating",
+      "PLAN_EMPTY": "Rejada mavzu yo'q",
+      "PLAN_NOT_SUBMITTED": "Reja tasdiqlashga yuborilmagan",
+      "PLAN_NOT_APPROVED": "Yangi versiya faqat tasdiqlangan rejadan",
+      "PLAN_HAS_OPEN_VERSION": "Bu rejaning tahrirlanayotgan versiyasi bor"
     }
   },
   "states": {
@@ -119,7 +124,9 @@
     "collapse": "Menyuni yig'ish",
     "expand": "Menyuni yoyish",
     "calendar": "Kalendar",
-    "timetable": "Dars jadvali"
+    "timetable": "Dars jadvali",
+    "plans": "O'quv rejalari",
+    "myPlans": "Dars rejalarim"
   },
   "shell": {
     "context": "Ish rejimi",
@@ -210,7 +217,8 @@
     "overlaps_previous": "Oldingi dars bilan ustma-ust tushadi",
     "duplicate": "Takrorlangan",
     "invalid_time": "Vaqt SS:DD ko'rinishida bo'lsin",
-    "not_after_previous": "Sana oldingi e'lon qilingan versiyadan keyin bo'lsin"
+    "not_after_previous": "Sana oldingi e'lon qilingan versiyadan keyin bo'lsin",
+    "topic_required": "Mavzuni kiriting"
   },
   "people": {
     "lastName": "Familiya",
@@ -733,5 +741,55 @@
     "noPeriod": "{count} ta ish kuni hech qaysi davrga kirmaydi (birinchisi {first}) — ularda dars yaratilmaydi",
     "noBellSlot": "{count} ta dars uchun qo'ng'iroq vaqti yo'q — ular yaratilmaydi",
     "apply": "Qo'llash"
+  },
+  "plans": {
+    "title": "O'quv rejalari",
+    "myTitle": "Dars rejalarim",
+    "add": "Yangi reja",
+    "addHint": "Reja fan va parallel uchun shablon ({year} o'quv yili); keyin sinflarga qo'llanadi",
+    "allActive": "Amaldagilar",
+    "empty": "Rejalar hali yo'q",
+    "emptyMine": "Sizda hali reja yo'q. \"Yangi reja\" tugmasini bosing",
+    "planTitle": "Reja nomi",
+    "author": "Muallif",
+    "hours": "Soat",
+    "versionShort": "v{version}",
+    "status": {
+      "DRAFT": "Qoralama",
+      "SUBMITTED": "Tasdiqlashda",
+      "APPROVED": "Tasdiqlangan",
+      "REJECTED": "Qaytarilgan",
+      "ARCHIVED": "Arxivda"
+    },
+    "rejected": "Reja qaytarildi:",
+    "submit": "Tasdiqlashga yuborish",
+    "submitConfirm": "Yuborilgandan keyin tahrirlab bo'lmaydi (qaytarilsa yoki yangi versiyada mumkin)",
+    "approve": "Tasdiqlash",
+    "reject": "Qaytarish",
+    "rejectNote": "Sabab (o'qituvchi ko'radi)",
+    "newVersion": "Yangi versiya",
+    "topic": "Mavzu",
+    "lessonType": "Dars turi",
+    "period": "Davr",
+    "anyPeriod": "Davr belgilanmagan",
+    "homework": "Uy vazifasi",
+    "moveUp": "Yuqoriga",
+    "moveDown": "Pastga",
+    "removeItem": "Olib tashlash",
+    "addItem": "Mavzu qo'shish",
+    "noItems": "Rejada mavzu yo'q",
+    "noItemsEdit": "Mavzular qo'shing yoki Excel'dan import qiling",
+    "total": "{items} ta mavzu, {hours} soat",
+    "hoursCount": "{count} soat",
+    "lessonTypes": {
+      "NEW": "Yangi mavzu",
+      "PRACTICE": "Amaliy",
+      "REVIEW": "Takrorlash",
+      "CONTROL_WORK": "Nazorat ishi",
+      "BSB": "BSB",
+      "CHSB": "ChSB",
+      "LAB": "Laboratoriya",
+      "OTHER": "Boshqa"
+    }
   }
 }

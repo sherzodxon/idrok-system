@@ -73,8 +73,27 @@ async function seed(url: string) {
       data: { tenantId, academicYearId: year.id, gradeId: grade.id, section: "A", name: "7-A" },
     });
     // Every class has its whole-class teaching group, as the API creates it.
-    await root.teachingGroup.create({
+    const classGroup = await root.teachingGroup.create({
       data: { tenantId, academicYearId: year.id, classGroupId: cls.id, kind: "CLASS", name: "7-A" },
+    });
+    // A teacher who teaches a subject in 7-A: writes curriculum plans.
+    const planner = await root.user.create({
+      data: { tenantId, username: USERS.planner, passwordHash: await hash(PASSWORD), mustChangePassword: false },
+    });
+    await root.userRole.create({ data: { tenantId, userId: planner.id, roleId: roles.TEACHER } });
+    const plannerEmployee = await root.employee.create({
+      data: { tenantId, userId: planner.id, firstName: "Demo", lastName: "Rejachi" },
+    });
+    const planSubject = await root.subject.create({ data: { tenantId, name: "E2E reja fani" } });
+    await root.teacherAssignment.create({
+      data: {
+        tenantId,
+        academicYearId: year.id,
+        teacherId: plannerEmployee.id,
+        teachingGroupId: classGroup.id,
+        subjectId: planSubject.id,
+        validFrom: day("2026-09-01"),
+      },
     });
     const student = await root.student.create({
       data: { tenantId, studentCode: "STD-0001", firstName: "Demo", lastName: "Farzand" },

@@ -8,6 +8,8 @@ const INDEXES = [
   "UserRole_active_unique",
   "TeachingGroup_one_class_group",
   "StudentEnrollment_one_active",
+  "CurriculumPlan_one_open",
+  "CurriculumPlan_one_approved",
 ];
 const CONSTRAINTS = [
   "AcademicYear_dates_check",
@@ -28,8 +30,9 @@ const CONSTRAINTS = [
   "Timetable_no_overlap",
   "TimetableEntry_slot_check",
   "LessonSession_times_check",
+  "PlanItem_hours_check",
 ];
-const TRIGGERS = ["AuditLog_append_only", "TimetableEntry_frozen", "LessonSession_no_delete"];
+const TRIGGERS = ["AuditLog_append_only", "TimetableEntry_frozen", "LessonSession_no_delete", "PlanItem_frozen"];
 
 let client: pg.Client;
 beforeAll(async () => {
