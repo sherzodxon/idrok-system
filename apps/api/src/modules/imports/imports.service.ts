@@ -33,6 +33,15 @@ const toDto = (j: JobRow): ImportJobDto => ({
 
 const include = { fileAsset: { select: { originalName: true } }, resultAsset: { select: { status: true } } } as const;
 
+/**
+ * Without imports.run a caller (a teacher with curriculum.create) sees only their own curriculum plan imports;
+ * any other job does not exist for them.
+ */
+function assertJobAccess(auth: RequestAuth | undefined, job: { kind: string; createdById: string }) {
+  if (!auth || auth.permissions.includes("imports.run")) return;
+  if (job.kind !== "CURRICULUM_PLAN" || job.createdById !== auth.userId) throw notFound();
+}
+
 export class ImportsService {
   constructor(
     private readonly db: Db,
@@ -107,14 +116,15 @@ export class ImportsService {
     return page(items.map(toDto), total, q);
   }
 
-  async get(id: string) {
+  async get(id: string, auth?: RequestAuth) {
     const j = await this.db.importJob.findUnique({ where: { id }, include });
     if (!j) throw notFound();
+    assertJobAccess(auth, j);
     return toDto(j);
   }
 
-  async rows(id: string, q: ListQuery & { status?: "OK" | "WARNING" | "ERROR" | "SKIPPED" }) {
-    await this.get(id); // tenant check: ImportRow has no tenantId of its own
+  async rows(id: string, q: ListQuery & { status?: "OK" | "WARNING" | "ERROR" | "SKIPPED" }, auth?: RequestAuth) {
+    await this.get(id, auth); // tenant and owner check: ImportRow has no tenantId of its own
     const where = { importJobId: id, ...(q.status ? { status: q.status } : {}) };
     const [items, total] = await Promise.all([
       this.db.importRow.findMany({ where, orderBy: { rowNumber: "asc" }, ...skipTake(q) }),
@@ -138,6 +148,9 @@ export class ImportsService {
     await this.db.$transaction(async (tx) => {
       const job = await tx.importJob.findUnique({ where: { id } });
       if (!job) throw notFound();
+      assertJobAccess(auth, job);
+      // A plan is one document: rows with errors are fixed in the file, never skipped (acceptance 9).
+      if (job.kind === "CURRICULUM_PLAN") skipErrors = false;
       const moved = await tx.importJob.updateMany({
         where: { id, status: "PREVIEW_READY", ...(skipErrors ? {} : { errorCount: 0 }) },
         data: { status: "COMMITTING", options: { ...((job.options as object | null) ?? {}), skipErrors } },
@@ -166,7 +179,8 @@ export class ImportsService {
     return this.get(id);
   }
 
-  async cancel(id: string) {
+  async cancel(id: string, auth?: RequestAuth) {
+    await this.get(id, auth);
     const moved = await this.db.importJob.updateMany({
       where: { id, status: { in: ["UPLOADED", "PREVIEW_READY", "FAILED"] } },
       data: { status: "CANCELLED" },

@@ -36,6 +36,7 @@ applied migration — add a new one.
 | `CurriculumPlan_one_approved` | partial unique | ″ | one `APPROVED` version per plan lineage |
 | `PlanItem_hours_check` | CHECK | ″ | `hours` 1..100, `order >= 1` |
 | `PlanItem_frozen` | TRIGGER | ″ | items of a submitted/approved/archived plan cannot change |
+| `PlanAssignment_one_active` | partial unique | `20261102210000_m2_plan_assignments` | one `ACTIVE` plan per group and subject |
 
 Checking a new migration does not touch them:
 

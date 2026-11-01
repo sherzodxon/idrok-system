@@ -1,7 +1,8 @@
 // Excel import column definitions. Labels live in ./labels.{uz,ru}.ts (translation files); the template stores the
 // column keys in a hidden first row, so imports do not depend on the language of the headers (lesson-plan.md §4.2).
 
-export type ImportKindCode = "STUDENTS_GUARDIANS" | "EMPLOYEES_ASSIGNMENTS" | "CLASS_GROUPS" | "SUBJECTS";
+export type ImportKindCode =
+  "STUDENTS_GUARDIANS" | "EMPLOYEES_ASSIGNMENTS" | "CLASS_GROUPS" | "SUBJECTS" | "CURRICULUM_PLAN";
 
 export interface ImportColumn {
   key: string;
@@ -51,6 +52,20 @@ export const IMPORT_COLUMNS: Record<ImportKindCode, readonly ImportColumn[]> = {
     { key: "name", required: true, width: 24 },
     { key: "shortName", width: 12 },
     { key: "code", width: 10 },
+  ],
+  // lesson-plan.md §4.2: № and date are information from the timetable (ROWS mode) and are not imported; the period,
+  // when it names one, binds the topic to it.
+  CURRICULUM_PLAN: [
+    { key: "lessonNo", width: 6 },
+    { key: "periodName", width: 14 },
+    { key: "lessonDate", width: 12 },
+    { key: "topic", required: true, width: 48 },
+    { key: "hours", required: true, width: 8 },
+    { key: "lessonType", width: 18 },
+    { key: "objectives", width: 30 },
+    { key: "homework", width: 30 },
+    { key: "resources", width: 24 },
+    { key: "notes", width: 24 },
   ],
 };
 

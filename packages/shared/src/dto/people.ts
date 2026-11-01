@@ -165,9 +165,11 @@ export const ImportOptionsSchema = z
     validFrom: SchoolDateSchema.optional(),
   })
   .strict();
+/** Every kind a job can have: curriculum plans are uploaded through /curriculum-plans/import. */
+export const ImportJobKindSchema = z.enum([...ImportKindSchema.options, "CURRICULUM_PLAN"]);
 export const ImportJobSchema = z.object({
   id: z.uuid(),
-  kind: ImportKindSchema,
+  kind: ImportJobKindSchema,
   status: z.enum(["UPLOADED", "PARSING", "PREVIEW_READY", "COMMITTING", "COMMITTED", "FAILED", "CANCELLED"]),
   fileName: z.string(),
   summary: z.record(z.string(), z.number()).nullable(),

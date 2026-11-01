@@ -105,6 +105,33 @@ export const CurriculumPlanListQuerySchema = ListQuerySchema.extend({
     .enum(["true", "false"])
     .transform((v) => v === "true")
     .optional(),
+  /** The plan an import created. */
+  sourceImportId: z.uuid().optional(),
+});
+
+export const PlanImportOptionsSchema = z
+  .object({
+    academicYearId: z.uuid(),
+    subjectId: z.uuid(),
+    gradeId: z.uuid(),
+    mode: z.enum(["ROWS", "TOPICS"]),
+    /** A new version of this plan instead of a new plan. */
+    planId: z.uuid().optional(),
+    /** Compares the hours with this group's lessons in the preview. */
+    teachingGroupId: z.uuid().optional(),
+    title: z.string().trim().min(1).max(200).optional(),
+  })
+  .strict();
+export type PlanImportOptions = z.infer<typeof PlanImportOptionsSchema>;
+
+export const PlanTemplateQuerySchema = z.object({
+  academicYearId: z.uuid(),
+  subjectId: z.uuid(),
+  gradeId: z.uuid(),
+  mode: z.enum(["ROWS", "TOPICS"]),
+  /** ROWS: the group whose lessons fill the rows. */
+  teachingGroupId: z.uuid().optional(),
+  locale: z.enum(["uz", "ru"]).default("uz"),
 });
 
 export const CreateCurriculumPlanSchema = z
@@ -123,3 +150,30 @@ export const UpdateCurriculumPlanSchema = z
   .strict();
 
 export const RejectCurriculumPlanSchema = z.object({ note: z.string().trim().min(1).max(1000) }).strict();
+
+// ---------------------------------------------------------------- applying a plan to groups (§4.1, §4.4)
+
+export const AssignPlanSchema = z.object({ teachingGroupIds: z.array(z.uuid()).min(1).max(30) }).strict();
+
+export const PlacementWarningSchema = z.object({
+  kind: z.enum(["NOT_PLACED", "PERIOD_OVERFLOW"]),
+  itemId: z.uuid(),
+  topicTitle: z.string(),
+  hours: z.number().int(),
+});
+
+export const PlanAssignmentSchema = z.object({
+  id: z.uuid(),
+  planId: z.uuid(),
+  teachingGroupId: z.uuid(),
+  teachingGroupName: z.string(),
+  status: z.enum(["ACTIVE", "SUPERSEDED", "REMOVED"]),
+  appliedAt: z.string(),
+  /** lessons of the group in the subject this year (cancelled ones excluded) */
+  lessons: z.number().int(),
+  plannedHours: z.number().int(),
+  placed: z.number().int(),
+  freeLessons: z.number().int(),
+  warnings: z.array(PlacementWarningSchema),
+});
+export type PlanAssignmentDto = z.infer<typeof PlanAssignmentSchema>;

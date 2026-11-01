@@ -1,4 +1,4 @@
-import type { Router } from "express";
+import type { Request, Response, Router } from "express";
 import multer from "multer";
 import { z } from "zod";
 import {
@@ -23,9 +23,23 @@ import { ImportsService, MAX_IMPORT_BYTES } from "./imports.service";
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_IMPORT_BYTES, files: 1, fields: 5 } });
 
-const UploadFieldsSchema = z.object({
-  kind: ImportKindSchema,
-  options: z
+/** Reads a multipart upload (one .xlsx in "file"); also used by the curriculum plan import. */
+export async function receiveUpload(req: Request, res: Response): Promise<Express.Multer.File> {
+  await new Promise<void>((resolve, reject) =>
+    upload.single("file")(req, res, (err: unknown) => {
+      if (err instanceof multer.MulterError)
+        reject(new AppError("VALIDATION_ERROR", 400, { fields: [{ path: "file", code: err.code.toLowerCase() }] }));
+      else if (err) reject(err);
+      else resolve();
+    }),
+  );
+  if (!req.file) throw new AppError("VALIDATION_ERROR", 400, { fields: [{ path: "file", code: "required" }] });
+  return req.file;
+}
+
+/** JSON in a multipart text field. */
+export const jsonField = <T extends z.ZodType>(schema: T) =>
+  z
     .string()
     .max(2_000)
     .optional()
@@ -38,8 +52,12 @@ const UploadFieldsSchema = z.object({
         return z.NEVER;
       }
     })
-    .pipe(ImportOptionsSchema),
-});
+    .pipe(schema);
+
+// Teachers reach their own curriculum plan imports; everything else needs imports.run (checked in the service).
+const JOB_ACCESS = { anyOf: ["imports.run", "curriculum.create"] } as const;
+
+const UploadFieldsSchema = z.object({ kind: ImportKindSchema, options: jsonField(ImportOptionsSchema) });
 
 const TemplateParams = z.object({ kind: ImportKindSchema });
 const TemplateQuery = z.object({ locale: z.enum(["uz", "ru"]).default("uz") });
@@ -81,17 +99,9 @@ export function importsRoutes(router: Router, registry: OpenApiRegistry, deps: A
       },
     },
     async ({ req, res, auth }) => {
-      await new Promise<void>((resolve, reject) =>
-        upload.single("file")(req, res, (err: unknown) => {
-          if (err instanceof multer.MulterError)
-            reject(new AppError("VALIDATION_ERROR", 400, { fields: [{ path: "file", code: err.code.toLowerCase() }] }));
-          else if (err) reject(err);
-          else resolve();
-        }),
-      );
+      const file = await receiveUpload(req, res);
       const fields = parse(UploadFieldsSchema, req.body ?? {});
-      if (!req.file) throw new AppError("VALIDATION_ERROR", 400, { fields: [{ path: "file", code: "required" }] });
-      const job = await service.upload(auth, { kind: fields.kind, options: fields.options, file: req.file });
+      const job = await service.upload(auth, { kind: fields.kind, options: fields.options, file });
       res.status(202).json(job);
     },
   );
@@ -114,11 +124,11 @@ export function importsRoutes(router: Router, registry: OpenApiRegistry, deps: A
       path: "/imports/:id",
       summary: "Import status and summary",
       tags,
-      access: "imports.run",
+      access: JOB_ACCESS,
       params: IdParamsSchema,
       responses: { 200: { description: "Import", schema: ImportJobSchema } },
     },
-    async ({ res, params }) => res.json(await service.get(params.id)),
+    async ({ res, auth, params }) => res.json(await service.get(params.id, auth)),
   );
   route(
     {
@@ -126,12 +136,12 @@ export function importsRoutes(router: Router, registry: OpenApiRegistry, deps: A
       path: "/imports/:id/rows",
       summary: "Preview rows with their status and messages",
       tags,
-      access: "imports.run",
+      access: JOB_ACCESS,
       params: IdParamsSchema,
       query: ImportRowsQuerySchema,
       responses: { 200: { description: "Rows", schema: pageOf(ImportRowSchema) } },
     },
-    async ({ res, params, query }) => res.json(await service.rows(params.id, query)),
+    async ({ res, auth, params, query }) => res.json(await service.rows(params.id, query, auth)),
   );
   route(
     {
@@ -139,7 +149,7 @@ export function importsRoutes(router: Router, registry: OpenApiRegistry, deps: A
       path: "/imports/:id/commit",
       summary: "Apply the preview (once); the worker creates the records",
       tags,
-      access: "imports.run",
+      access: JOB_ACCESS,
       params: IdParamsSchema,
       body: CommitImportSchema,
       responses: {
@@ -155,11 +165,11 @@ export function importsRoutes(router: Router, registry: OpenApiRegistry, deps: A
       path: "/imports/:id/cancel",
       summary: "Cancel an import that was not applied",
       tags,
-      access: "imports.run",
+      access: JOB_ACCESS,
       params: IdParamsSchema,
       responses: { 200: { description: "Cancelled", schema: ImportJobSchema } },
     },
-    async ({ res, params }) => res.json(await service.cancel(params.id)),
+    async ({ res, auth, params }) => res.json(await service.cancel(params.id, auth)),
   );
   route(
     {

@@ -70,6 +70,7 @@ enum ImportKind {
   EMPLOYEES_ASSIGNMENTS
   CLASS_GROUPS
   SUBJECTS
+  CURRICULUM_PLAN
 }
 
 enum ImportStatus {
@@ -195,6 +196,12 @@ enum CurriculumPlanStatus {
   ARCHIVED
 }
 
+enum PlanAssignmentStatus {
+  ACTIVE
+  SUPERSEDED
+  REMOVED
+}
+
 enum LessonType {
   NEW
   PRACTICE
@@ -254,6 +261,7 @@ model Tenant {
   topics               Topic[]
   curriculumPlans      CurriculumPlan[]
   planItems            PlanItem[]
+  planAssignments      PlanAssignment[]
 }
 
 model SchoolSettings {
@@ -630,6 +638,7 @@ model TeachingGroup {
   teacherAssignments TeacherAssignment[]
   timetableEntries   TimetableEntry[]
   lessonSessions     LessonSession[]
+  planAssignments    PlanAssignment[]
 
   // SQL: TeachingGroup_one_class_group, TeachingGroup_class_check
   @@index([tenantId, academicYearId])
@@ -1039,6 +1048,9 @@ model LessonSession {
   source              LessonSessionSource @default(TIMETABLE)
   timetableEntryId    String?             @db.Uuid
   timetableEntry      TimetableEntry?     @relation(fields: [timetableEntryId], references: [id], onDelete: Restrict)
+  // the planned topic (lesson-plan.md §4.4); fixed once the lesson is held or in the past
+  planItemId          String?             @db.Uuid
+  planItem            PlanItem?           @relation(fields: [planItemId], references: [id], onDelete: Restrict)
   actualTopicNote     String?
   heldMarkedAt        DateTime?           @db.Timestamptz(3)
   heldMarkedById      String?             @db.Uuid
@@ -1112,7 +1124,8 @@ model CurriculumPlan {
   createdAt      DateTime             @default(now()) @db.Timestamptz(3)
   updatedAt      DateTime             @updatedAt @db.Timestamptz(3)
 
-  items PlanItem[]
+  items       PlanItem[]
+  assignments PlanAssignment[]
 
   // SQL: CurriculumPlan_one_open, CurriculumPlan_one_approved (per lineage)
   @@unique([lineageId, version])
@@ -1138,6 +1151,29 @@ model PlanItem {
   resources  String?
   notes      String?
 
+  lessonSessions LessonSession[]
+
   // SQL: PlanItem_hours_check, PlanItem_frozen
   @@unique([planId, order])
+}
+
+// A plan template applied to one group: its topics are placed on that group's lessons of the plan's subject.
+model PlanAssignment {
+  id              String               @id @default(uuid(7)) @db.Uuid
+  tenantId        String               @db.Uuid
+  tenant          Tenant               @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  planId          String               @db.Uuid
+  plan            CurriculumPlan       @relation(fields: [planId], references: [id], onDelete: Restrict)
+  teachingGroupId String               @db.Uuid
+  teachingGroup   TeachingGroup        @relation(fields: [teachingGroupId], references: [id], onDelete: Restrict)
+  // copy of plan.subjectId for the partial unique index
+  subjectId       String               @db.Uuid
+  status          PlanAssignmentStatus @default(ACTIVE)
+  appliedAt       DateTime             @default(now()) @db.Timestamptz(3)
+  appliedById     String               @db.Uuid
+  endedAt         DateTime?            @db.Timestamptz(3)
+
+  // SQL: PlanAssignment_one_active — one active plan per group and subject
+  @@index([planId])
+  @@index([teachingGroupId, subjectId])
 }
