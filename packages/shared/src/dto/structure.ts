@@ -40,6 +40,7 @@ export const ClassGroupSchema = z.object({
   name: z.string(),
   homeroomTeacherId: z.uuid().nullable(),
   capacity: z.number().int().nullable(),
+  shiftId: z.uuid().nullable(),
   studentCount: z.number().int(),
   classTeachingGroupId: z.uuid().nullable(),
 });
@@ -57,6 +58,7 @@ export const CreateClassGroupSchema = z
     section: z.string().trim().min(1).max(10),
     homeroomTeacherId: z.uuid().nullable().optional(),
     capacity: z.number().int().positive().max(60).nullable().optional(),
+    shiftId: z.uuid().nullable().optional(),
   })
   .strict();
 
@@ -64,6 +66,7 @@ export const UpdateClassGroupSchema = z
   .object({
     homeroomTeacherId: z.uuid().nullable(),
     capacity: z.number().int().positive().max(60).nullable(),
+    shiftId: z.uuid().nullable(),
   })
   .partial()
   .strict();

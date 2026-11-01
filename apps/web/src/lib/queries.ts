@@ -2,7 +2,15 @@
 
 // Shared reference data for forms and filters (cached by TanStack Query).
 import { useQuery } from "@tanstack/react-query";
-import type { AcademicYearDto, ClassGroupDto, EmployeeDto, Page, RoleDto, TeachingGroupDto } from "@idrok/shared";
+import type {
+  AcademicYearDto,
+  ClassGroupDto,
+  EmployeeDto,
+  Page,
+  RoleDto,
+  ShiftDto,
+  TeachingGroupDto,
+} from "@idrok/shared";
 import { useApi } from "@/components/providers/app-providers";
 
 export function useYears() {
@@ -70,3 +78,8 @@ export function useRoles(enabled = true) {
 
 export const personName = (p: { lastName: string; firstName: string; middleName?: string | null }) =>
   [p.lastName, p.firstName, p.middleName].filter(Boolean).join(" ");
+
+export function useShifts() {
+  const api = useApi();
+  return useQuery({ queryKey: ["shifts"], queryFn: () => api.get<ShiftDto[]>("/shifts") });
+}

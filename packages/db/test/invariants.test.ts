@@ -18,6 +18,12 @@ const CONSTRAINTS = [
   "StudentEnrollment_dates_check",
   "TeacherAssignment_dates_check",
   "SchoolBranding_color_check",
+  "AcademicPeriod_dates_check",
+  "AcademicPeriod_no_overlap",
+  "SchoolWeek_weekdays_check",
+  "CalendarDay_override_check",
+  "Shift_minutes_check",
+  "BellSlot_minutes_check",
 ];
 const TRIGGERS = ["AuditLog_append_only"];
 

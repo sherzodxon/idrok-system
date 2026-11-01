@@ -34,6 +34,16 @@
 | `imports.run` | infra | ✓ | ✓ |  | ✓ |  |  |  |  |  |
 | `exports.run` | infra | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |  |  |
 | `audit_logs.view` | infra | ✓ | ✓ | ✓ | ✓ |  |  |  |  |  |
+| `calendar.manage` | calendar | ✓ | ✓ |  | ✓ |  |  |  |  |  |
+| `timetable.view` | calendar | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |
+| `timetable.manage` | calendar | ✓ | ✓ |  | ✓ |  |  |  |  |  |
+| `timetable.publish` | calendar | ✓ | ✓ |  | ✓ |  |  |  |  |  |
+| `lessons.view` | calendar | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |
+| `lessons.mark` | calendar | ✓ | ✓ |  |  |  | ✓ | ✓ |  |  |
+| `curriculum.view` | curriculum | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |
+| `curriculum.create` | curriculum | ✓ | ✓ |  |  |  | ✓ | ✓ |  |  |
+| `curriculum.approve` | curriculum | ✓ | ✓ |  | ✓ | ✓ |  |  |  |  |
+| `curriculum.export` | curriculum | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |
 | `portal.student` | portal |  |  |  |  |  |  |  | ✓ |  |
 | `portal.guardian` | portal |  |  |  |  |  |  |  |  | ✓ |
 
@@ -45,7 +55,7 @@
 | Admin | `SCHOOL_ADMIN` | Butun maktab |
 | Direktor | `DIRECTOR` | Butun maktab, faqat ko'rish va eksport |
 | Dir. o'rinbosari | `DEPUTY_DIRECTOR` | Butun maktab; foydalanuvchi va rollarni boshqarmaydi |
-| Uslubchi | `METHODIST` | Butun maktab, o'quv tuzilmasini ko'rish (M2 da reja tasdiqlash qo'shiladi) |
+| Uslubchi | `METHODIST` | Butun maktab: o'quv tuzilmasi va jadvalni ko'rish, dars rejalarini tasdiqlash |
 | O'qituvchi | `TEACHER` | Faqat o'ziga biriktirilgan guruhlar va ularning o'quvchilari |
 | Sinf rahbari | `CLASS_TEACHER` | O'qituvchi doirasi + o'z sinfi o'quvchilari va ularning vasiylari |
 | O'quvchi | `STUDENT` | Faqat o'zi |

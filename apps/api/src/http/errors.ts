@@ -17,6 +17,13 @@ export class AppError extends Error {
 }
 
 export const notFound = (details?: Record<string, unknown>) => new AppError("NOT_FOUND", 404, details);
+/** True when a database error comes from the named constraint (CHECK, EXCLUDE, unique index). */
+export function isConstraintError(err: unknown, constraint: string): boolean {
+  if (!(err instanceof Error)) return false;
+  const meta = err instanceof Prisma.PrismaClientKnownRequestError ? JSON.stringify(err.meta ?? {}) : "";
+  return `${err.message} ${meta}`.includes(constraint);
+}
+
 export const forbidden = (details?: Record<string, unknown>) => new AppError("FORBIDDEN", 403, details);
 
 const body = (code: ErrorCode, details?: Record<string, unknown>): ApiErrorBody => ({
@@ -33,7 +40,8 @@ export const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
     return;
   }
   if (err instanceof ZodError) {
-    const fields = err.issues.map((i) => ({ path: i.path.join("."), code: i.code }));
+    // Refinements carry their machine code in the message (e.g. end_before_start).
+    const fields = err.issues.map((i) => ({ path: i.path.join("."), code: i.code === "custom" ? i.message : i.code }));
     res.status(400).json(body("VALIDATION_ERROR", { fields }));
     return;
   }

@@ -130,6 +130,7 @@ export class StructureService {
     name: true,
     homeroomTeacherId: true,
     capacity: true,
+    shiftId: true,
     teachingGroups: { where: { kind: "CLASS" as const }, select: { id: true } },
     _count: { select: { enrollments: { where: { status: "ACTIVE" as const } } } },
   } satisfies Prisma.ClassGroupSelect;
@@ -144,6 +145,7 @@ export class StructureService {
       name: c.name,
       homeroomTeacherId: c.homeroomTeacherId,
       capacity: c.capacity,
+      shiftId: c.shiftId,
       studentCount: c._count.enrollments,
       classTeachingGroupId: c.teachingGroups[0]?.id ?? null,
     };
@@ -197,6 +199,8 @@ export class StructureService {
       if (!year || !grade) throw notFound();
       if (input.homeroomTeacherId && !(await tx.employee.findUnique({ where: { id: input.homeroomTeacherId } })))
         throw notFound();
+      if (input.shiftId && !(await tx.shift.findFirst({ where: { id: input.shiftId, archivedAt: null } })))
+        throw notFound();
       const name = `${grade.level}-${input.section}`;
       const cls = await tx.classGroup.create({
         data: {
@@ -207,6 +211,7 @@ export class StructureService {
           name,
           homeroomTeacherId: input.homeroomTeacherId ?? null,
           capacity: input.capacity ?? null,
+          shiftId: input.shiftId ?? null,
         },
         select: { id: true },
       });
@@ -231,6 +236,8 @@ export class StructureService {
       const before = await tx.classGroup.findUnique({ where: { id } });
       if (!before) throw notFound();
       if (input.homeroomTeacherId && !(await tx.employee.findUnique({ where: { id: input.homeroomTeacherId } })))
+        throw notFound();
+      if (input.shiftId && !(await tx.shift.findFirst({ where: { id: input.shiftId, archivedAt: null } })))
         throw notFound();
       await tx.classGroup.update({ where: { id }, data: input });
       await writeAudit(tx, {
