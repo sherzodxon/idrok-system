@@ -24,8 +24,11 @@ const CONSTRAINTS = [
   "CalendarDay_override_check",
   "Shift_minutes_check",
   "BellSlot_minutes_check",
+  "Timetable_published_check",
+  "Timetable_no_overlap",
+  "TimetableEntry_slot_check",
 ];
-const TRIGGERS = ["AuditLog_append_only"];
+const TRIGGERS = ["AuditLog_append_only", "TimetableEntry_frozen"];
 
 let client: pg.Client;
 beforeAll(async () => {
@@ -57,7 +60,7 @@ describe("SQL invariants", () => {
       "SELECT tgname FROM pg_trigger WHERE NOT tgisinternal AND tgname = ANY($1)",
       [TRIGGERS],
     );
-    expect(rows.map((r) => r.tgname)).toEqual(TRIGGERS);
+    expect(rows.map((r) => r.tgname).sort()).toEqual([...TRIGGERS].sort());
   });
 
   it("the schema has no drift against the migrations", async () => {

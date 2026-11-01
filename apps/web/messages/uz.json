@@ -84,7 +84,11 @@
       "PERIOD_CLOSED": "Davr yopilgan",
       "DAY_EXISTS": "Bu sanalar allaqachon belgilangan",
       "SHIFT_IN_USE": "Smenada sinflar bor — avval ularni boshqa smenaga o'tkazing",
-      "BELL_SCHEDULE_EXISTS": "Bu smena uchun shu sanadan jadval bor"
+      "BELL_SCHEDULE_EXISTS": "Bu smena uchun shu sanadan jadval bor",
+      "TIMETABLE_NOT_DRAFT": "E'lon qilingan jadval o'zgarmaydi — yangi versiya yarating",
+      "TIMETABLE_HAS_CONFLICTS": "Avval to'qnashuvlarni tuzating",
+      "TIMETABLE_EMPTY": "Jadvalda dars yo'q",
+      "TIMETABLE_OVERLAP": "Bu sanaga boshqa e'lon qilingan versiya amal qiladi"
     }
   },
   "states": {
@@ -110,7 +114,8 @@
     "openMenu": "Menyuni ochish",
     "collapse": "Menyuni yig'ish",
     "expand": "Menyuni yoyish",
-    "calendar": "Kalendar"
+    "calendar": "Kalendar",
+    "timetable": "Dars jadvali"
   },
   "shell": {
     "context": "Ish rejimi",
@@ -200,7 +205,8 @@
     "range_too_long": "Oraliq juda uzun (120 kungacha)",
     "overlaps_previous": "Oldingi dars bilan ustma-ust tushadi",
     "duplicate": "Takrorlangan",
-    "invalid_time": "Vaqt SS:DD ko'rinishida bo'lsin"
+    "invalid_time": "Vaqt SS:DD ko'rinishida bo'lsin",
+    "not_after_previous": "Sana oldingi e'lon qilingan versiyadan keyin bo'lsin"
   },
   "people": {
     "lastName": "Familiya",
@@ -665,5 +671,45 @@
     "room": "Xona",
     "addRoom": "Xona qo'shish",
     "noRooms": "Xonalar kiritilmagan"
+  },
+  "timetable": {
+    "title": "Dars jadvali",
+    "version": "Versiya",
+    "versionLabel": "{version}-versiya · {status}",
+    "newVersion": "Yangi versiya",
+    "newVersionCopy": "{version}-versiyaning nusxasi qoralama sifatida yaratiladi",
+    "newVersionEmpty": "Bo'sh qoralama yaratiladi",
+    "noVersions": "Jadval hali yo'q. \"Yangi versiya\" tugmasini bosing",
+    "status": {
+      "DRAFT": "Qoralama",
+      "PUBLISHED": "E'lon qilingan",
+      "ARCHIVED": "Arxivda"
+    },
+    "validRange": "{from} — {to}",
+    "validFromOpen": "{from} dan",
+    "conflictCount": "To'qnashuvlar: {count}",
+    "publish": "E'lon qilish",
+    "publishHint": "E'lon qilingan jadval o'zgarmaydi. Oldingi versiya shu sanadan bir kun oldin tugaydi. Darslar keyingi qadamda shu jadval bo'yicha hisoblanadi",
+    "deleteDraft": "Qoralamani o'chirish",
+    "deleteDraftConfirm": "Qoralama va undagi barcha darslar o'chiriladi",
+    "byClass": "Sinf bo'yicha",
+    "byTeacher": "O'qituvchi bo'yicha",
+    "unassigned": "Biriktirilmagan",
+    "cellTitle": "{className}, {weekday}, {lesson}-dars",
+    "removeLesson": "Darsni olib tashlash",
+    "wholeClass": "Butun sinf",
+    "teacherSuggested": "Biriktirishdan taklif qilindi",
+    "weekType": "Hafta",
+    "weekTypes": {
+      "ALL": "Har hafta",
+      "ODD": "Toq hafta",
+      "EVEN": "Juft hafta"
+    },
+    "conflicts": {
+      "TEACHER_BUSY": "{weekday}, {lesson}-dars: o'qituvchi bir vaqtda ikki joyda",
+      "GROUP_BUSY": "{weekday}, {lesson}-dars: guruhda ikkita dars",
+      "ROOM_BUSY": "{weekday}, {lesson}-dars: xona band",
+      "CLASS_AND_SUBGROUP": "{weekday}, {lesson}-dars: butun sinf va uning guruhchasi bir vaqtda"
+    }
   }
 }

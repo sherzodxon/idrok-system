@@ -84,7 +84,11 @@
       "PERIOD_CLOSED": "Период закрыт",
       "DAY_EXISTS": "Эти даты уже отмечены",
       "SHIFT_IN_USE": "В смене есть классы — сначала переведите их",
-      "BELL_SCHEDULE_EXISTS": "Для этой смены с этой даты расписание уже есть"
+      "BELL_SCHEDULE_EXISTS": "Для этой смены с этой даты расписание уже есть",
+      "TIMETABLE_NOT_DRAFT": "Опубликованное расписание не меняется — создайте новую версию",
+      "TIMETABLE_HAS_CONFLICTS": "Сначала устраните конфликты",
+      "TIMETABLE_EMPTY": "В расписании нет уроков",
+      "TIMETABLE_OVERLAP": "На эту дату действует другая опубликованная версия"
     }
   },
   "states": {
@@ -110,7 +114,8 @@
     "openMenu": "Открыть меню",
     "collapse": "Свернуть меню",
     "expand": "Развернуть меню",
-    "calendar": "Календарь"
+    "calendar": "Календарь",
+    "timetable": "Расписание"
   },
   "shell": {
     "context": "Режим работы",
@@ -200,7 +205,8 @@
     "range_too_long": "Слишком длинный диапазон (до 120 дней)",
     "overlaps_previous": "Пересекается с предыдущим уроком",
     "duplicate": "Повторяется",
-    "invalid_time": "Время в формате ЧЧ:ММ"
+    "invalid_time": "Время в формате ЧЧ:ММ",
+    "not_after_previous": "Дата должна быть позже предыдущей опубликованной версии"
   },
   "people": {
     "lastName": "Фамилия",
@@ -665,5 +671,45 @@
     "room": "Кабинет",
     "addRoom": "Добавить кабинет",
     "noRooms": "Кабинеты не заданы"
+  },
+  "timetable": {
+    "title": "Расписание уроков",
+    "version": "Версия",
+    "versionLabel": "Версия {version} · {status}",
+    "newVersion": "Новая версия",
+    "newVersionCopy": "Будет создан черновик — копия версии {version}",
+    "newVersionEmpty": "Будет создан пустой черновик",
+    "noVersions": "Расписания ещё нет. Нажмите «Новая версия»",
+    "status": {
+      "DRAFT": "Черновик",
+      "PUBLISHED": "Опубликовано",
+      "ARCHIVED": "В архиве"
+    },
+    "validRange": "{from} — {to}",
+    "validFromOpen": "с {from}",
+    "conflictCount": "Конфликтов: {count}",
+    "publish": "Опубликовать",
+    "publishHint": "Опубликованное расписание не меняется. Предыдущая версия закончится накануне этой даты. Уроки затем рассчитываются по нему",
+    "deleteDraft": "Удалить черновик",
+    "deleteDraftConfirm": "Черновик и все его уроки будут удалены",
+    "byClass": "По классу",
+    "byTeacher": "По учителю",
+    "unassigned": "Не назначен",
+    "cellTitle": "{className}, {weekday}, {lesson}-й урок",
+    "removeLesson": "Убрать урок",
+    "wholeClass": "Весь класс",
+    "teacherSuggested": "Предложено по назначению",
+    "weekType": "Неделя",
+    "weekTypes": {
+      "ALL": "Каждую неделю",
+      "ODD": "Нечётная",
+      "EVEN": "Чётная"
+    },
+    "conflicts": {
+      "TEACHER_BUSY": "{weekday}, {lesson}-й урок: учитель в двух местах сразу",
+      "GROUP_BUSY": "{weekday}, {lesson}-й урок: у группы два урока",
+      "ROOM_BUSY": "{weekday}, {lesson}-й урок: кабинет занят",
+      "CLASS_AND_SUBGROUP": "{weekday}, {lesson}-й урок: весь класс и его подгруппа одновременно"
+    }
   }
 }

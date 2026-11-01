@@ -26,9 +26,13 @@ applied migration — add a new one.
 | `CalendarDay_override_check` | CHECK | ″ | `followsWeekday` (1..7) exactly on `WORKING_OVERRIDE` days |
 | `Shift_minutes_check` | CHECK | ″ | `0 <= startMinute < endMinute <= 1440` |
 | `BellSlot_minutes_check` | CHECK | ″ | lesson number 0..20, start before end within the day |
+| `Timetable_published_check` | CHECK | `20261102120000_m2_timetable` | published/archived versions have `validFrom`, `publishedAt`; `validFrom <= validTo` |
+| `Timetable_no_overlap` | EXCLUDE (btree_gist, partial) | ″ | published versions of a year never cover the same date |
+| `TimetableEntry_slot_check` | CHECK | ″ | weekday 1..7, lesson number 0..20 |
+| `TimetableEntry_frozen` | TRIGGER | ″ | entries of a non-`DRAFT` timetable cannot be inserted, changed or deleted |
 
 Checking a new migration does not touch them:
 
 ```bash
-grep -nE '_one_|_check|_no_overlap|_append_only|_active_unique' packages/db/prisma/migrations/<new>/migration.sql
+grep -nE '_one_|_check|_no_overlap|_append_only|_active_unique|_frozen' packages/db/prisma/migrations/<new>/migration.sql
 ```

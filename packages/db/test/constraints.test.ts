@@ -206,3 +206,61 @@ describe("calendar (M2)", () => {
     ).rejects.toThrow();
   });
 });
+
+describe("timetable (M2)", () => {
+  async function timetableFixture() {
+    const { year, cls } = await yearAndClass();
+    const group = await root.teachingGroup.create({
+      data: { tenantId, academicYearId: year.id, classGroupId: cls.id, kind: "CLASS", name: cls.name },
+    });
+    const subject = await root.subject.create({ data: { tenantId, name: `Demo fan ${crypto.randomUUID()}` } });
+    const teacher = await root.employee.create({ data: { tenantId, firstName: "Demo", lastName: "Ustoz" } });
+    const createdById = crypto.randomUUID();
+    const draft = (version: number) =>
+      root.timetable.create({ data: { tenantId, academicYearId: year.id, version, createdById } });
+    const entry = (timetableId: string) => ({
+      tenantId,
+      timetableId,
+      teachingGroupId: group.id,
+      subjectId: subject.id,
+      teacherId: teacher.id,
+      weekday: 1,
+      lessonNumber: 1,
+    });
+    return { year, draft, entry };
+  }
+
+  it("published versions of a year never cover the same date", async () => {
+    const { draft } = await timetableFixture();
+    const v1 = await draft(1);
+    const v2 = await draft(2);
+    const publish = (id: string, from: string, to: string | null) =>
+      root.timetable.update({
+        where: { id },
+        data: { status: "PUBLISHED", validFrom: day(from), validTo: to ? day(to) : null, publishedAt: new Date() },
+      });
+    await publish(v1.id, "2026-09-01", null);
+    await expect(publish(v2.id, "2026-11-01", null)).rejects.toThrow();
+    await publish(v1.id, "2026-09-01", "2026-10-31");
+    await publish(v2.id, "2026-11-01", null);
+    await expect(
+      root.timetable.update({ where: { id: (await draft(3)).id }, data: { status: "PUBLISHED" } }),
+    ).rejects.toThrow();
+  });
+
+  it("entries of a published timetable are frozen; draft entries are free", async () => {
+    const { draft, entry } = await timetableFixture();
+    const tt = await draft(1);
+    const e = await root.timetableEntry.create({ data: entry(tt.id) });
+    await root.timetableEntry.update({ where: { id: e.id }, data: { lessonNumber: 2 } });
+    await root.timetable.update({
+      where: { id: tt.id },
+      data: { status: "PUBLISHED", validFrom: day("2026-09-01"), publishedAt: new Date() },
+    });
+    await expect(root.timetableEntry.update({ where: { id: e.id }, data: { lessonNumber: 3 } })).rejects.toThrow();
+    await expect(root.timetableEntry.create({ data: entry(tt.id) })).rejects.toThrow();
+    await expect(root.timetableEntry.delete({ where: { id: e.id } })).rejects.toThrow();
+    await expect(root.timetable.delete({ where: { id: tt.id } })).rejects.toThrow();
+    await expect(root.timetableEntry.create({ data: { ...entry((await draft(2)).id), weekday: 8 } })).rejects.toThrow();
+  });
+});

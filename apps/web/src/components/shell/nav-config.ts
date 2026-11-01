@@ -1,6 +1,7 @@
 import {
   BookOpen,
   CalendarDays,
+  CalendarRange,
   FileSpreadsheet,
   LayoutDashboard,
   Settings,
@@ -21,6 +22,7 @@ export interface NavItem {
     | "employees"
     | "structure"
     | "calendar"
+    | "timetable"
     | "imports"
     | "settings"
     | "myGroups";
@@ -38,6 +40,7 @@ export const NAV: Record<NavContext, NavItem[]> = {
     { key: "employees", href: "/admin/employees", icon: UserRound, permission: "employees.view" },
     { key: "structure", href: "/admin/structure", icon: BookOpen, permission: "class_groups.view" },
     { key: "calendar", href: "/admin/calendar", icon: CalendarDays, permission: "calendar.manage" },
+    { key: "timetable", href: "/admin/timetable", icon: CalendarRange, permission: "timetable.manage" },
     { key: "imports", href: "/admin/imports", icon: FileSpreadsheet, permission: "imports.run" },
     { key: "settings", href: "/admin/settings", icon: Settings, permission: "settings.view" },
   ],
