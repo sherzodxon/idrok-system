@@ -228,45 +228,52 @@ model Tenant {
   settings SchoolSettings?
   branding SchoolBranding?
 
-  users                User[]
-  authSessions         AuthSession[]
-  roles                Role[]
-  userRoles            UserRole[]
-  auditLogs            AuditLog[]
-  fileAssets           FileAsset[]
-  importJobs           ImportJob[]
-  idempotencyRecords   IdempotencyRecord[]
-  outboxEvents         OutboxEvent[]
-  academicYears        AcademicYear[]
-  grades               Grade[]
-  classGroups          ClassGroup[]
-  teachingGroups       TeachingGroup[]
-  teachingGroupMembers TeachingGroupMember[]
-  subjects             Subject[]
-  employees            Employee[]
-  teacherAssignments   TeacherAssignment[]
-  students             Student[]
-  guardians            Guardian[]
-  studentGuardians     StudentGuardian[]
-  studentEnrollments   StudentEnrollment[]
-  academicPeriods      AcademicPeriod[]
-  schoolWeeks          SchoolWeek[]
-  calendarDays         CalendarDay[]
-  shifts               Shift[]
-  bellSchedules        BellSchedule[]
-  rooms                Room[]
-  timetables           Timetable[]
-  timetableEntries     TimetableEntry[]
-  lessonSessions       LessonSession[]
-  topics               Topic[]
-  curriculumPlans      CurriculumPlan[]
-  planItems            PlanItem[]
-  planAssignments      PlanAssignment[]
-  scoreCriteria        ScoreCriterion[]
-  lessonAttendance     LessonAttendance[]
-  scoreEntries         ScoreEntry[]
-  scoreLimitRules      ScoreLimitRule[]
-  scoreSettings        ScoreSettings?
+  users                    User[]
+  authSessions             AuthSession[]
+  roles                    Role[]
+  userRoles                UserRole[]
+  auditLogs                AuditLog[]
+  fileAssets               FileAsset[]
+  importJobs               ImportJob[]
+  idempotencyRecords       IdempotencyRecord[]
+  outboxEvents             OutboxEvent[]
+  academicYears            AcademicYear[]
+  grades                   Grade[]
+  classGroups              ClassGroup[]
+  teachingGroups           TeachingGroup[]
+  teachingGroupMembers     TeachingGroupMember[]
+  subjects                 Subject[]
+  employees                Employee[]
+  teacherAssignments       TeacherAssignment[]
+  students                 Student[]
+  guardians                Guardian[]
+  studentGuardians         StudentGuardian[]
+  studentEnrollments       StudentEnrollment[]
+  academicPeriods          AcademicPeriod[]
+  schoolWeeks              SchoolWeek[]
+  calendarDays             CalendarDay[]
+  shifts                   Shift[]
+  bellSchedules            BellSchedule[]
+  rooms                    Room[]
+  timetables               Timetable[]
+  timetableEntries         TimetableEntry[]
+  lessonSessions           LessonSession[]
+  topics                   Topic[]
+  curriculumPlans          CurriculumPlan[]
+  planItems                PlanItem[]
+  planAssignments          PlanAssignment[]
+  scoreCriteria            ScoreCriterion[]
+  lessonAttendance         LessonAttendance[]
+  scoreEntries             ScoreEntry[]
+  scoreLimitRules          ScoreLimitRule[]
+  scoreSettings            ScoreSettings?
+  assessmentPolicies       AssessmentPolicy[]
+  assessmentPolicyVersions AssessmentPolicyVersion[]
+  policyBindings           PolicyBinding[]
+  gradeScales              GradeScale[]
+  manualAssessmentScores   ManualAssessmentScore[]
+  periodResults            PeriodResult[]
+  periodCloseRuns          PeriodCloseRun[]
 }
 
 model SchoolSettings {
@@ -682,14 +689,17 @@ model Subject {
   order      Int       @default(0)
   archivedAt DateTime? @db.Timestamptz(3)
 
-  teachingGroups     TeachingGroup[]
-  teacherAssignments TeacherAssignment[]
-  timetableEntries   TimetableEntry[]
-  lessonSessions     LessonSession[]
-  topics             Topic[]
-  curriculumPlans    CurriculumPlan[]
-  scoreEntries       ScoreEntry[]
-  scoreLimitRules    ScoreLimitRule[]
+  teachingGroups         TeachingGroup[]
+  teacherAssignments     TeacherAssignment[]
+  timetableEntries       TimetableEntry[]
+  lessonSessions         LessonSession[]
+  topics                 Topic[]
+  curriculumPlans        CurriculumPlan[]
+  scoreEntries           ScoreEntry[]
+  scoreLimitRules        ScoreLimitRule[]
+  policyBindings         PolicyBinding[]
+  manualAssessmentScores ManualAssessmentScore[]
+  periodResults          PeriodResult[]
 
   @@unique([tenantId, name])
 }
@@ -771,11 +781,13 @@ model Student {
   createdAt    DateTime      @default(now()) @db.Timestamptz(3)
   updatedAt    DateTime      @updatedAt @db.Timestamptz(3)
 
-  guardians        StudentGuardian[]
-  enrollments      StudentEnrollment[]
-  groupMemberships TeachingGroupMember[]
-  lessonAttendance LessonAttendance[]
-  scoreEntries     ScoreEntry[]
+  guardians              StudentGuardian[]
+  enrollments            StudentEnrollment[]
+  groupMemberships       TeachingGroupMember[]
+  lessonAttendance       LessonAttendance[]
+  scoreEntries           ScoreEntry[]
+  manualAssessmentScores ManualAssessmentScore[]
+  periodResults          PeriodResult[]
 
   @@unique([tenantId, studentCode])
   @@index([tenantId, lastName, firstName])
@@ -866,9 +878,13 @@ model AcademicPeriod {
   createdAt      DateTime             @default(now()) @db.Timestamptz(3)
   updatedAt      DateTime             @updatedAt @db.Timestamptz(3)
 
-  lessonSessions LessonSession[]
-  planItems      PlanItem[]
-  scoreEntries   ScoreEntry[]
+  lessonSessions         LessonSession[]
+  planItems              PlanItem[]
+  scoreEntries           ScoreEntry[]
+  policyBindings         PolicyBinding[]
+  manualAssessmentScores ManualAssessmentScore[]
+  periodResults          PeriodResult[]
+  periodCloseRuns        PeriodCloseRun[]
 
   // SQL: AcademicPeriod_dates_check, AcademicPeriod_no_overlap (same type)
   @@unique([academicYearId, type, order])
@@ -1351,4 +1367,184 @@ model ScoreSettings {
   lateEntryDays      Int      @default(3)
   updatedById        String?  @db.Uuid
   updatedAt          DateTime @updatedAt @db.Timestamptz(3)
+}
+
+enum PolicyVersionStatus {
+  DRAFT
+  PUBLISHED
+  RETIRED
+}
+
+enum PeriodResultStatus {
+  DRAFT
+  FINAL
+}
+
+enum PeriodCloseRunStatus {
+  PREPARED
+  CLOSED
+  CANCELLED
+}
+
+model AssessmentPolicy {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  tenantId  String   @db.Uuid
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  name      String
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  versions AssessmentPolicyVersion[]
+
+  // SQL: AssessmentPolicy_one_default (partial unique)
+  @@unique([tenantId, name])
+}
+
+// A PUBLISHED version never changes (SQL trigger); a change is a new version. config = AssessmentConfigSchema (zod).
+model AssessmentPolicyVersion {
+  id            String              @id @default(uuid(7)) @db.Uuid
+  tenantId      String              @db.Uuid
+  tenant        Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  policyId      String              @db.Uuid
+  policy        AssessmentPolicy    @relation(fields: [policyId], references: [id], onDelete: Restrict)
+  version       Int
+  status        PolicyVersionStatus @default(DRAFT)
+  config        Json
+  configHash    String
+  note          String?
+  createdById   String?             @db.Uuid
+  createdAt     DateTime            @default(now()) @db.Timestamptz(3)
+  publishedById String?             @db.Uuid
+  publishedAt   DateTime?           @db.Timestamptz(3)
+
+  bindings      PolicyBinding[]
+  periodResults PeriodResult[]
+
+  // SQL: AssessmentPolicyVersion_one_draft (partial unique), AssessmentPolicyVersion_frozen
+  @@unique([policyId, version])
+}
+
+model PolicyBinding {
+  id              String                  @id @default(uuid(7)) @db.Uuid
+  tenantId        String                  @db.Uuid
+  tenant          Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  periodId        String                  @db.Uuid
+  period          AcademicPeriod          @relation(fields: [periodId], references: [id], onDelete: Restrict)
+  // null = every subject
+  subjectId       String?                 @db.Uuid
+  subject         Subject?                @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  policyVersionId String                  @db.Uuid
+  policyVersion   AssessmentPolicyVersion @relation(fields: [policyVersionId], references: [id], onDelete: Restrict)
+  boundAt         DateTime                @default(now()) @db.Timestamptz(3)
+  boundById       String?                 @db.Uuid
+  // "apply to the current period" closes the old binding (history stays)
+  supersededAt    DateTime?               @db.Timestamptz(3)
+  reason          String?
+
+  // SQL: PolicyBinding_one_current (partial unique)
+  @@index([periodId])
+}
+
+model GradeScale {
+  id        String           @id @default(uuid(7)) @db.Uuid
+  tenantId  String           @db.Uuid
+  tenant    Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  name      String
+  isActive  Boolean          @default(true)
+  createdAt DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime         @updatedAt @db.Timestamptz(3)
+  bands     GradeScaleBand[]
+
+  @@unique([tenantId, name])
+}
+
+model GradeScaleBand {
+  id         String     @id @default(uuid(7)) @db.Uuid
+  scaleId    String     @db.Uuid
+  scale      GradeScale @relation(fields: [scaleId], references: [id], onDelete: Cascade)
+  minPercent Decimal    @db.Decimal(5, 2)
+  maxPercent Decimal    @db.Decimal(5, 2)
+  label      String
+  order      Int
+
+  // SQL: GradeScaleBand_range_check
+  @@unique([scaleId, order])
+}
+
+// MANUAL component input (scoring.md §5.1, Q-12). History kept: a correction is a new row, the old one superseded.
+model ManualAssessmentScore {
+  id             String                 @id @default(uuid(7)) @db.Uuid
+  tenantId       String                 @db.Uuid
+  tenant         Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  periodId       String                 @db.Uuid
+  period         AcademicPeriod         @relation(fields: [periodId], references: [id], onDelete: Restrict)
+  subjectId      String                 @db.Uuid
+  subject        Subject                @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  studentId      String                 @db.Uuid
+  student        Student                @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  componentKey   String
+  points         Decimal                @db.Decimal(8, 2)
+  maxPoints      Decimal                @db.Decimal(8, 2)
+  note           String?
+  enteredById    String                 @db.Uuid
+  enteredAt      DateTime               @default(now()) @db.Timestamptz(3)
+  supersededById String?                @unique @db.Uuid
+  supersededBy   ManualAssessmentScore? @relation("ManualScoreHistory", fields: [supersededById], references: [id], onDelete: Restrict)
+  supersedes     ManualAssessmentScore? @relation("ManualScoreHistory")
+
+  // SQL: ManualAssessmentScore_points_check, ManualAssessmentScore_one_current (partial unique)
+  @@index([periodId, subjectId])
+}
+
+// FINAL rows never change (SQL trigger, except the stale flag); a recomputation is a new version.
+model PeriodResult {
+  id              String                  @id @default(uuid(7)) @db.Uuid
+  tenantId        String                  @db.Uuid
+  tenant          Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  studentId       String                  @db.Uuid
+  student         Student                 @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  // null = the overall result over all subjects
+  subjectId       String?                 @db.Uuid
+  subject         Subject?                @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  periodId        String                  @db.Uuid
+  period          AcademicPeriod          @relation(fields: [periodId], references: [id], onDelete: Restrict)
+  policyVersionId String                  @db.Uuid
+  policyVersion   AssessmentPolicyVersion @relation(fields: [policyVersionId], references: [id], onDelete: Restrict)
+  status          PeriodResultStatus      @default(DRAFT)
+  version         Int
+  isCurrent       Boolean                 @default(true)
+  isComplete      Boolean                 @default(true)
+  isStale         Boolean                 @default(false)
+  components      Json
+  totalPoints     Decimal?                @db.Decimal(10, 4)
+  maxPoints       Decimal                 @db.Decimal(8, 2)
+  // full precision; rounding only for display
+  percent         Decimal?                @db.Decimal(9, 6)
+  displayPercent  Decimal?                @db.Decimal(5, 2)
+  gradeLabel      String?
+  inputsHash      String
+  computedAt      DateTime                @db.Timestamptz(3)
+  finalizedById   String?                 @db.Uuid
+  finalizedAt     DateTime?               @db.Timestamptz(3)
+
+  // SQL: PeriodResult_one_current (partial unique), PeriodResult_final_frozen
+  @@index([tenantId, periodId, subjectId])
+  @@index([studentId, periodId])
+}
+
+model PeriodCloseRun {
+  id           String               @id @default(uuid(7)) @db.Uuid
+  tenantId     String               @db.Uuid
+  tenant       Tenant               @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  periodId     String               @db.Uuid
+  period       AcademicPeriod       @relation(fields: [periodId], references: [id], onDelete: Restrict)
+  status       PeriodCloseRunStatus @default(PREPARED)
+  report       Json
+  preparedById String               @db.Uuid
+  preparedAt   DateTime             @default(now()) @db.Timestamptz(3)
+  closedById   String?              @db.Uuid
+  closedAt     DateTime?            @db.Timestamptz(3)
+
+  @@index([periodId])
 }

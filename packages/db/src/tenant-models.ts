@@ -43,6 +43,13 @@ export const TENANT_SCOPED_MODELS = [
   "ScoreEntry",
   "ScoreLimitRule",
   "ScoreSettings",
+  "AssessmentPolicy",
+  "AssessmentPolicyVersion",
+  "PolicyBinding",
+  "GradeScale",
+  "ManualAssessmentScore",
+  "PeriodResult",
+  "PeriodCloseRun",
 ] as const;
 
 /** Child rows without tenantId: reached only through a tenant-checked parent (nested reads/writes). */
@@ -52,6 +59,7 @@ export const PARENT_SCOPED_MODELS = [
   "ImportRow",
   "CalendarDayGrade",
   "BellSlot",
+  "GradeScaleBand",
 ] as const;
 
 /** Not tenant data at all. */

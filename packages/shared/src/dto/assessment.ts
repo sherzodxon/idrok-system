@@ -89,3 +89,76 @@ export const GradeBandSchema = z.object({
   label: z.string().trim().min(1).max(20),
 });
 export type GradeBand = z.infer<typeof GradeBandSchema>;
+
+// ---- policies, versions, bindings and grade scales (API)
+
+export const PolicyVersionStatusSchema = z.enum(["DRAFT", "PUBLISHED", "RETIRED"]);
+
+export const PolicyVersionSchema = z.object({
+  id: z.uuid(),
+  policyId: z.uuid(),
+  version: z.number().int(),
+  status: PolicyVersionStatusSchema,
+  config: AssessmentConfigSchema,
+  note: z.string().nullable(),
+  createdAt: z.string(),
+  publishedAt: z.string().nullable(),
+});
+export type PolicyVersionDto = z.infer<typeof PolicyVersionSchema>;
+
+export const AssessmentPolicySchema = z.object({
+  id: z.uuid(),
+  name: z.string(),
+  isDefault: z.boolean(),
+  versions: z.array(PolicyVersionSchema.omit({ config: true })),
+});
+export type AssessmentPolicyDto = z.infer<typeof AssessmentPolicySchema>;
+
+export const CreatePolicySchema = z
+  .object({ name: z.string().trim().min(1).max(100), config: AssessmentConfigSchema.optional() })
+  .strict();
+
+export const SavePolicyDraftSchema = z
+  .object({ config: AssessmentConfigSchema, note: z.string().trim().max(500).nullable().optional() })
+  .strict();
+
+export const PolicyBindingSchema = z.object({
+  id: z.uuid(),
+  periodId: z.uuid(),
+  subjectId: z.uuid().nullable(),
+  subjectName: z.string().nullable(),
+  policyVersionId: z.uuid(),
+  policyName: z.string(),
+  version: z.number().int(),
+  boundAt: z.string(),
+  supersededAt: z.string().nullable(),
+  reason: z.string().nullable(),
+});
+export type PolicyBindingDto = z.infer<typeof PolicyBindingSchema>;
+
+export const BindPolicySchema = z
+  .object({
+    policyVersionId: z.uuid(),
+    subjectId: z.uuid().nullable().default(null),
+    /** Required when the period is already active ("apply to the current period"). */
+    reason: z.string().trim().min(3).max(500).optional(),
+  })
+  .strict();
+
+export const GradeScaleSchema = z.object({
+  id: z.uuid(),
+  name: z.string(),
+  isActive: z.boolean(),
+  /** Used by a published policy version: its bands can no longer change. */
+  inUse: z.boolean(),
+  bands: z.array(GradeBandSchema),
+});
+export type GradeScaleDto = z.infer<typeof GradeScaleSchema>;
+
+export const SaveGradeScaleSchema = z
+  .object({
+    name: z.string().trim().min(1).max(100),
+    isActive: z.boolean().optional(),
+    bands: z.array(GradeBandSchema).min(1).max(20),
+  })
+  .strict();

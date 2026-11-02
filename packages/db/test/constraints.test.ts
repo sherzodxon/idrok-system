@@ -434,3 +434,107 @@ describe("score ledger (M3)", () => {
     await expect(rule({ scopeType: "SUBJECT" })).rejects.toThrow();
   });
 });
+
+describe("assessment (M3)", () => {
+  it("published policy versions and final results are frozen", async () => {
+    const policy = await root.assessmentPolicy.create({ data: { tenantId, name: `P-${crypto.randomUUID()}` } });
+    const draft = await root.assessmentPolicyVersion.create({
+      data: { tenantId, policyId: policy.id, version: 1, config: { a: 1 }, configHash: "h1" },
+    });
+    await expect(
+      root.assessmentPolicyVersion.create({
+        data: { tenantId, policyId: policy.id, version: 2, config: {}, configHash: "h2" },
+      }),
+    ).rejects.toThrow();
+    await root.assessmentPolicyVersion.update({ where: { id: draft.id }, data: { config: { a: 2 } } });
+    await root.assessmentPolicyVersion.update({
+      where: { id: draft.id },
+      data: { status: "PUBLISHED", publishedAt: new Date() },
+    });
+    await expect(
+      root.assessmentPolicyVersion.update({ where: { id: draft.id }, data: { config: { a: 3 } } }),
+    ).rejects.toThrow();
+    await expect(root.assessmentPolicyVersion.delete({ where: { id: draft.id } })).rejects.toThrow();
+    await root.assessmentPolicyVersion.update({ where: { id: draft.id }, data: { status: "RETIRED" } });
+    await expect(
+      root.assessmentPolicyVersion.update({ where: { id: draft.id }, data: { status: "PUBLISHED" } }),
+    ).rejects.toThrow();
+
+    const { year, student } = await yearAndClass();
+    const period = await root.academicPeriod.create({
+      data: {
+        tenantId,
+        academicYearId: year.id,
+        type: "YEAR",
+        name: "Y",
+        order: 1,
+        startDate: day("2026-09-01"),
+        endDate: day("2027-06-30"),
+      },
+    });
+    const result = (version: number) =>
+      root.periodResult.create({
+        data: {
+          tenantId,
+          studentId: student.id,
+          periodId: period.id,
+          policyVersionId: draft.id,
+          version,
+          components: [],
+          maxPoints: 100,
+          inputsHash: "x",
+          computedAt: new Date(),
+          status: "FINAL",
+        },
+      });
+    const final = await result(1);
+    await expect(result(2)).rejects.toThrow();
+    await expect(root.periodResult.update({ where: { id: final.id }, data: { gradeLabel: "5" } })).rejects.toThrow();
+    await expect(root.periodResult.delete({ where: { id: final.id } })).rejects.toThrow();
+    await root.periodResult.update({ where: { id: final.id }, data: { isStale: true } });
+    await root.periodResult.update({ where: { id: final.id }, data: { isCurrent: false } });
+    await expect(root.periodResult.update({ where: { id: final.id }, data: { isCurrent: true } })).rejects.toThrow();
+    await result(2);
+  });
+
+  it("manual scores stay within their maximum; grade bands within 0–100", async () => {
+    const scale = await root.gradeScale.create({ data: { tenantId, name: `S-${crypto.randomUUID()}` } });
+    await expect(
+      root.gradeScaleBand.create({
+        data: { scaleId: scale.id, minPercent: 90, maxPercent: 101, label: "5", order: 1 },
+      }),
+    ).rejects.toThrow();
+    await expect(
+      root.gradeScaleBand.create({ data: { scaleId: scale.id, minPercent: 50, maxPercent: 50, label: "5", order: 1 } }),
+    ).rejects.toThrow();
+    const { year, student } = await yearAndClass();
+    const period = await root.academicPeriod.create({
+      data: {
+        tenantId,
+        academicYearId: year.id,
+        type: "YEAR",
+        name: "Y",
+        order: 1,
+        startDate: day("2026-09-01"),
+        endDate: day("2027-06-30"),
+      },
+    });
+    const subject = await root.subject.create({ data: { tenantId, name: `Demo fan ${crypto.randomUUID()}` } });
+    const manual = (points: number) =>
+      root.manualAssessmentScore.create({
+        data: {
+          tenantId,
+          periodId: period.id,
+          subjectId: subject.id,
+          studentId: student.id,
+          componentKey: "oral",
+          points,
+          maxPoints: 20,
+          enteredById: crypto.randomUUID(),
+        },
+      });
+    await expect(manual(21)).rejects.toThrow();
+    await manual(15);
+    await expect(manual(16)).rejects.toThrow();
+  });
+});

@@ -26,6 +26,7 @@ import {
   type SchoolDate,
 } from "@idrok/shared/time";
 import { AppError, isConstraintError, notFound } from "../../http/errors";
+import { bindDefaultOnActivate } from "../assessment/policies.service";
 import { writeAudit } from "../audit/audit.service";
 
 /** Q-02 default until the school saves its own week. */
@@ -184,6 +185,7 @@ export class CalendarService {
       if (before.status === "CLOSED") throw conflict("PERIOD_CLOSED");
       await this.year(tx, before.academicYearId);
       const period = await tx.academicPeriod.update({ where: { id }, data: { status: "ACTIVE" } });
+      await bindDefaultOnActivate(tx, id);
       await writeAudit(tx, {
         action: "period.activate",
         entityType: "AcademicPeriod",

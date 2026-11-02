@@ -43,6 +43,15 @@ applied migration — add a new one.
 | `ScoreLimitRule_scope_check` | CHECK | ″ | `maxPoints > 0`; only the column of the scope type may be set |
 | `ScoreLimitRule_one_active` | partial unique | ″ | one active rule per window, scope type and scope (or default) |
 | `ScoreSettings_values_check` | CHECK | ″ | caps and session maximum positive, session maximum ≤ lesson cap, `lateEntryDays` 0..365 |
+| `AssessmentPolicy_one_default` | partial unique | `20261103120000_m3_assessment` | one default policy per school |
+| `AssessmentPolicyVersion_one_draft` | partial unique | ″ | one `DRAFT` version per policy |
+| `AssessmentPolicyVersion_frozen` | TRIGGER | ″ | a published version never changes or disappears; only `PUBLISHED → RETIRED` |
+| `PolicyBinding_one_current` | partial unique | ″ | one current binding per period and subject (or all subjects) |
+| `GradeScaleBand_range_check` | CHECK | ″ | `0 <= min < max <= 100` |
+| `ManualAssessmentScore_points_check` | CHECK | ″ | `0 <= points <= maxPoints`, `maxPoints > 0` |
+| `ManualAssessmentScore_one_current` | partial unique | ″ | one current manual score per period, subject, student and component |
+| `PeriodResult_one_current` | partial unique | ″ | one current result per student, period and subject (or overall) |
+| `PeriodResult_final_frozen` | TRIGGER | ″ | a `FINAL` result never changes (only `isStale`, and `isCurrent` → false) and is never deleted |
 
 Checking a new migration does not touch them:
 
