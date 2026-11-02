@@ -6,8 +6,9 @@ import { API_URL, USERS } from "../support/users";
 test("changing the brand colour updates the whole UI", async ({ page, context }) => {
   await page.emulateMedia({ colorScheme: "light" });
   await loginToDashboard(page, USERS.branding);
-  const kpi = page.locator(".bg-primary").first();
-  await expect(kpi).toHaveCSS("background-color", "rgb(78, 146, 207)"); // default #4E92CF
+  // The logo badge sits on the brand colour.
+  const badge = page.getByTestId("sidebar").locator(".bg-brand").first();
+  await expect(badge).toHaveCSS("background-color", "rgb(78, 146, 207)"); // default #4E92CF
 
   const csrf = (await context.cookies()).find((c) => c.name === "idrok_csrf")!.value;
   const res = await page.request.put(`${API_URL}/settings/branding`, {
@@ -17,7 +18,7 @@ test("changing the brand colour updates the whole UI", async ({ page, context })
   expect(res.status()).toBe(200);
 
   await page.reload();
-  await expect(kpi).toHaveCSS("background-color", "rgb(46, 125, 50)");
+  await expect(badge).toHaveCSS("background-color", "rgb(46, 125, 50)");
   // Derived shades and texts follow: active menu item background, school name in the shell and the tab title.
   const activeItem = page.getByTestId("sidebar").locator('[aria-current="page"]');
   const soft = await activeItem.evaluate((el) => getComputedStyle(el).backgroundColor);
@@ -28,7 +29,7 @@ test("changing the brand colour updates the whole UI", async ({ page, context })
   // The login page (before login) uses it too.
   const anonymous = await (await page.context().browser()!.newContext()).newPage();
   await anonymous.goto(page.url().replace(/\/dashboard$/, "/login"));
-  await expect(anonymous.locator(".bg-primary").first()).toHaveCSS("background-color", "rgb(46, 125, 50)");
+  await expect(anonymous.locator(".bg-brand").first()).toHaveCSS("background-color", "rgb(46, 125, 50)");
 
   // Restore for other specs.
   await page.request.put(`${API_URL}/settings/branding`, {

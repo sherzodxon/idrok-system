@@ -1,4 +1,4 @@
-// M3: the teacher scores a lesson in the journal (attendance, points, a reversal), the guardian sees the result on a
+// M3: the teacher scores a lesson in the journal (attendance, points, a reversal) and in the grid (quick entry), the guardian sees the result on a
 // phone, and the admin's policy editor checks the component sum live. Data: the stack's "E2E chorak" and yesterday's
 // lesson of the planner teacher in 7-A.
 import { expect, test } from "@playwright/test";
@@ -23,14 +23,31 @@ test("journal: attendance, points and a reversal", async ({ page }) => {
   await row.getByRole("button", { name: "Bekor qilish" }).click();
   await expect(row.getByTestId("lesson-points")).toHaveText("0");
   await row.locator('[data-points="4"]').click();
-  await row.locator('[data-points="3"]').click();
-  await expect(row.getByTestId("lesson-points")).toHaveText("7");
-  // The lesson maximum is 10: buttons that would pass it are disabled.
-  await expect(row.locator('[data-points="4"]')).toBeDisabled();
+  await expect(row.getByTestId("lesson-points")).toHaveText("4");
 
   await page.getByRole("link", { name: "Orqaga" }).click();
   // Other specs add students to 7-A later in the period: look up the scored one.
-  await expect(grid.locator(`[data-student="${studentId}"]`).getByTestId("row-percent")).toHaveText("70");
+  const gridRow = grid.locator(`[data-student="${studentId}"]`);
+  const cell = gridRow.locator('[data-cell$=":0"]');
+  await expect(cell).toHaveText("4");
+  // Quick entry in the grid: digits, then Enter.
+  await cell.focus();
+  await page.keyboard.type("3");
+  await expect(cell).toHaveText("+3");
+  await page.keyboard.press("Enter");
+  await expect(cell).toHaveText("7");
+  await expect(gridRow.getByTestId("row-percent")).toHaveText("70");
+  // The lesson maximum is 10: four more points are refused.
+  await cell.focus();
+  await page.keyboard.type("4");
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("status").or(page.getByRole("alert")).first()).toBeVisible();
+  await expect(cell).toHaveText("7");
+  // Arrows move between cells.
+  const r = Number((await cell.getAttribute("data-cell"))!.split(":")[0]);
+  await cell.focus();
+  await page.keyboard.press(r > 0 ? "ArrowUp" : "ArrowDown");
+  await expect(grid.locator(`[data-cell="${r > 0 ? r - 1 : r + 1}:0"]`)).toBeFocused();
 });
 
 test("the guardian sees the child's percent on a phone", async ({ browser }) => {

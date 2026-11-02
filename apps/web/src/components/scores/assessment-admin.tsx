@@ -493,6 +493,7 @@ function VersionEditor({
                 </Button>
               )}
             </div>
+            <WeightsEditor config={c} set={set} disabled={disabled} />
             {manage && problems.length > 0 && (
               <ul
                 role="status"
@@ -540,6 +541,154 @@ function VersionEditor({
         );
       }}
     </QueryBoundary>
+  );
+}
+
+type HigherRule = AssessmentConfig["higherPeriods"][number];
+
+/** Subject weights (WEIGHTED_SUBJECTS) and the rule of each period made of other periods (half-year, year). */
+function WeightsEditor({
+  config: c,
+  set,
+  disabled,
+}: {
+  config: AssessmentConfig;
+  set: (patch: Partial<AssessmentConfig>) => void;
+  disabled: boolean;
+}) {
+  const t = useTranslations("assessment");
+  const api = useApi();
+  const subjects = useSubjects();
+  const year = useActiveYear();
+  const periods = useQuery({
+    queryKey: ["periods", year.data?.id],
+    queryFn: () => api.get<AcademicPeriodDto[]>(`/academic-years/${year.data!.id}/periods`),
+    enabled: !!year.data,
+  });
+  const all = periods.data ?? [];
+  const higher = all.filter((p) => all.some((x) => x.parentId === p.id));
+  const setWeight = (subjectId: string, value: string) => {
+    const { [subjectId]: _old, ...rest } = c.subjectWeights;
+    set({ subjectWeights: value.trim() === "" ? rest : { ...rest, [subjectId]: value.trim() } });
+  };
+  const setRule = (periodId: string, rule: Omit<HigherRule, "periodId"> | null) =>
+    set({
+      higherPeriods: [
+        ...c.higherPeriods.filter((h) => h.periodId !== periodId),
+        ...(rule ? [{ periodId, ...rule }] : []),
+      ],
+    });
+  return (
+    <>
+      {c.overallMethod === "WEIGHTED_SUBJECTS" && (
+        <div className="border-t border-border p-4">
+          <h3 className="font-semibold">{t("subjectWeights")}</h3>
+          <p className="mb-2 text-sm text-muted">{t("subjectWeightsHint")}</p>
+          <QueryBoundary query={subjects} isEmpty={(l) => l.length === 0}>
+            {(list) => (
+              <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {list.map((subject) => (
+                  <li key={subject.id} className="grid grid-cols-[1fr_5rem] items-center gap-2">
+                    <span className="truncate text-sm">{subject.name}</span>
+                    <Input
+                      aria-label={`${t("weight")}: ${subject.name}`}
+                      inputMode="decimal"
+                      placeholder="1"
+                      value={c.subjectWeights[subject.id] ?? ""}
+                      disabled={disabled}
+                      onChange={(e) => setWeight(subject.id, e.target.value)}
+                    />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </QueryBoundary>
+        </div>
+      )}
+      {higher.length > 0 && (
+        <div className="border-t border-border p-4" data-testid="higher-periods">
+          <h3 className="font-semibold">{t("higherPeriods")}</h3>
+          <p className="mb-2 text-sm text-muted">{t("higherPeriodsHint")}</p>
+          <ul className="flex flex-col gap-3">
+            {higher.map((period) => {
+              const rule = c.higherPeriods.find((h) => h.periodId === period.id);
+              const children = all.filter((x) => x.parentId === period.id).sort((a, b) => a.order - b.order);
+              const weighted = rule?.aggregation === "WEIGHTED" || rule?.aggregation === "WEIGHTED_WITH_FINAL";
+              return (
+                <li key={period.id} className="rounded-card border border-border p-3">
+                  <div className="grid gap-2 sm:grid-cols-[12rem_1fr] sm:items-center">
+                    <span className="font-medium">{period.name}</span>
+                    <Select
+                      aria-label={`${t("f.higherDefault")}: ${period.name}`}
+                      value={rule?.aggregation ?? ""}
+                      disabled={disabled}
+                      className="sm:w-64"
+                      onChange={(e) => {
+                        const aggregation = e.target.value as HigherRule["aggregation"] | "";
+                        if (!aggregation) return setRule(period.id, null);
+                        setRule(period.id, {
+                          aggregation,
+                          ...(aggregation === "WEIGHTED" || aggregation === "WEIGHTED_WITH_FINAL"
+                            ? { weights: rule?.weights ?? Object.fromEntries(children.map((x) => [x.id, "1"])) }
+                            : {}),
+                          ...(aggregation === "WEIGHTED_WITH_FINAL"
+                            ? { finalComponent: rule?.finalComponent ?? { key: "final", weight: "1" } }
+                            : {}),
+                        });
+                      }}
+                    >
+                      <option value="">
+                        {t("useDefault", { rule: t(`o.aggregation.${c.higherDefault.aggregation}`) })}
+                      </option>
+                      {(["AVERAGE", "WEIGHTED", "WEIGHTED_WITH_FINAL", "INDEPENDENT"] as const).map((x) => (
+                        <option key={x} value={x}>
+                          {t(`o.aggregation.${x}`)}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                  {rule && weighted && (
+                    <div className="mt-2 flex flex-wrap gap-3">
+                      {children.map((child) => (
+                        <label key={child.id} className="flex items-center gap-2 text-sm">
+                          {child.name}
+                          <Input
+                            inputMode="decimal"
+                            className="w-20"
+                            value={rule.weights?.[child.id] ?? ""}
+                            disabled={disabled}
+                            onChange={(e) =>
+                              setRule(period.id, { ...rule, weights: { ...rule.weights, [child.id]: e.target.value } })
+                            }
+                          />
+                        </label>
+                      ))}
+                      {rule.aggregation === "WEIGHTED_WITH_FINAL" && rule.finalComponent && (
+                        <label className="flex items-center gap-2 text-sm">
+                          {t("finalWeight")}
+                          <Input
+                            inputMode="decimal"
+                            className="w-20"
+                            value={rule.finalComponent.weight}
+                            disabled={disabled}
+                            onChange={(e) =>
+                              setRule(period.id, {
+                                ...rule,
+                                finalComponent: { ...rule.finalComponent!, weight: e.target.value },
+                              })
+                            }
+                          />
+                        </label>
+                      )}
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+    </>
   );
 }
 

@@ -955,7 +955,7 @@
     "chooseGroup": "Guruh va fanni tanlang",
     "noLessonsInPeriod": "Bu davrda dars yo'q",
     "student": "O'quvchi",
-    "legend": "· — ball qo'yilmagan, Sb — sababli, Ss — sababsiz, × — bekor qilingan. Sanani yoki katakni bosing — dars jurnali ochiladi.",
+    "legend": "· — ball qo'yilmagan, Sb — sababli, Ss — sababsiz, × — bekor qilingan.",
     "views": {
       "DAY": "Kun",
       "WEEK": "Hafta",
@@ -972,7 +972,14 @@
     "history": "Ballar tarixi",
     "byDay": "Kunlar bo'yicha",
     "child": "Farzand",
-    "noChild": "O'quvchi topilmadi"
+    "noChild": "O'quvchi topilmadi",
+    "legendQuick": "Katakni tanlang, raqam yozib Enter bosing — shuncha ball qo'shiladi. Strelkalar bilan yuring. Raqamsiz Enter yoki ikki marta bosish — dars jurnali.",
+    "legendOpen": "Sanani yoki katakni bosing — dars jurnali ochiladi.",
+    "manualTitle": "Qo'lda kiritiladigan baholar",
+    "manualHint": "Ballni yozib Enter bosing yoki boshqa katakka o'ting — saqlanadi. Tuzatishda eski qiymat tarixda qoladi.",
+    "manualReadOnly": "Bu baholarni faqat ko'rishingiz mumkin (davr yopilgan yoki ruxsat yo'q).",
+    "manualInvalid": "Ball 0 dan {max} gacha bo'lishi kerak",
+    "finalControl": "Yakuniy nazorat"
   },
   "assessment": {
     "title": "Baholash",
@@ -1181,6 +1188,13 @@
     "teacher": "O'qituvchi",
     "lessonsCol": "Darslar",
     "unscored": "Ballsiz",
-    "unmarked": "Davomatsiz"
+    "unmarked": "Davomatsiz",
+    "subjectWeights": "Fan vaznlari",
+    "subjectWeightsHint": "Umumiy foiz fanlarning vaznli o'rtachasi bo'lganda ishlatiladi. Bo'sh — vazn 1.",
+    "weight": "Vazn",
+    "higherPeriods": "Yarim yil va yil natijasi",
+    "higherPeriodsHint": "Har bir katta davr uchun choraklar qanday birlashtirilishini tanlang. Vazn — nisbiy son (masalan, 1 va 2).",
+    "useDefault": "Umumiy qoida ({rule})",
+    "finalWeight": "Yakuniy nazorat vazni"
   }
 }

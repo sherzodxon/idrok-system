@@ -246,6 +246,11 @@ export const GradebookQuerySchema = z.object({
 });
 
 export const GradebookSchema = z.object({
+  periodStatus: z.string(),
+  /** Components entered by hand in this period (MANUAL ones and a higher period's final control). */
+  manualComponents: z.array(
+    z.object({ key: z.string(), name: z.string().nullable(), maxPoints: z.string(), final: z.boolean() }),
+  ),
   sessions: z.array(
     z.object({
       id: z.uuid(),
@@ -317,6 +322,7 @@ export const ManualScoreSchema = z.object({
   note: z.string().nullable(),
   enteredAt: z.string(),
 });
+export type ManualScoreDto = z.infer<typeof ManualScoreSchema>;
 
 export const SaveManualScoreSchema = z
   .object({
