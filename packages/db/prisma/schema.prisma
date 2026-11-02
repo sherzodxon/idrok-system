@@ -1513,27 +1513,28 @@ model GradeScaleBand {
 
 // MANUAL component input (scoring.md §5.1, Q-12). History kept: a correction is a new row, the old one superseded.
 model ManualAssessmentScore {
-  id             String                 @id @default(uuid(7)) @db.Uuid
-  tenantId       String                 @db.Uuid
-  tenant         Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  periodId       String                 @db.Uuid
-  period         AcademicPeriod         @relation(fields: [periodId], references: [id], onDelete: Restrict)
-  subjectId      String                 @db.Uuid
-  subject        Subject                @relation(fields: [subjectId], references: [id], onDelete: Restrict)
-  studentId      String                 @db.Uuid
-  student        Student                @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  id             String                  @id @default(uuid(7)) @db.Uuid
+  tenantId       String                  @db.Uuid
+  tenant         Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  periodId       String                  @db.Uuid
+  period         AcademicPeriod          @relation(fields: [periodId], references: [id], onDelete: Restrict)
+  subjectId      String                  @db.Uuid
+  subject        Subject                 @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  studentId      String                  @db.Uuid
+  student        Student                 @relation(fields: [studentId], references: [id], onDelete: Restrict)
   componentKey   String
-  points         Decimal                @db.Decimal(8, 2)
-  maxPoints      Decimal                @db.Decimal(8, 2)
+  points         Decimal                 @db.Decimal(8, 2)
+  maxPoints      Decimal                 @db.Decimal(8, 2)
   note           String?
-  enteredById    String                 @db.Uuid
-  enteredAt      DateTime               @default(now()) @db.Timestamptz(3)
-  supersededById String?                @unique @db.Uuid
-  supersededBy   ManualAssessmentScore? @relation("ManualScoreHistory", fields: [supersededById], references: [id], onDelete: Restrict)
-  supersedes     ManualAssessmentScore? @relation("ManualScoreHistory")
+  enteredById    String                  @db.Uuid
+  enteredAt      DateTime                @default(now()) @db.Timestamptz(3)
+  supersededById String?                 @db.Uuid
+  supersededBy   ManualAssessmentScore?  @relation("ManualScoreHistory", fields: [supersededById], references: [id], onDelete: Restrict)
+  supersedes     ManualAssessmentScore[] @relation("ManualScoreHistory")
 
   // SQL: ManualAssessmentScore_points_check, ManualAssessmentScore_one_current (partial unique)
   @@index([periodId, subjectId])
+  @@index([supersededById])
 }
 
 // FINAL rows never change (SQL trigger, except the stale flag); a recomputation is a new version.
@@ -1931,10 +1932,11 @@ model OfflineResult {
   note           String?
   enteredById    String              @db.Uuid
   enteredAt      DateTime            @default(now()) @db.Timestamptz(3)
-  supersededById String?             @unique @db.Uuid
+  supersededById String?             @db.Uuid
   supersededBy   OfflineResult?      @relation("OfflineResultHistory", fields: [supersededById], references: [id], onDelete: Restrict)
-  supersedes     OfflineResult?      @relation("OfflineResultHistory")
+  supersedes     OfflineResult[]     @relation("OfflineResultHistory")
 
   // SQL: OfflineResult_score_check, OfflineResult_one_current (partial unique)
   @@index([testId, studentId])
+  @@index([supersededById])
 }

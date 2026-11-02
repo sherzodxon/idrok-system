@@ -17,6 +17,7 @@ import {
 } from "../../domain/scoring";
 import { activeLimitRules, limitSettings, scoreSettings } from "../scores/score-config.service";
 import { effectiveVersion } from "./policies.service";
+import { loadTestInputs, testKey, testsForMode, type LoadedTest } from "./test-inputs";
 import { loadStudentSessions, type LoadedSession } from "./scoring-data";
 
 export interface ComputedResult {
@@ -181,17 +182,20 @@ export class ResultsService {
       where: { periodId, studentId: { in: studentIds }, supersededById: null, ...(subjectId ? { subjectId } : {}) },
       select: { studentId: true, subjectId: true, componentKey: true, points: true, maxPoints: true },
     });
+    const tests = await loadTestInputs(this.db, { periodId, studentIds, subjectId });
     const out: ComputedResult[] = [];
     for (const studentId of studentIds) {
       const mine = sessions.get(studentId) ?? [];
       const subjects = new Set([
         ...mine.map((s) => s.subjectId),
         ...manual.filter((m) => m.studentId === studentId).map((m) => m.subjectId),
+        ...[...tests.keys()].filter((k) => k.startsWith(`${studentId}|`)).map((k) => k.split("|")[1]!),
       ]);
       for (const subject of subjects) {
         const version = (await this.version(periodId, subject))!;
         const ofSubject = mine.filter((s) => s.subjectId === subject);
-        out.push(await this.componentResult(version, periodId, studentId, subject, ofSubject, manual));
+        const ofTests = tests.get(testKey(studentId, subject)) ?? [];
+        out.push(await this.componentResult(version, periodId, studentId, subject, ofSubject, manual, ofTests));
       }
     }
     return out;
@@ -204,14 +208,15 @@ export class ResultsService {
     subjectId: string,
     sessions: LoadedSession[],
     manual: { studentId: string; subjectId: string; componentKey: string; points: Decimal; maxPoints: Decimal }[],
+    loadedTests: LoadedTest[] = [],
   ): Promise<ComputedResult> {
+    const counted = testsForMode(loadedTests, version.config.testsMode);
     const outcomes = sessions.map((s) => ({ s, o: sessionOutcome(s, version.config) }));
     const daily = tally(outcomes.map((x) => x.o));
     const mine = manual.filter((m) => m.studentId === studentId && m.subjectId === subjectId);
     const computed = periodResult(version.config, {
       daily: daily.percent,
-      // Tests arrive with M4 (tests.md); until then the component is empty.
-      tests: testsPercent([], version.config),
+      tests: testsPercent(counted, version.config),
       manual: new Map(mine.map((m) => [m.componentKey, { earned: m.points, max: m.maxPoints }])),
     });
     return {
@@ -235,6 +240,7 @@ export class ResultsService {
         v: version.id,
         s: outcomes.map(({ s, o }) => [s.sessionId, o.state, str(o.earned), str(o.max)]),
         m: mine.map((m) => [m.componentKey, m.points.toString(), m.maxPoints.toString()]),
+        t: counted.map((x) => [x.testId, x.weight, x.attempts, x.retakePolicy, x.pending]),
       }),
       pendingSessions: outcomes.filter(({ o }) => o.state === "PENDING").length,
     };

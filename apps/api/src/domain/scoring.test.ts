@@ -155,6 +155,23 @@ describe("period result (§5)", () => {
     expect(n(testsPercent(tests, { missedTest: "ZERO", retakePolicy: "LAST" }))).toBe(45);
     expect(n(testsPercent([{ weight: 1, attempts: [90, 60] }], { ...DEFAULTS, retakePolicy: "BEST" }))).toBe(90);
     expect(testsPercent([], DEFAULTS)).toBeNull();
+    // The test's own retake rule wins; a pending test (open window, excused) never counts, even with ZERO.
+    expect(n(testsPercent([{ weight: 1, attempts: [90, 60], retakePolicy: "BEST" }], DEFAULTS))).toBe(90);
+    expect(
+      n(testsPercent([{ weight: 1, attempts: [90, 60], retakePolicy: "LAST" }], { ...DEFAULTS, retakePolicy: "BEST" })),
+    ).toBe(60);
+    const zero = { missedTest: "ZERO" as const, retakePolicy: "LAST" as const };
+    expect(
+      n(
+        testsPercent(
+          [
+            { weight: 1, attempts: [80] },
+            { weight: 1, attempts: [], pending: true },
+          ],
+          zero,
+        ),
+      ),
+    ).toBe(80);
   });
 
   it("10: no test, REDISTRIBUTE: daily 88% → 88/100; PENDING → no result", () => {

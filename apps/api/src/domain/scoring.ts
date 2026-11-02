@@ -101,6 +101,10 @@ export interface TestInput {
   weight: DecimalInput;
   /** Percent of each finished attempt in time order; empty = the student did not take the test. */
   attempts: DecimalInput[];
+  /** The test's own rule (tests.md §5); the policy's when absent. */
+  retakePolicy?: "LAST" | "BEST";
+  /** No result yet and not missed either (the window is still open, or the absence is excused): left out. */
+  pending?: boolean;
 }
 
 export function testsPercent(
@@ -108,8 +112,10 @@ export function testsPercent(
   policy: Pick<AssessmentConfig, "missedTest" | "retakePolicy">,
 ): Decimal | null {
   const items = tests.flatMap((t) => {
-    if (!t.attempts.length) return policy.missedTest === "ZERO" ? [{ value: D(0), weight: t.weight }] : [];
-    const value = policy.retakePolicy === "BEST" ? Decimal.max(...t.attempts) : D(t.attempts[t.attempts.length - 1]!);
+    if (!t.attempts.length)
+      return !t.pending && policy.missedTest === "ZERO" ? [{ value: D(0), weight: t.weight }] : [];
+    const rule = t.retakePolicy ?? policy.retakePolicy;
+    const value = rule === "BEST" ? Decimal.max(...t.attempts) : D(t.attempts[t.attempts.length - 1]!);
     return [{ value, weight: t.weight }];
   });
   return weightedAverage(items);

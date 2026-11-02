@@ -514,3 +514,47 @@ export const TestOverrideSchema = z.object({
   reason: z.string(),
   createdAt: z.string(),
 });
+
+// ---------------------------------------------------------------- offline results (§6)
+
+export const OfflineStatusSchema = z.enum(["SCORED", "ABSENT", "EXCUSED"]);
+export const OfflineResultRowSchema = z.object({
+  studentId: z.uuid(),
+  studentName: z.string(),
+  status: OfflineStatusSchema.nullable(),
+  rawScore: z.string().nullable(),
+  percent: z.string().nullable(),
+  note: z.string().nullable(),
+  enteredAt: z.string().nullable(),
+  /** Earlier values kept in the history (each correction is a new row). */
+  corrections: z.number().int(),
+});
+export type OfflineResultRowDto = z.infer<typeof OfflineResultRowSchema>;
+
+export const OfflineResultsSchema = z.object({
+  maxScore: z.string(),
+  rows: z.array(OfflineResultRowSchema),
+  /** Students without any result yet (§6: shown on save). */
+  missing: z.number().int(),
+});
+export type OfflineResultsDto = z.infer<typeof OfflineResultsSchema>;
+
+export const SaveOfflineResultsSchema = z
+  .object({
+    results: z
+      .array(
+        z
+          .object({
+            studentId: z.uuid(),
+            status: OfflineStatusSchema,
+            rawScore: z.coerce.string().pipe(DecimalStringSchema).nullable().optional(),
+            note: z.string().trim().max(300).nullable().optional(),
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(300),
+    /** Required when the test's period is closed (assessment.reopen). */
+    reason: z.string().trim().min(3).max(500).optional(),
+  })
+  .strict();

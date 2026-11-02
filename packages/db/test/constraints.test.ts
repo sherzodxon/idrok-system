@@ -625,6 +625,10 @@ describe("tests (M4)", () => {
     await expect(
       root.offlineResult.update({ where: { id: old.id }, data: { supersededById: null } }),
     ).rejects.toThrow();
-    await expect(root.offlineResult.delete({ where: { id: next.id } })).rejects.toThrow();
+    // A second correction: the chain grows (the history links are not unique).
+    await root.offlineResult.update({ where: { id: next.id }, data: { supersededById: next.id } });
+    const third = await result(16);
+    await root.offlineResult.update({ where: { id: next.id }, data: { supersededById: third.id } });
+    await expect(root.offlineResult.delete({ where: { id: third.id } })).rejects.toThrow();
   });
 });
