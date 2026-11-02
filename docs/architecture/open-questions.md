@@ -38,6 +38,8 @@ A–D bo'limlari ochiq qoladi — tegishli bosqichdan oldin maktab hal qiladi. J
 
 ## B. Ball va davriy baholash (M3 dan oldin)
 
+> **2026-11-02, egasi:** B bo'limidagi savollar uchun "Tavsiya etilgan default" qabul qilindi ("Ha, boshla"). Har biri sozlama — maktab keyin o'zgartira oladi.
+
 | # | Savol | Nega muhim | Variantlar | Tavsiya etilgan default | Kim hal qiladi |
 |---|---|---|---|---|---|
 | Q-06 | Default sessiya maksimumi va kunlik/haftalik limitlar, hard cap'lar | `ScoreSettings`, `ScoreLimitRule` | masalan 10 / kun 50 | `lessonMaxPoints=10`, `hardCapPerLesson=10`, `hardCapPerDay=70`, qo'shimcha qoidalarsiz | Maktab |
@@ -156,3 +158,11 @@ A–D bo'limlari ochiq qoladi — tegishli bosqichdan oldin maktab hal qiladi. J
 | T-36 | Qayta generatsiya faqat **ertangi kundan** boshlab o'zgartiradi. O'tgan kunlar uchun darslar faqat yilning **birinchi** generatsiyasida, admin aniq belgilasa ("o'tgan kunlarni ham", `includePast`) yaratiladi — tizim o'quv yili o'rtasida ishga tushganda jurnal uchun. Generatsiya bekor qilgan dars (sababsiz `CANCELLED`) jadval qaytsa tiklanadi; qo'lda sabab bilan bekor qilingani tiklanmaydi | lesson-plan.md §3 |
 | T-37 | Generatsiya `apply` — job emas, API ichida bitta transaction (yil bo'yicha advisory lock, 120 s timeout): bitta maktab yili ~10 ming qator, atomarlik va "preview = apply" kafolati muhimroq. Sekin bo'lsa worker'ga ko'chiriladi | api-plan.md §3 (u yerda job deyilgan) |
 | T-38 | Darsning mavzusi **qotgan** hisoblanadi: dars `HELD` yoki sanasi bugun/o'tgan va mavzusi bor. Rejani qo'llash/yangi versiya/surishda qotgan darslar mavzusi o'zgarmaydi va ularning soatlari shu mavzular hisobidan chegiriladi (mavzu bo'yicha). O'tgan, lekin mavzusiz darslar mavzu oladi (yil o'rtasida birinchi marta qo'llansa). Spec acceptance 6 "18 mavzu (biri 2 soat) / 17 dars → oxirgi mavzu sig'maydi" — "rejada 18 soat" deb o'qildi; so'zma-so'z holat (19 soat → 2 mavzu sig'maydi) ham testda | lesson-plan.md §4.4, §4.6, §8 |
+
+## M3 davomida qabul qilingan texnik qarorlar (default, egasi tasdig'iga)
+
+| # | Qaror | Asos |
+|---|---|---|
+| T-39 | Policy'da `higherDefault` qoidasi: `higherPeriods` ro'yxatida yo'q yuqori davr (yarim yil, yil) shu qoida bilan hisoblanadi (default `AVERAGE`). Preset yildan yilga ko'chadi, davr id'lari har yil yangi bo'lgani uchun. `WEIGHTED` vaznlari faqat aniq davr qoidasida beriladi | scoring.md §6 default "choraklar → yarim yillik AVERAGE"; Q-11 |
+| T-40 | Sessiya `SCORED` — kamida bitta **bekor qilinmagan** NORMAL yozuv bo'lsa. Hamma yozuvlari REVERSAL bilan bekor qilingan sessiya qaytadan `PENDING` (0 emas): xato qo'yilgan ball bekor qilinsa o'quvchi foizi tushmasligi uchun | scoring.md §4.1 ("net = 0 bo'lsa ham" — qisman bekor qilish yo'q, shuning uchun net 0 faqat to'liq bekor qilinganda bo'ladi) |
+| T-41 | Sessiya maksimumi: amal qiladigan LESSON qoidalarining eng kichigi, bo'lmasa `lessonMaxPoints`; har doim `hardCapPerLesson`dan oshmaydi. LESSON qoidasi bo'lmasa ham `lessonMaxPoints` sessiya limiti sifatida tekshiriladi | scoring.md §3.1 5-band |
