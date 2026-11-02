@@ -44,6 +44,15 @@
 | `curriculum.create` | curriculum | ✓ | ✓ |  |  |  | ✓ | ✓ |  |  |
 | `curriculum.approve` | curriculum | ✓ | ✓ |  | ✓ | ✓ |  |  |  |  |
 | `curriculum.export` | curriculum | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |
+| `scores.create` | assessment | ✓ | ✓ |  |  |  | ✓ | ✓ |  |  |
+| `scores.correct` | assessment | ✓ | ✓ |  | ✓ |  |  |  |  |  |
+| `scores.late_entry` | assessment | ✓ | ✓ |  | ✓ |  |  |  |  |  |
+| `gradebook.view` | assessment | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |
+| `assessment.view` | assessment | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |
+| `assessment.manage` | assessment | ✓ | ✓ |  | ✓ |  |  |  |  |  |
+| `assessment.manual_entry` | assessment | ✓ | ✓ |  |  |  | ✓ | ✓ |  |  |
+| `assessment.approve` | assessment | ✓ | ✓ |  | ✓ |  |  |  |  |  |
+| `assessment.reopen` | assessment | ✓ | ✓ |  |  |  |  |  |  |  |
 | `portal.student` | portal |  |  |  |  |  |  |  | ✓ |  |
 | `portal.guardian` | portal |  |  |  |  |  |  |  |  | ✓ |
 

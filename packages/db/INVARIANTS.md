@@ -37,6 +37,12 @@ applied migration — add a new one.
 | `PlanItem_hours_check` | CHECK | ″ | `hours` 1..100, `order >= 1` |
 | `PlanItem_frozen` | TRIGGER | ″ | items of a submitted/approved/archived plan cannot change |
 | `PlanAssignment_one_active` | partial unique | `20261102210000_m2_plan_assignments` | one `ACTIVE` plan per group and subject |
+| `ScoreEntry_kind_check` | CHECK | `20261103090000_m3_scores` | NORMAL: points > 0, no reversed entry; REVERSAL: points < 0 and names the entry it reverses |
+| `ScoreEntry_append_only` | TRIGGER | ″ | the score ledger is insert-only |
+| `ScoreEntry_reversal_matches` | TRIGGER | ″ | a reversal is the exact negative of a NORMAL entry of the same student and lesson (once: `reversesEntryId` is unique) |
+| `ScoreLimitRule_scope_check` | CHECK | ″ | `maxPoints > 0`; only the column of the scope type may be set |
+| `ScoreLimitRule_one_active` | partial unique | ″ | one active rule per window, scope type and scope (or default) |
+| `ScoreSettings_values_check` | CHECK | ″ | caps and session maximum positive, session maximum ≤ lesson cap, `lateEntryDays` 0..365 |
 
 Checking a new migration does not touch them:
 

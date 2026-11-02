@@ -9,3 +9,4 @@ export * from "./timetable";
 export * from "./lessons";
 export * from "./curriculum";
 export * from "./assessment";
+export * from "./scores";

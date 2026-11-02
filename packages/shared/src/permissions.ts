@@ -46,6 +46,16 @@ export const PERMISSIONS = [
   { code: "curriculum.create", module: "curriculum" },
   { code: "curriculum.approve", module: "curriculum" },
   { code: "curriculum.export", module: "curriculum" },
+  // scores and assessment (M3)
+  { code: "scores.create", module: "assessment" },
+  { code: "scores.correct", module: "assessment" },
+  { code: "scores.late_entry", module: "assessment" },
+  { code: "gradebook.view", module: "assessment" },
+  { code: "assessment.view", module: "assessment" },
+  { code: "assessment.manage", module: "assessment" },
+  { code: "assessment.manual_entry", module: "assessment" },
+  { code: "assessment.approve", module: "assessment" },
+  { code: "assessment.reopen", module: "assessment" },
   // self-service portals (data is always limited to the user's own child / own record)
   { code: "portal.student", module: "portal" },
   { code: "portal.guardian", module: "portal" },

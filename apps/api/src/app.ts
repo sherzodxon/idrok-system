@@ -14,6 +14,7 @@ import { auditRoutes } from "./modules/audit/audit.routes";
 import { calendarRoutes } from "./modules/calendar/calendar.routes";
 import { timetableRoutes } from "./modules/timetable/timetable.routes";
 import { lessonRoutes } from "./modules/lessons/lessons.routes";
+import { scoreRoutes } from "./modules/scores/scores.routes";
 import { curriculumRoutes } from "./modules/curriculum/curriculum.routes";
 import { authRoutes } from "./modules/auth/auth.routes";
 import { importsRoutes } from "./modules/imports/imports.routes";
@@ -83,6 +84,7 @@ export function createApp(deps: AppDeps): express.Express {
   timetableRoutes(v1, registry, deps);
   lessonRoutes(v1, registry, deps);
   curriculumRoutes(v1, registry, deps);
+  scoreRoutes(v1, registry, deps);
   peopleRoutes(v1, registry, deps);
   usersRoutes(v1, registry, deps);
   importsRoutes(v1, registry, deps);

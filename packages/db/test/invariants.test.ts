@@ -11,6 +11,7 @@ const INDEXES = [
   "CurriculumPlan_one_open",
   "CurriculumPlan_one_approved",
   "PlanAssignment_one_active",
+  "ScoreLimitRule_one_active",
 ];
 const CONSTRAINTS = [
   "AcademicYear_dates_check",
@@ -32,8 +33,18 @@ const CONSTRAINTS = [
   "TimetableEntry_slot_check",
   "LessonSession_times_check",
   "PlanItem_hours_check",
+  "ScoreEntry_kind_check",
+  "ScoreLimitRule_scope_check",
+  "ScoreSettings_values_check",
 ];
-const TRIGGERS = ["AuditLog_append_only", "TimetableEntry_frozen", "LessonSession_no_delete", "PlanItem_frozen"];
+const TRIGGERS = [
+  "AuditLog_append_only",
+  "TimetableEntry_frozen",
+  "LessonSession_no_delete",
+  "PlanItem_frozen",
+  "ScoreEntry_append_only",
+  "ScoreEntry_reversal_matches",
+];
 
 let client: pg.Client;
 beforeAll(async () => {

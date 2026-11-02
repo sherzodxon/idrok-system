@@ -100,7 +100,8 @@
       "PLAN_HAS_OPEN_VERSION": "Bu rejaning tahrirlanayotgan versiyasi bor",
       "LESSON_IN_FUTURE": "Kelgusi darsni o'tildi deb belgilab bo'lmaydi",
       "LESSON_NOT_SCHEDULED": "Faqat rejadagi darsni bekor qilish mumkin"
-    }
+    },
+    "SCORE_LIMIT_EXCEEDED": "Ball limiti oshib ketadi"
   },
   "states": {
     "emptyTitle": "Hozircha ma'lumot yo'q",
