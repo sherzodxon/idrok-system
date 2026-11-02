@@ -53,6 +53,14 @@
 | `assessment.manual_entry` | assessment | ✓ | ✓ |  |  |  | ✓ | ✓ |  |  |
 | `assessment.approve` | assessment | ✓ | ✓ |  | ✓ |  |  |  |  |  |
 | `assessment.reopen` | assessment | ✓ | ✓ |  |  |  |  |  |  |  |
+| `questions.manage` | tests | ✓ | ✓ |  |  |  | ✓ | ✓ |  |  |
+| `questions.export` | tests | ✓ | ✓ |  |  |  | ✓ | ✓ |  |  |
+| `tests.create` | tests | ✓ | ✓ |  |  |  | ✓ | ✓ |  |  |
+| `tests.publish` | tests | ✓ | ✓ |  |  |  | ✓ | ✓ |  |  |
+| `tests.reopen` | tests | ✓ | ✓ |  | ✓ |  |  |  |  |  |
+| `tests.results.view` | tests | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |
+| `tests.results.enter` | tests | ✓ | ✓ |  |  |  | ✓ | ✓ |  |  |
+| `test_types.manage` | tests | ✓ | ✓ |  | ✓ |  |  |  |  |  |
 | `portal.student` | portal |  |  |  |  |  |  |  | ✓ |  |
 | `portal.guardian` | portal |  |  |  |  |  |  |  |  | ✓ |
 

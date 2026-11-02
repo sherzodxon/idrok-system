@@ -54,8 +54,8 @@ export const jsonField = <T extends z.ZodType>(schema: T) =>
     })
     .pipe(schema);
 
-// Teachers reach their own curriculum plan imports; everything else needs imports.run (checked in the service).
-const JOB_ACCESS = { anyOf: ["imports.run", "curriculum.create"] } as const;
+// Teachers reach their own curriculum plan and question imports; everything else needs imports.run (in the service).
+const JOB_ACCESS = { anyOf: ["imports.run", "curriculum.create", "questions.manage"] } as const;
 
 const UploadFieldsSchema = z.object({ kind: ImportKindSchema, options: jsonField(ImportOptionsSchema) });
 

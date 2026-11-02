@@ -2,7 +2,7 @@
 // column keys in a hidden first row, so imports do not depend on the language of the headers (lesson-plan.md §4.2).
 
 export type ImportKindCode =
-  "STUDENTS_GUARDIANS" | "EMPLOYEES_ASSIGNMENTS" | "CLASS_GROUPS" | "SUBJECTS" | "CURRICULUM_PLAN";
+  "STUDENTS_GUARDIANS" | "EMPLOYEES_ASSIGNMENTS" | "CLASS_GROUPS" | "SUBJECTS" | "CURRICULUM_PLAN" | "QUESTIONS";
 
 export interface ImportColumn {
   key: string;
@@ -66,6 +66,22 @@ export const IMPORT_COLUMNS: Record<ImportKindCode, readonly ImportColumn[]> = {
     { key: "homework", width: 30 },
     { key: "resources", width: 24 },
     { key: "notes", width: 24 },
+  ],
+  // tests.md §3: Savol | Turi | A–F | To'g'ri javob | Ball | Mavzu | Qiyinlik | Izoh (MATCHING only in the UI).
+  QUESTIONS: [
+    { key: "question", required: true, width: 48 },
+    { key: "questionType", width: 16 },
+    { key: "optionA", width: 20 },
+    { key: "optionB", width: 20 },
+    { key: "optionC", width: 20 },
+    { key: "optionD", width: 20 },
+    { key: "optionE", width: 20 },
+    { key: "optionF", width: 20 },
+    { key: "correct", required: true, width: 16 },
+    { key: "points", width: 8 },
+    { key: "questionTopic", width: 28 },
+    { key: "difficulty", width: 12 },
+    { key: "explanation", width: 30 },
   ],
 };
 

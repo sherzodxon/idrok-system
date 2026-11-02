@@ -21,6 +21,13 @@ const TEACHING: PermissionCode[] = [
   ...ASSESSMENT_VIEW,
   "scores.create",
   "assessment.manual_entry",
+  // M4: own question bank and tests; results of own groups (scope in the services)
+  "questions.manage",
+  "questions.export",
+  "tests.create",
+  "tests.publish",
+  "tests.results.view",
+  "tests.results.enter",
 ];
 
 const SCHOOL_ADMIN: PermissionCode[] = PERMISSION_CODES.filter((c) => !c.startsWith("portal."));
@@ -36,6 +43,7 @@ export const ROLE_DEFAULT_PERMISSIONS: Record<SystemRoleCode, readonly Permissio
     ...PEOPLE_VIEW,
     ...LESSONS_VIEW,
     ...ASSESSMENT_VIEW,
+    "tests.results.view",
     "exports.run",
     "audit_logs.view",
   ],
@@ -66,6 +74,10 @@ export const ROLE_DEFAULT_PERMISSIONS: Record<SystemRoleCode, readonly Permissio
     "assessment.approve",
     "scores.correct",
     "scores.late_entry",
+    // M4 (Q-22): retakes, individual windows and reopening attempts; test types
+    "tests.results.view",
+    "tests.reopen",
+    "test_types.manage",
   ],
   METHODIST: [
     ...STRUCTURE_VIEW,
@@ -75,6 +87,7 @@ export const ROLE_DEFAULT_PERMISSIONS: Record<SystemRoleCode, readonly Permissio
     ...LESSONS_VIEW,
     "curriculum.approve",
     ...ASSESSMENT_VIEW,
+    "tests.results.view",
   ],
   TEACHER: [...STRUCTURE_VIEW, "students.view", ...TEACHING],
   CLASS_TEACHER: [...STRUCTURE_VIEW, "students.view", "guardians.view", ...TEACHING],

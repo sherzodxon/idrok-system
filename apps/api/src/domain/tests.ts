@@ -1,7 +1,10 @@
 // Test arithmetic and rules (docs/spec/tests.md §3–§8, security-baseline.md S4–S5). Pure: no database, no clock —
 // "now" is always passed in. Points and percentages are Decimal (0–100 scale for percentages).
 import { createHash } from "node:crypto";
+import { normalizeText } from "@idrok/shared";
 import { D, Decimal, ratio, sum, type DecimalInput } from "@idrok/shared/decimal";
+
+export { normalizeText };
 
 export type QuestionType = "SINGLE" | "MULTIPLE" | "SHORT_TEXT" | "MATCHING";
 export type MultipleScoring = "ALL_OR_NOTHING" | "PARTIAL";
@@ -31,13 +34,6 @@ export type AnswerValue = { optionIds: string[] } | { text: string } | { pairs: 
 
 // ---------------------------------------------------------------------------------------------------------------
 // §4.6 Grading
-
-const APOSTROPHES = /[‘’ʻʼ`´']/g;
-
-/** SHORT_TEXT comparison form: trimmed, lower case, single spaces, one apostrophe ("O‘zbekiston" = "o'zbekiston"). */
-export function normalizeText(value: string): string {
-  return value.normalize("NFC").replace(APOSTROPHES, "'").toLocaleLowerCase("uz").replace(/\s+/g, " ").trim();
-}
 
 export interface Graded {
   /** Full points only; a partial MULTIPLE answer is not "correct". */

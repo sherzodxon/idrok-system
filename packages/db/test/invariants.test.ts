@@ -17,6 +17,8 @@ const INDEXES = [
   "PolicyBinding_one_current",
   "ManualAssessmentScore_one_current",
   "PeriodResult_one_current",
+  "TestAttempt_one_in_progress",
+  "OfflineResult_one_current",
 ];
 const CONSTRAINTS = [
   "AcademicYear_dates_check",
@@ -43,6 +45,16 @@ const CONSTRAINTS = [
   "ScoreSettings_values_check",
   "GradeScaleBand_range_check",
   "ManualAssessmentScore_points_check",
+  "QuestionVersion_points_check",
+  "Test_window_check",
+  "Test_weighted_check",
+  "Test_offline_scale_check",
+  "Test_threshold_check",
+  "TestQuestion_points_check",
+  "TestAssignment_target_check",
+  "TestWindowOverride_window_check",
+  "TestAttempt_finish_check",
+  "OfflineResult_score_check",
 ];
 const TRIGGERS = [
   "AuditLog_append_only",
@@ -53,6 +65,8 @@ const TRIGGERS = [
   "ScoreEntry_reversal_matches",
   "AssessmentPolicyVersion_frozen",
   "PeriodResult_final_frozen",
+  "QuestionVersion_append_only",
+  "OfflineResult_history",
 ];
 
 let client: pg.Client;

@@ -37,6 +37,8 @@ import {
   type SubjectRowData,
 } from "./parse";
 import { normalizeText } from "@idrok/shared";
+import { QuestionBankService } from "../question-bank/question-bank.service";
+import { parseQuestionRows, type QuestionRowData } from "../question-bank/question-import";
 
 export interface ImportDeps {
   db: Db;
@@ -52,6 +54,8 @@ interface Options {
   subjectId?: string;
   gradeId?: string;
   mode?: PlanImportMode;
+  // question bank (QuestionImportOptions)
+  sharedWithSubject?: boolean;
   planId?: string;
   teachingGroupId?: string;
   title?: string;
@@ -128,6 +132,21 @@ export async function parseImport(deps: ImportDeps, importJobId: string): Promis
       });
       break;
     }
+    case "QUESTIONS": {
+      const topics = await db.topic.findMany({
+        where: { subjectId: options.subjectId, gradeId: options.gradeId, archivedAt: null },
+        select: { id: true, normalizedTitle: true },
+      });
+      rows = parseQuestionRows(sheet, {
+        topicIdByTitle: new Map(topics.map((t) => [t.normalizedTitle, t.id])),
+        knownHashes: await new QuestionBankService(db).knownHashes(
+          await actorOf(db, job.createdById),
+          options.subjectId!,
+          options.gradeId!,
+        ),
+      });
+      break;
+    }
   }
   // Curriculum plans: planned hours against the group's lessons (a warning when they differ, §4.3).
   const planTotals =
@@ -176,6 +195,7 @@ export async function parseImport(deps: ImportDeps, importJobId: string): Promis
           warnings: count("WARNING"),
           errors: count("ERROR"),
           ...(kind === "CURRICULUM_PLAN" ? { skipped: count("SKIPPED"), ...planTotals } : {}),
+          ...(kind === "QUESTIONS" ? { duplicates: count("SKIPPED") } : {}),
         },
         ...(year ? { options: { ...options, academicYearId: year.id } } : {}),
       },
@@ -241,11 +261,8 @@ export async function commitImport(deps: ImportDeps, importJobId: string): Promi
   const kind = job.kind as ImportKindCode;
   const options = (job.options ?? {}) as Options & { skipErrors?: boolean };
   const accounts = new AccountsService(db, deps.authState);
-  const actorRoles = await db.userRole.findMany({
-    where: { userId: job.createdById, revokedAt: null },
-    select: { role: { select: { code: true } } },
-  });
-  const actor = { userId: job.createdById, roles: actorRoles.map((r) => r.role.code) };
+  const actor = await actorOf(db, job.createdById);
+  const owner = kind === "QUESTIONS" ? await new QuestionBankService(db).me(actor as never) : null;
   const { timezone } = await schoolClock(db);
   const year = NEEDS_YEAR.includes(kind) ? await resolveYear(db, options) : null;
   const yearStart = year ? schoolDateFromDb(year.startDate) : null;
@@ -283,7 +300,9 @@ export async function commitImport(deps: ImportDeps, importJobId: string): Promi
               ? await commitEmployeeRow(ctx, data as EmployeeRowData)
               : kind === "CLASS_GROUPS"
                 ? await commitClassRow(ctx, data as ClassRowData, year!.id)
-                : await commitSubjectRow(ctx, data as SubjectRowData);
+                : kind === "QUESTIONS"
+                  ? await commitQuestionRow(ctx, data as QuestionRowData, owner, options)
+                  : await commitSubjectRow(ctx, data as SubjectRowData);
         await tx.importRow.update({ where: { id: row.id }, data: { targetEntityId: result.targetEntityId } });
         return result;
       });
@@ -334,3 +353,40 @@ export async function commitImport(deps: ImportDeps, importJobId: string): Promi
 }
 
 export const XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+async function actorOf(db: Db, userId: string) {
+  const roles = await db.userRole.findMany({
+    where: { userId, revokedAt: null },
+    select: { role: { select: { code: true } } },
+  });
+  return { userId, roles: roles.map((r) => r.role.code) };
+}
+
+/** One question per row, owned by the teacher who ran the import (tests.md §3). */
+async function commitQuestionRow(
+  ctx: CommitContext,
+  d: QuestionRowData,
+  ownerId: string | null,
+  options: Options,
+): Promise<{ targetEntityId: string; action: "CREATED" }> {
+  if (!ownerId) throw new AppError("FORBIDDEN", 403, { reason: "NO_EMPLOYEE_PROFILE" });
+  const id = await new QuestionBankService(ctx.tx as unknown as Db).createIn(
+    ctx.tx,
+    ownerId,
+    {
+      type: d.type,
+      text: d.text,
+      points: d.points,
+      options: d.options,
+      acceptedAnswers: d.acceptedAnswers,
+      explanation: d.explanation,
+      subjectId: options.subjectId!,
+      gradeId: options.gradeId!,
+      topicId: d.topicId,
+      difficulty: d.difficulty,
+      sharedWithSubject: options.sharedWithSubject ?? false,
+    },
+    ctx.actor.userId,
+  );
+  return { targetEntityId: id, action: "CREATED" };
+}
