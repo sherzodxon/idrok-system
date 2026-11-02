@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, Plus, Trash2 } from "lucide-react";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { useMemo, useState, type FormEvent } from "react";
 import type {
   AcademicPeriodDto,
@@ -111,7 +111,6 @@ function useSchoolWeek(yearId: string) {
 
 function MonthTab({ yearId, startDate, endDate }: { yearId: string; startDate: string; endDate: string }) {
   const t = useTranslations();
-  const locale = useLocale();
   const api = useApi();
   const manage = useManage();
   const week = useSchoolWeek(yearId);
@@ -131,9 +130,11 @@ function MonthTab({ yearId, startDate, endDate }: { yearId: string; startDate: s
   const cells = [...eachSchoolDate(gridFrom, gridTo)];
   const byDate = useMemo(() => new Map((days.data ?? []).map((d) => [d.date, d])), [days.data]);
   const working = new Set(week.data?.workingWeekdays ?? []);
-  const title = new Intl.DateTimeFormat(locale, { month: "long", year: "numeric", timeZone: "UTC" }).format(
-    new Date(`${from}T00:00:00Z`),
-  );
+  // Month names come from the messages: browsers without full ICU data print "2026 M11" for uz.
+  const title = t("calendar.monthTitle", {
+    month: t(`calendar.months.${Number(from.slice(5, 7))}`),
+    year: from.slice(0, 4),
+  });
   const shift = (months: number) => {
     const d = new Date(`${from}T00:00:00Z`);
     d.setUTCMonth(d.getUTCMonth() + months);

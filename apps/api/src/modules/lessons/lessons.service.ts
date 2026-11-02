@@ -114,7 +114,7 @@ export class LessonsService {
           q.teacherId ? { OR: [{ teacherId: q.teacherId }, { substituteTeacherId: q.teacherId }] } : {},
         ],
       },
-      orderBy: [{ date: "asc" }, { lessonNumber: "asc" }],
+      orderBy: [{ date: "asc" }, { startsAt: "asc" }, { lessonNumber: "asc" }],
       select: lessonSelect,
     });
     return lessons.map(lessonDto);
@@ -243,7 +243,7 @@ export class LessonsService {
         status: { not: "CANCELLED" },
         OR: [{ teacherId: employee.id, substituteTeacherId: null }, { substituteTeacherId: employee.id }],
       },
-      orderBy: { lessonNumber: "asc" },
+      orderBy: [{ startsAt: "asc" }, { lessonNumber: "asc" }],
       select: lessonSelect,
     });
     return lessons.map(lessonDto);
@@ -279,7 +279,7 @@ export class LessonsService {
         teachingGroupId: { in: memberships.map((m) => m.teachingGroupId) },
         date: { gte: schoolDateToDb(from), lte: schoolDateToDb(to) },
       },
-      orderBy: [{ date: "asc" }, { lessonNumber: "asc" }],
+      orderBy: [{ date: "asc" }, { startsAt: "asc" }, { lessonNumber: "asc" }],
       select: lessonSelect,
     });
     // Only the days the student belonged to the group (a transfer mid-week).

@@ -2,7 +2,7 @@
 // embedded PostgreSQL in a temp directory. Each call creates a fresh, uniquely named database and migrates it.
 import { execFile } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -86,6 +86,32 @@ export async function startTestDatabase(): Promise<TestDatabase> {
       await stopServer();
     },
   };
+}
+
+/**
+ * A persistent embedded PostgreSQL for local development (`pnpm --filter @idrok/e2e local`): the data stays in `dir`
+ * between runs. Synthetic data only; migrations are applied on every start.
+ */
+export async function startLocalDatabase(dir: string, port: number): Promise<TestDatabase> {
+  const { default: EmbeddedPostgres } = await import("embedded-postgres");
+  const server = new EmbeddedPostgres({
+    databaseDir: dir,
+    user: "postgres",
+    password: "postgres",
+    port,
+    persistent: true,
+    onLog: () => {},
+    onError: () => {},
+  });
+  if (!existsSync(path.join(dir, "PG_VERSION"))) await server.initialise();
+  await server.start();
+  const url = `postgresql://postgres:postgres@localhost:${port}/idrok`;
+  await withAdmin(`postgresql://postgres:postgres@localhost:${port}/postgres`, async (c) => {
+    const { rowCount } = await c.query("SELECT 1 FROM pg_database WHERE datname = 'idrok'");
+    if (!rowCount) await c.query('CREATE DATABASE "idrok"');
+  });
+  await migrate(url);
+  return { url, stop: () => server.stop() };
 }
 
 /** Empties every table (TRUNCATE does not fire the append-only row triggers). */
