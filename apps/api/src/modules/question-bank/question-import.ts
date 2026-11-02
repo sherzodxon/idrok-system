@@ -46,7 +46,7 @@ export function parseQuestionRows(
   ctx: { topicIdByTitle: Map<string, string>; knownHashes: Set<string> },
 ): PreviewRow<QuestionRowData | null>[] {
   const seen = new Set(ctx.knownHashes);
-  const inFile = new Set<string>();
+  const inFile = new Map<string, number>();
   return rows.map(({ rowNumber, values: v }) => {
     const errors: Message[] = [];
     const warnings: Message[] = [];
@@ -129,11 +129,14 @@ export function parseQuestionRows(
       contentHash: hash,
     };
     if (seen.has(hash)) {
-      const code = inFile.has(hash) ? "DUPLICATE_IN_FILE" : "DUPLICATE_QUESTION";
-      return { rowNumber, status: "SKIPPED", data, messages: [{ code, field: "question" }, ...warnings] };
+      const first = inFile.get(hash);
+      const message = first
+        ? { code: "DUPLICATE_IN_FILE", field: "question", params: { row: first } }
+        : { code: "DUPLICATE_QUESTION", field: "question" };
+      return { rowNumber, status: "SKIPPED", data, messages: [message, ...warnings] };
     }
     seen.add(hash);
-    inFile.add(hash);
+    inFile.set(hash, rowNumber);
     return { rowNumber, status: warnings.length ? "WARNING" : "OK", data, messages: warnings };
   });
 }

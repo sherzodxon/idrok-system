@@ -35,5 +35,11 @@ test("a teacher sees today's lessons and their week", async ({ page }) => {
   await expect(page.getByText("Bugun darsingiz yo'q")).toBeVisible();
   await page.getByTestId("sidebar").getByRole("link", { name: "Jadvalim" }).click();
   await expect(page.getByTestId("week-range")).toBeVisible();
-  await expect(page.getByText("Bu haftada dars yo'q")).toBeVisible();
+  // The stack's lesson of yesterday (for the M3 journal) is in this week from Tuesday on: either way, no timetable.
+  await expect(
+    page
+      .getByText("Bu haftada dars yo'q")
+      .or(page.locator("[data-lesson]").filter({ hasText: "E2E reja fani" }))
+      .first(),
+  ).toBeVisible();
 });
