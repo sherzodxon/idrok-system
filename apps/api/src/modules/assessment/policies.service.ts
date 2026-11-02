@@ -120,13 +120,20 @@ export async function ensureDefaultPolicy(tx: DbTransaction) {
   return policy;
 }
 
-/** The latest published version of the default policy. */
+/** The latest published version of the default policy (the preset is created the first time it is needed). */
 export async function defaultVersion(tx: DbTransaction | Db) {
-  return tx.assessmentPolicyVersion.findFirst({
-    where: { status: "PUBLISHED", policy: { isDefault: true } },
-    orderBy: { version: "desc" },
-    select: versionSelect,
-  });
+  const find = () =>
+    tx.assessmentPolicyVersion.findFirst({
+      where: { status: "PUBLISHED", policy: { isDefault: true } },
+      orderBy: { version: "desc" },
+      select: versionSelect,
+    });
+  const found = await find();
+  if (found || (await tx.assessmentPolicy.findFirst({ where: { isDefault: true }, select: { id: true } })))
+    return found;
+  if ("$transaction" in tx) await tx.$transaction((inner) => ensureDefaultPolicy(inner));
+  else await ensureDefaultPolicy(tx);
+  return find();
 }
 
 /**

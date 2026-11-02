@@ -99,11 +99,13 @@ export function studentRows(): SheetRow[] {
       const c = Math.floor(i / STUDENTS_PER_CLASS);
       const level = Number(DEMO_CLASSES[c]!.split("-")[0]);
       const female = i % 2 === 1;
-      const last = LAST[(i * 3 + c) % LAST.length]!;
+      // Each boy / girl of a class gets a different name pair (p ↦ (last, first) is one-to-one on 0..99).
+      const p = (Math.floor((i % STUDENTS_PER_CLASS) / 2) + 15 * c) % 100;
+      const last = LAST[p % 10]!;
       const birthYear = 2026 - 7 - level + 1;
       return {
         lastName: female ? fem(last) : last,
-        firstName: (female ? FIRST_F : FIRST_M)[(i * 7 + c) % 10]!,
+        firstName: (female ? FIRST_F : FIRST_M)[(Math.floor(p / 10) + p) % 10]!,
         dateOfBirth: `${birthYear}-${pad((i % 12) + 1, 2)}-${pad((i % 28) + 1, 2)}`,
         gender: female ? "A" : "E",
         className: DEMO_CLASSES[c]!,

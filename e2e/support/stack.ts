@@ -8,7 +8,7 @@ import argon2 from "argon2";
 import { createRootClient } from "@idrok/db";
 import { ensureSystemRoles, syncPermissions } from "@idrok/db/seed";
 import { startTestDatabase } from "@idrok/db/testing";
-import { parseSchoolDate, schoolDateToDb } from "@idrok/shared/time";
+import { addSchoolDays, atSchoolTime, parseSchoolDate, schoolDateToDb, schoolToday } from "@idrok/shared/time";
 import { RedisMemoryServer } from "redis-memory-server";
 import { API_URL, PASSWORD, PORTS, TEMP_PASSWORD, USERS, WEB_URL } from "./users";
 
@@ -93,6 +93,37 @@ async function seed(url: string) {
         teachingGroupId: classGroup.id,
         subjectId: planSubject.id,
         validFrom: day("2026-09-01"),
+      },
+    });
+    // M3: one lesson of the planner's subject yesterday, in an active quarter around today, to score in the journal.
+    const today = schoolToday();
+    const quarter = await root.academicPeriod.create({
+      data: {
+        tenantId,
+        academicYearId: year.id,
+        type: "QUARTER",
+        name: "E2E chorak",
+        order: 1,
+        startDate: schoolDateToDb(addSchoolDays(today, -20)),
+        endDate: schoolDateToDb(addSchoolDays(today, 20)),
+        status: "ACTIVE",
+      },
+    });
+    const yesterday = addSchoolDays(today, -1);
+    await root.lessonSession.create({
+      data: {
+        tenantId,
+        academicYearId: year.id,
+        periodId: quarter.id,
+        teachingGroupId: classGroup.id,
+        subjectId: planSubject.id,
+        teacherId: plannerEmployee.id,
+        date: schoolDateToDb(yesterday),
+        lessonNumber: 7,
+        startsAt: atSchoolTime(yesterday, 15 * 60),
+        endsAt: atSchoolTime(yesterday, 15 * 60 + 45),
+        sequenceNo: 1,
+        source: "MANUAL",
       },
     });
     const student = await root.student.create({

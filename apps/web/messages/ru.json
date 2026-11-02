@@ -99,9 +99,32 @@
       "PLAN_NOT_APPROVED": "Новая версия — только из утверждённого плана",
       "PLAN_HAS_OPEN_VERSION": "У этого плана уже есть редактируемая версия",
       "LESSON_IN_FUTURE": "Будущий урок нельзя отметить проведённым",
-      "LESSON_NOT_SCHEDULED": "Отменить можно только запланированный урок"
+      "LESSON_NOT_SCHEDULED": "Отменить можно только запланированный урок",
+      "STUDENT_ABSENT": "Ученик отсутствовал — балл не ставится",
+      "LATE_ENTRY": "Срок выставления прошёл",
+      "ALREADY_REVERSED": "Этот балл уже отменён",
+      "NOT_OWN_ENTRY": "Для отмены балла другого учителя нужно право",
+      "NOT_REVERSIBLE": "Эту запись нельзя отменить",
+      "RULE_EXISTS": "Такое активное правило уже есть",
+      "SCALE_IN_USE": "Шкала используется в опубликованной политике — интервалы менять нельзя, создайте новую шкалу",
+      "NAME_TAKEN": "Это имя занято",
+      "NOT_DRAFT": "Публикуется только черновик",
+      "NOT_PUBLISHED": "У политики нет опубликованной версии",
+      "RUN_NOT_PREPARED": "Сначала подготовьте период к закрытию",
+      "PERIOD_NOT_CLOSED": "Период не закрыт",
+      "POLICY_INVALID": "В политике есть ошибки",
+      "SCALE_INVALID": "Ошибка в интервалах шкалы",
+      "READ_ONLY": "Только просмотр"
     },
-    "SCORE_LIMIT_EXCEEDED": "Превышен лимит баллов"
+    "SCORE_LIMIT_EXCEEDED": "Превышен лимит баллов",
+    "scoreLimit": "Превышен лимит: за {window} можно ещё {remaining} балл.",
+    "limitWindows": {
+      "LESSON": "Урок",
+      "DAY": "День",
+      "WEEK": "Неделя",
+      "MONTH": "Месяц",
+      "PERIOD": "Период"
+    }
   },
   "states": {
     "emptyTitle": "Пока нет данных",
@@ -132,7 +155,10 @@
     "myPlans": "Мои планы",
     "lessons": "Уроки",
     "mySchedule": "Моё расписание",
-    "schedule": "Расписание"
+    "schedule": "Расписание",
+    "gradebook": "Журнал",
+    "assessment": "Оценивание",
+    "progress": "Оценки"
   },
   "shell": {
     "context": "Режим работы",
@@ -889,5 +915,272 @@
     "unassign": "Убрать",
     "unassignConfirm": "Темы плана будут сняты с будущих уроков; проведённые останутся",
     "openCreated": "Открыть созданный план"
+  },
+  "scores": {
+    "journal": "Журнал",
+    "gradebook": "Журнал (таблица)",
+    "progress": "Оценки",
+    "back": "Назад",
+    "noTopic": "Тема не указана",
+    "lessonMax": "максимум урока: {max}",
+    "locked": {
+      "LESSON_CANCELLED": "Урок отменён — ставить баллы нельзя.",
+      "LESSON_IN_FUTURE": "Урок ещё не начался.",
+      "PERIOD_CLOSED": "Период закрыт — для изменений нужно отдельное право.",
+      "LATE_ENTRY": "Срок выставления прошёл — нужно отдельное право.",
+      "READ_ONLY": "Этот урок доступен только для просмотра."
+    },
+    "criterion": "Критерий",
+    "noCriterion": "Без критерия",
+    "allPresent": "Все пришли",
+    "bulkPoints": "Балл всем",
+    "pointsShort": "Балл",
+    "scoreEveryone": "Поставить всем",
+    "bulkDone": "Баллы выставлены",
+    "bulkRefused": "Не выставлено {count} ученикам (лимит или посещаемость)",
+    "noStudents": "В этой группе нет учеников",
+    "leftToday": "осталось сегодня: {n}",
+    "attendance": "Посещаемость",
+    "attendanceShort": {
+      "PRESENT": "Был",
+      "LATE": "Опоздал",
+      "ABSENT_EXCUSED": "Уваж.",
+      "ABSENT_UNEXCUSED": "Неуваж."
+    },
+    "points": "Балл",
+    "entries": "Выставленные баллы",
+    "reverse": "Отменить",
+    "groupSubject": "Группа и предмет",
+    "period": "Период",
+    "chooseGroup": "Выберите группу и предмет",
+    "noLessonsInPeriod": "В этом периоде нет уроков",
+    "student": "Ученик",
+    "legend": "· — балл не выставлен, Sb — уважительная, Ss — неуважительная, × — отменён. Нажмите дату или ячейку, чтобы открыть журнал урока.",
+    "views": {
+      "DAY": "День",
+      "WEEK": "Неделя",
+      "MONTH": "Месяц",
+      "PERIOD": "Четверть"
+    },
+    "prev": "Назад",
+    "next": "Вперёд",
+    "overall": "Общий",
+    "noScores": "Баллов пока нет",
+    "sessionsLine": "оценено уроков: {scored}, ожидают: {pending}",
+    "incomplete": "Неполный",
+    "periodPoints": "период: {points}/{max}",
+    "history": "История баллов",
+    "byDay": "По дням",
+    "child": "Ребёнок",
+    "noChild": "Ученик не найден"
+  },
+  "assessment": {
+    "title": "Оценивание",
+    "tabs": {
+      "policy": "Политика",
+      "limits": "Лимиты",
+      "scales": "Шкала оценок",
+      "closing": "Закрытие периода",
+      "missing": "Кто не выставил"
+    },
+    "version": "Версия",
+    "default": "основная",
+    "versionStatus": {
+      "DRAFT": "Черновик",
+      "PUBLISHED": "Опубликована",
+      "RETIRED": "Устарела"
+    },
+    "newPolicyName": "Название новой политики",
+    "newPolicy": "Новая политика",
+    "f": {
+      "dailyView": "Ежедневный вид",
+      "overallMethod": "Общий процент",
+      "absentExcused": "Отсутствие по уважительной",
+      "absentUnexcused": "Отсутствие без причины",
+      "ungradedPresentAs": "Неоценённый урок",
+      "emptyComponent": "Пустой компонент",
+      "testsMode": "Тесты",
+      "missedTest": "Пропущенный тест",
+      "retakePolicy": "Пересдача",
+      "higherDefault": "Полугодие / год",
+      "rounding": "Округление",
+      "decimals": "Знаков после запятой",
+      "gradeScale": "5-балльная шкала",
+      "periodMaxPoints": "Максимум периода",
+      "enabledViews": "Виды",
+      "overallPeriodResult": "Общий итог периода"
+    },
+    "o": {
+      "dailyView": {
+        "BY_SUBJECT": "Только по предметам",
+        "OVERALL": "Только общий",
+        "BOTH": "Предметы и общий"
+      },
+      "overallMethod": {
+        "POOLED": "Все уроки вместе",
+        "WEIGHTED_SUBJECTS": "Проценты предметов (с весами)"
+      },
+      "excludeZero": {
+        "EXCLUDE": "Не учитывается",
+        "ZERO": "Как 0"
+      },
+      "ungraded": {
+        "PENDING": "Ожидает (не учитывается)",
+        "ZERO": "Как 0"
+      },
+      "emptyComponent": {
+        "REDISTRIBUTE": "Распределяется на остальные",
+        "ZERO": "Как 0",
+        "PENDING": "Итога нет"
+      },
+      "testsMode": {
+        "COMBINED": "Все тесты периода",
+        "SEPARATE": "Не входят в итог",
+        "SELECTIVE": "Только отмеченные"
+      },
+      "retake": {
+        "LAST": "Последняя",
+        "BEST": "Лучшая"
+      },
+      "aggregation": {
+        "AVERAGE": "Среднее четвертей",
+        "WEIGHTED": "С весами",
+        "WEIGHTED_WITH_FINAL": "С весами + итоговый",
+        "INDEPENDENT": "Отдельный расчёт"
+      },
+      "rounding": {
+        "HALF_UP": "Математическое",
+        "FLOOR": "Вниз",
+        "CEIL": "Вверх"
+      },
+      "componentType": {
+        "DAILY_SCORES": "Ежедневные баллы",
+        "TESTS": "Тесты",
+        "MANUAL": "Вводится вручную"
+      }
+    },
+    "views": {
+      "DAY": "День",
+      "WEEK": "Неделя",
+      "MONTH": "Месяц",
+      "PERIOD": "Четверть"
+    },
+    "noScale": "Не используется",
+    "components": "Компоненты",
+    "componentsSum": "Сумма: {sum} / {max}",
+    "componentName": "Название",
+    "componentType": "Тип",
+    "componentKey": "Ключ",
+    "componentMax": "Максимум",
+    "componentEnabled": "Включён",
+    "remove": "Удалить",
+    "manual": "Вручную",
+    "addComponent": "Добавить компонент",
+    "problems": {
+      "COMPONENTS_SUM_MISMATCH": "Сумма компонентов не равна максимуму периода",
+      "NO_COMPONENTS": "Нужен хотя бы один включённый компонент",
+      "DUPLICATE_COMPONENT_KEY": "Ключи компонентов не должны повторяться",
+      "TESTS_COMPONENT_IN_SEPARATE_MODE": "В режиме «не входят в итог» не должно быть компонента тестов",
+      "HIGHER_WEIGHTS_MISSING": "Для расчёта с весами нужны веса периодов",
+      "FINAL_COMPONENT_MISSING": "Не указан итоговый компонент",
+      "GRADE_SCALE_MISSING": "Выбранная шкала не найдена",
+      "GAP_OR_OVERLAP": "В шкале есть пропуск или пересечение",
+      "NOT_FROM_0_TO_100": "Шкала должна покрывать 0–100",
+      "BAND_EMPTY": "Пустой интервал",
+      "DUPLICATE_LABEL": "Оценки не должны повторяться",
+      "NO_BANDS": "Нет интервалов",
+      "PERIOD_MISSING": "Указанный период не найден",
+      "INVALID": "Настройки заполнены не полностью"
+    },
+    "saveDraft": "Сохранить черновик",
+    "publish": "Опубликовать",
+    "newVersion": "Новая версия на основе этой",
+    "makeDefault": "Сделать основной",
+    "settings": "Общие настройки",
+    "s": {
+      "lessonMaxPoints": "Максимум урока",
+      "hardCapPerLesson": "Не больше за урок",
+      "hardCapPerDay": "Не больше за день",
+      "lateEntryDays": "Сколько дней можно выставлять позже",
+      "allowScoreOnAbsent": "Можно ставить баллы отсутствующим"
+    },
+    "save": "Сохранить",
+    "rules": "Правила лимитов",
+    "noRules": "Дополнительных правил нет — только общие лимиты",
+    "window": "Окно",
+    "scope": "Для кого",
+    "scopeValue": "Какой",
+    "scopeDefault": "Все (по умолчанию)",
+    "maxPoints": "Максимум",
+    "addRule": "Добавить правило",
+    "windows": {
+      "LESSON": "Урок",
+      "DAY": "День",
+      "WEEK": "Неделя",
+      "MONTH": "Месяц",
+      "PERIOD": "Период"
+    },
+    "scopes": {
+      "GLOBAL": "Все предметы",
+      "SUBJECT": "Предмет",
+      "GRADE": "Параллель",
+      "TEACHER": "Учитель",
+      "TEACHING_GROUP": "Группа"
+    },
+    "active": "Активно",
+    "inactive": "Выключено",
+    "activate": "Включить",
+    "deactivate": "Выключить",
+    "criteria": "Критерии баллов",
+    "noCriteria": "Критериев нет",
+    "criterionName": "Название критерия",
+    "addCriterion": "Добавить критерий",
+    "noScales": "Шкал нет",
+    "inUse": "Используется",
+    "newScale": "Новая шкала",
+    "scaleName": "Название шкалы",
+    "bandMin": "от (%)",
+    "bandMax": "до (%)",
+    "bandLabel": "Оценка",
+    "addBand": "Добавить интервал",
+    "noPeriods": "Периоды не заданы",
+    "period": "Период",
+    "periodStatus": {
+      "DRAFT": "Черновик",
+      "ACTIVE": "Активен",
+      "CLOSED": "Закрыт"
+    },
+    "bindings": "Политика периода",
+    "noBindings": "Не привязана — используется основная политика",
+    "allSubjects": "Все предметы",
+    "superseded": "Заменена",
+    "current": "Действует",
+    "chooseVersion": "Выберите версию",
+    "reason": "Причина (обязательна для активного периода)",
+    "applyToPeriod": "Применить к периоду",
+    "closing": "Закрытие периода",
+    "closingHint": "Сначала подготовьте: система посчитает итоги и покажет отчёт о неполноте. Затем закройте — итоги станут неизменными.",
+    "prepare": "Подготовить к закрытию",
+    "close": "Закрыть период",
+    "recomputeReason": "Причина пересчёта",
+    "recompute": "Пересчитать устаревшие итоги",
+    "noRuns": "Ещё не подготовлен",
+    "runStatus": {
+      "PREPARED": "Подготовлен",
+      "CLOSED": "Закрыт",
+      "CANCELLED": "Отменён"
+    },
+    "reportLine": "Учеников: {students}, итогов: {results}, неполных: {incomplete}",
+    "emptyComponentLine": "Пустой компонент «{type}»: {n}",
+    "pendingByTeacher": "Уроки без баллов (по учителям)",
+    "closeConfirmTitle": "Закрыть период",
+    "closeConfirm": "Закрыть «{name}»? Итоги станут неизменными.",
+    "from": "С",
+    "to": "По",
+    "noLessonsInRange": "В этом диапазоне нет проведённых уроков",
+    "teacher": "Учитель",
+    "lessonsCol": "Уроки",
+    "unscored": "Без баллов",
+    "unmarked": "Без посещаемости"
   }
 }

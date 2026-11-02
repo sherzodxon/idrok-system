@@ -5,6 +5,8 @@ import {
   ClipboardList,
   Clock,
   FileSpreadsheet,
+  GraduationCap,
+  Gauge,
   LayoutDashboard,
   NotebookText,
   Settings,
@@ -32,7 +34,9 @@ export interface NavItem {
     | "mySchedule"
     | "imports"
     | "settings"
-    | "myGroups";
+    | "myGroups"
+    | "gradebook"
+    | "assessment";
   href: string;
   icon: LucideIcon;
   /** Hidden without it — the API checks again (CLAUDE.md §4). */
@@ -50,12 +54,15 @@ export const NAV: Record<NavContext, NavItem[]> = {
     { key: "timetable", href: "/admin/timetable", icon: CalendarRange, permission: "timetable.manage" },
     { key: "lessons", href: "/admin/lessons", icon: ClipboardList, permission: "timetable.manage" },
     { key: "plans", href: "/admin/plans", icon: NotebookText, permission: "curriculum.approve" },
+    { key: "gradebook", href: "/admin/gradebook", icon: GraduationCap, permission: "gradebook.view" },
+    { key: "assessment", href: "/admin/assessment", icon: Gauge, permission: "assessment.view" },
     { key: "imports", href: "/admin/imports", icon: FileSpreadsheet, permission: "imports.run" },
     { key: "settings", href: "/admin/settings", icon: Settings, permission: "settings.view" },
   ],
   teacher: [
     { key: "dashboard", href: "/dashboard", icon: LayoutDashboard },
     { key: "mySchedule", href: "/teacher/schedule", icon: Clock, permission: "lessons.view" },
+    { key: "gradebook", href: "/teacher/gradebook", icon: GraduationCap, permission: "gradebook.view" },
     { key: "myGroups", href: "/teacher/groups", icon: BookOpen, permission: "class_groups.view" },
     { key: "students", href: "/teacher/students", icon: Users, permission: "students.view" },
     { key: "myPlans", href: "/teacher/plans", icon: NotebookText, permission: "curriculum.create" },

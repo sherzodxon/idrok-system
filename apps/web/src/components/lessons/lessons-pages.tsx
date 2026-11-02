@@ -19,6 +19,7 @@ import { Card, CardHeader } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
 import { Field, Input, Select } from "@/components/ui/field";
 import { FormDrawer } from "@/components/ui/form-drawer";
+import { JournalLink } from "@/components/scores/scores-pages";
 import { EmptyState, QueryBoundary } from "@/components/ui/states";
 import { FilterSelect, PageHeader, Tabs, Toolbar } from "@/components/ui/toolbar";
 import { cn } from "@/lib/cn";
@@ -106,8 +107,11 @@ function LessonRow({ lesson, who, action }: { lesson: LessonSessionDto; who: str
           {lesson.cancelReason ? ` · ${lesson.cancelReason}` : ""}
         </span>
       </span>
-      <Badge tone={STATUS_TONE[lesson.status]}>{t(`status.${lesson.status}`)}</Badge>
-      {action}
+      {/* On a phone the status and actions take their own line, so the lesson text keeps its width. */}
+      <span className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+        <Badge tone={STATUS_TONE[lesson.status]}>{t(`status.${lesson.status}`)}</Badge>
+        {action}
+      </span>
     </li>
   );
 }
@@ -192,17 +196,20 @@ export function TodayLessonsCard() {
                   lesson={l}
                   who={l.teachingGroupName}
                   action={
-                    can(me.data, "lessons.mark") && markable(l) ? (
-                      <Button
-                        size="sm"
-                        variant={l.status === "HELD" ? "ghost" : "secondary"}
-                        onClick={() => setMarking(l)}
-                        data-testid="mark-held"
-                      >
-                        <CheckCircle2 className="size-4" aria-hidden />
-                        {t(l.status === "HELD" ? "editHeld" : "markHeld")}
-                      </Button>
-                    ) : null
+                    <>
+                      {can(me.data, "lessons.mark") && markable(l) && (
+                        <Button
+                          size="sm"
+                          variant={l.status === "HELD" ? "ghost" : "secondary"}
+                          onClick={() => setMarking(l)}
+                          data-testid="mark-held"
+                        >
+                          <CheckCircle2 className="size-4" aria-hidden />
+                          {t(l.status === "HELD" ? "editHeld" : "markHeld")}
+                        </Button>
+                      )}
+                      {l.status !== "CANCELLED" && <JournalLink lessonId={l.id} />}
+                    </>
                   }
                 />
               ))}
@@ -251,11 +258,14 @@ export function TeacherSchedulePage() {
                 lesson={l}
                 who={l.teachingGroupName}
                 action={
-                  can(me.data, "lessons.mark") && markable(l) ? (
-                    <Button size="sm" variant="ghost" onClick={() => setMarking(l)}>
-                      {t(l.status === "HELD" ? "editHeld" : "markHeld")}
-                    </Button>
-                  ) : null
+                  <>
+                    {can(me.data, "lessons.mark") && markable(l) && (
+                      <Button size="sm" variant="ghost" onClick={() => setMarking(l)}>
+                        {t(l.status === "HELD" ? "editHeld" : "markHeld")}
+                      </Button>
+                    )}
+                    {l.status !== "CANCELLED" && <JournalLink lessonId={l.id} />}
+                  </>
                 }
               />
             )}
