@@ -1,6 +1,7 @@
 // M3 assessment policy configuration (docs/spec/scoring.md §6). Decimal values travel as strings (no float on the
 // way); the API and the pure scoring functions turn them into Decimal.
 import { z } from "zod";
+import { SchoolDateSchema } from "./common";
 
 /** Non-negative decimal with up to 4 fraction digits, as a string ("50", "1.5"). */
 export const DecimalStringSchema = z.string().regex(/^\d{1,6}(\.\d{1,4})?$/, "validation.decimal");
@@ -162,3 +163,192 @@ export const SaveGradeScaleSchema = z
     bands: z.array(GradeBandSchema).min(1).max(20),
   })
   .strict();
+
+// ---- progress, gradebook and period results (API)
+
+export const SubjectProgressSchema = z.object({
+  subjectId: z.uuid(),
+  subjectName: z.string(),
+  earned: z.string(),
+  max: z.string(),
+  /** Full precision; null = nothing counted yet (not 0%). */
+  percent: z.string().nullable(),
+  displayPercent: z.string().nullable(),
+  scoredSessions: z.number().int(),
+  pendingSessions: z.number().int(),
+});
+
+export const PeriodResultSchema = z.object({
+  studentId: z.uuid(),
+  studentName: z.string().optional(),
+  subjectId: z.uuid().nullable(),
+  subjectName: z.string().nullable(),
+  periodId: z.uuid(),
+  policyVersionId: z.uuid(),
+  status: z.enum(["LIVE", "DRAFT", "FINAL"]),
+  complete: z.boolean(),
+  isStale: z.boolean(),
+  components: z.array(
+    z.object({
+      key: z.string(),
+      type: z.string(),
+      maxPoints: z.string(),
+      percent: z.string().nullable(),
+      points: z.string().nullable(),
+    }),
+  ),
+  totalPoints: z.string().nullable(),
+  maxPoints: z.string(),
+  percent: z.string().nullable(),
+  displayPercent: z.string().nullable(),
+  gradeLabel: z.string().nullable(),
+  version: z.number().int().nullable(),
+});
+export type PeriodResultDto = z.infer<typeof PeriodResultSchema>;
+
+export const ProgressQuerySchema = z.object({
+  view: ProgressViewSchema.default("WEEK"),
+  date: SchoolDateSchema.optional(),
+});
+
+export const StudentProgressSchema = z.object({
+  studentId: z.uuid(),
+  view: ProgressViewSchema,
+  enabledViews: z.array(ProgressViewSchema),
+  from: z.string(),
+  to: z.string(),
+  periodId: z.uuid().nullable(),
+  periodName: z.string().nullable(),
+  subjects: z.array(SubjectProgressSchema),
+  /** Absent when the policy shows subjects only (BY_SUBJECT, §4.3). */
+  overall: z.object({ percent: z.string().nullable(), displayPercent: z.string().nullable() }).optional(),
+  /** Day by day overall (or pooled) percent, for the chart. */
+  series: z.array(z.object({ date: z.string(), percent: z.string().nullable() })),
+  periodResults: z.array(PeriodResultSchema),
+  entries: z.array(
+    z.object({
+      id: z.uuid(),
+      schoolDate: z.string(),
+      subjectName: z.string(),
+      topicTitle: z.string().nullable(),
+      criterionName: z.string().nullable(),
+      points: z.string(),
+      kind: z.enum(["NORMAL", "REVERSAL"]),
+    }),
+  ),
+});
+export type StudentProgressDto = z.infer<typeof StudentProgressSchema>;
+
+export const GradebookQuerySchema = z.object({
+  teachingGroupId: z.uuid(),
+  subjectId: z.uuid(),
+  periodId: z.uuid(),
+});
+
+export const GradebookSchema = z.object({
+  sessions: z.array(
+    z.object({
+      id: z.uuid(),
+      date: z.string(),
+      lessonNumber: z.number().int(),
+      status: z.string(),
+      topicTitle: z.string().nullable(),
+    }),
+  ),
+  students: z.array(
+    z.object({
+      studentId: z.uuid(),
+      name: z.string(),
+      cells: z.array(
+        z.object({
+          sessionId: z.uuid(),
+          state: z.string(),
+          points: z.string().nullable(),
+          max: z.string(),
+          attendance: z.string().nullable(),
+        }),
+      ),
+      percent: z.string().nullable(),
+      displayPercent: z.string().nullable(),
+    }),
+  ),
+});
+export type GradebookDto = z.infer<typeof GradebookSchema>;
+
+export const PeriodResultQuerySchema = z.object({
+  periodId: z.uuid(),
+  teachingGroupId: z.uuid(),
+  subjectId: z.uuid().optional(),
+});
+
+// ---- period closing, manual scores, missing-scores report
+
+export const CloseReportSchema = z.object({
+  students: z.number().int(),
+  results: z.number().int(),
+  incompleteResults: z.number().int(),
+  emptyComponents: z.record(z.string(), z.number().int()),
+  pendingByTeacher: z.array(
+    z.object({ teacherId: z.uuid(), teacherName: z.string(), pendingSessions: z.number().int() }),
+  ),
+});
+
+export const PeriodCloseRunSchema = z.object({
+  id: z.uuid(),
+  periodId: z.uuid(),
+  status: z.enum(["PREPARED", "CLOSED", "CANCELLED"]),
+  report: CloseReportSchema,
+  preparedAt: z.string(),
+  closedAt: z.string().nullable(),
+});
+export type PeriodCloseRunDto = z.infer<typeof PeriodCloseRunSchema>;
+
+export const ClosePeriodSchema = z.object({ runId: z.uuid() }).strict();
+export const RecomputePeriodSchema = z.object({ reason: z.string().trim().min(3).max(500) }).strict();
+
+export const ManualScoreSchema = z.object({
+  id: z.uuid(),
+  periodId: z.uuid(),
+  subjectId: z.uuid(),
+  studentId: z.uuid(),
+  componentKey: z.string(),
+  points: z.string(),
+  maxPoints: z.string(),
+  note: z.string().nullable(),
+  enteredAt: z.string(),
+});
+
+export const SaveManualScoreSchema = z
+  .object({
+    periodId: z.uuid(),
+    subjectId: z.uuid(),
+    studentId: z.uuid(),
+    componentKey: z.string().regex(/^[a-z0-9_-]{1,40}$/),
+    points: z.coerce.string().pipe(DecimalStringSchema),
+    maxPoints: z.coerce
+      .string()
+      .pipe(DecimalStringSchema)
+      .refine((v) => Number(v) > 0, "validation.positive"),
+    note: z.string().trim().max(300).nullable().optional(),
+    reason: z.string().trim().min(3).max(500).optional(),
+  })
+  .strict()
+  .refine((v) => Number(v.points) <= Number(v.maxPoints), { message: "points_above_max", path: ["points"] });
+
+export const ManualScoreQuerySchema = z.object({
+  periodId: z.uuid(),
+  teachingGroupId: z.uuid(),
+  subjectId: z.uuid(),
+});
+
+export const MissingScoresQuerySchema = z.object({ from: SchoolDateSchema, to: SchoolDateSchema });
+
+export const MissingScoresRowSchema = z.object({
+  teacherId: z.uuid(),
+  teacherName: z.string(),
+  lessons: z.number().int(),
+  /** Lessons over with no score for anyone. */
+  unscored: z.number().int(),
+  /** Lessons over with no attendance mark for anyone. */
+  unmarked: z.number().int(),
+});
