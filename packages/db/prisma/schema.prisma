@@ -57,6 +57,7 @@ enum FileKind {
   STUDENT_PHOTO
   BRANDING
   OTHER
+  QUESTION_IMAGE
 }
 
 enum FileStatus {
@@ -71,6 +72,7 @@ enum ImportKind {
   CLASS_GROUPS
   SUBJECTS
   CURRICULUM_PLAN
+  QUESTIONS
 }
 
 enum ImportStatus {
@@ -274,6 +276,18 @@ model Tenant {
   manualAssessmentScores   ManualAssessmentScore[]
   periodResults            PeriodResult[]
   periodCloseRuns          PeriodCloseRun[]
+
+  testTypes           TestType[]
+  questions           Question[]
+  questionVersions    QuestionVersion[]
+  tests               Test[]
+  testQuestions       TestQuestion[]
+  testAssignments     TestAssignment[]
+  testWindowOverrides TestWindowOverride[]
+  testAttempts        TestAttempt[]
+  testAnswers         TestAnswer[]
+  testEvents          TestEvent[]
+  offlineResults      OfflineResult[]
 }
 
 model SchoolSettings {
@@ -475,6 +489,8 @@ model FileAsset {
   importResults    ImportJob[]      @relation("ImportResult")
   studentPhotos    Student[]
 
+  questionImages QuestionVersion[]
+
   @@index([tenantId, kind, createdAt])
 }
 
@@ -601,6 +617,9 @@ model Grade {
   scoreEntries    ScoreEntry[]
   scoreLimitRules ScoreLimitRule[]
 
+  questions Question[]
+  tests     Test[]
+
   // SQL: Grade_level_check (0..11)
   @@unique([tenantId, level])
 }
@@ -657,6 +676,8 @@ model TeachingGroup {
   scoreEntries       ScoreEntry[]
   scoreLimitRules    ScoreLimitRule[]
 
+  testAssignments TestAssignment[]
+
   // SQL: TeachingGroup_one_class_group, TeachingGroup_class_check
   @@index([tenantId, academicYearId])
   @@index([classGroupId])
@@ -701,6 +722,9 @@ model Subject {
   manualAssessmentScores ManualAssessmentScore[]
   periodResults          PeriodResult[]
 
+  questions Question[]
+  tests     Test[]
+
   @@unique([tenantId, name])
 }
 
@@ -730,6 +754,9 @@ model Employee {
   substituteLessons  LessonSession[]     @relation("LessonSubstitute")
   scoreEntries       ScoreEntry[]
   scoreLimitRules    ScoreLimitRule[]
+
+  questions Question[]
+  tests     Test[]
 
   @@unique([tenantId, employeeCode])
   @@index([tenantId, lastName, firstName])
@@ -788,6 +815,11 @@ model Student {
   scoreEntries           ScoreEntry[]
   manualAssessmentScores ManualAssessmentScore[]
   periodResults          PeriodResult[]
+
+  testAssignments     TestAssignment[]
+  testWindowOverrides TestWindowOverride[]
+  testAttempts        TestAttempt[]
+  offlineResults      OfflineResult[]
 
   @@unique([tenantId, studentCode])
   @@index([tenantId, lastName, firstName])
@@ -885,6 +917,8 @@ model AcademicPeriod {
   manualAssessmentScores ManualAssessmentScore[]
   periodResults          PeriodResult[]
   periodCloseRuns        PeriodCloseRun[]
+
+  tests Test[]
 
   // SQL: AcademicPeriod_dates_check, AcademicPeriod_no_overlap (same type)
   @@unique([academicYearId, type, order])
@@ -1130,6 +1164,8 @@ model Topic {
   planItems    PlanItem[]
   scoreEntries ScoreEntry[]
 
+  questions Question[]
+
   @@unique([tenantId, subjectId, gradeId, normalizedTitle])
 }
 
@@ -1188,6 +1224,8 @@ model PlanItem {
   notes      String?
 
   lessonSessions LessonSession[]
+
+  tests Test[]
 
   // SQL: PlanItem_hours_check, PlanItem_frozen
   @@unique([planId, order])
@@ -1547,4 +1585,355 @@ model PeriodCloseRun {
   closedAt     DateTime?            @db.Timestamptz(3)
 
   @@index([periodId])
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// M4 tests (docs/spec/tests.md). A question version used in a test never changes (an edit is a new version);
+// offline results keep their history (supersededById); attempts are graded on the server only.
+
+enum QuestionType {
+  SINGLE
+  MULTIPLE
+  SHORT_TEXT
+  MATCHING
+}
+
+enum QuestionDifficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum QuestionStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum TestFormat {
+  ONLINE
+  OFFLINE
+}
+
+enum TestPurpose {
+  PRACTICE
+  WEIGHTED
+}
+
+enum TestStatus {
+  DRAFT
+  SCHEDULED
+  OPEN
+  CLOSED
+  ARCHIVED
+}
+
+enum TestResultVisibility {
+  IMMEDIATE
+  AFTER_CLOSE
+  NEVER
+}
+
+enum MultipleScoring {
+  ALL_OR_NOTHING
+  PARTIAL
+}
+
+enum TestRetakePolicy {
+  LAST
+  BEST
+}
+
+enum AttemptStatus {
+  IN_PROGRESS
+  FINISHED
+}
+
+enum AttemptFinishReason {
+  SUBMITTED
+  TIME_UP
+  VIOLATION
+  ADMIN_CLOSED
+}
+
+enum TestEventType {
+  VISIBILITY_HIDDEN
+  VISIBILITY_VISIBLE
+  BLUR
+  FOCUS
+  RECONNECT
+}
+
+enum OfflineResultStatus {
+  SCORED
+  ABSENT
+  EXCUSED
+}
+
+model TestType {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  tenantId  String   @db.Uuid
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  name      String
+  code      String
+  isSystem  Boolean  @default(false)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  tests Test[]
+
+  @@unique([tenantId, code])
+}
+
+model Question {
+  id                String             @id @default(uuid(7)) @db.Uuid
+  tenantId          String             @db.Uuid
+  tenant            Tenant             @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  ownerId           String             @db.Uuid
+  owner             Employee           @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  subjectId         String             @db.Uuid
+  subject           Subject            @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  gradeId           String             @db.Uuid
+  grade             Grade              @relation(fields: [gradeId], references: [id], onDelete: Restrict)
+  topicId           String?            @db.Uuid
+  topic             Topic?             @relation(fields: [topicId], references: [id], onDelete: Restrict)
+  type              QuestionType
+  difficulty        QuestionDifficulty @default(MEDIUM)
+  status            QuestionStatus     @default(ACTIVE)
+  currentVersionId  String?            @unique @db.Uuid
+  currentVersion    QuestionVersion?   @relation("CurrentVersion", fields: [currentVersionId], references: [id], onDelete: Restrict)
+  sharedWithSubject Boolean            @default(false)
+  createdAt         DateTime           @default(now()) @db.Timestamptz(3)
+  archivedAt        DateTime?          @db.Timestamptz(3)
+
+  versions QuestionVersion[]
+
+  @@index([tenantId, subjectId, gradeId, status])
+  @@index([ownerId])
+}
+
+// Append-only (SQL trigger QuestionVersion_append_only).
+model QuestionVersion {
+  id              String     @id @default(uuid(7)) @db.Uuid
+  tenantId        String     @db.Uuid
+  tenant          Tenant     @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  questionId      String     @db.Uuid
+  question        Question   @relation(fields: [questionId], references: [id], onDelete: Restrict)
+  version         Int
+  text            String
+  imageAssetId    String?    @db.Uuid
+  imageAsset      FileAsset? @relation(fields: [imageAssetId], references: [id], onDelete: Restrict)
+  points          Decimal    @default(1) @db.Decimal(6, 2)
+  /// [{ id, text, isCorrect }] — option ids are stable inside the version
+  options         Json       @default("[]")
+  /// SHORT_TEXT: string[]
+  acceptedAnswers Json?
+  /// MATCHING: [{ leftId, left, rightId, right }]
+  pairs           Json?
+  explanation     String?
+  contentHash     String
+  createdById     String?    @db.Uuid
+  createdAt       DateTime   @default(now()) @db.Timestamptz(3)
+
+  currentOf     Question?      @relation("CurrentVersion")
+  testQuestions TestQuestion[]
+
+  // SQL: QuestionVersion_points_check
+  @@unique([questionId, version])
+  @@index([tenantId, contentHash])
+}
+
+model Test {
+  id                   String               @id @default(uuid(7)) @db.Uuid
+  tenantId             String               @db.Uuid
+  tenant               Tenant               @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  title                String
+  description          String?
+  subjectId            String               @db.Uuid
+  subject              Subject              @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  gradeId              String               @db.Uuid
+  grade                Grade                @relation(fields: [gradeId], references: [id], onDelete: Restrict)
+  teacherId            String               @db.Uuid
+  teacher              Employee             @relation(fields: [teacherId], references: [id], onDelete: Restrict)
+  testTypeId           String               @db.Uuid
+  testType             TestType             @relation(fields: [testTypeId], references: [id], onDelete: Restrict)
+  format               TestFormat
+  purpose              TestPurpose
+  status               TestStatus           @default(DRAFT)
+  startsAt             DateTime?            @db.Timestamptz(3)
+  endsAt               DateTime?            @db.Timestamptz(3)
+  /// The school day of the test (OFFLINE: when it was written; ONLINE: the day it opens), Asia/Tashkent
+  schoolDate           DateTime?            @db.Date
+  timeLimitMinutes     Int?
+  questionCount        Int?
+  shuffleQuestions     Boolean              @default(true)
+  shuffleOptions       Boolean              @default(true)
+  /// { mode: "MANUAL" } | { mode: "POOL", rules: [{ topicId, difficulty, count }] }
+  selection            Json                 @default("{\"mode\":\"MANUAL\"}")
+  maxScore             Decimal              @default(0) @db.Decimal(8, 2)
+  multipleScoring      MultipleScoring      @default(ALL_OR_NOTHING)
+  periodId             String?              @db.Uuid
+  period               AcademicPeriod?      @relation(fields: [periodId], references: [id], onDelete: Restrict)
+  weight               Decimal?             @db.Decimal(6, 2)
+  includedInAssessment Boolean              @default(true)
+  retakePolicy         TestRetakePolicy     @default(LAST)
+  violationThreshold   Int                  @default(3)
+  showResultToStudent  TestResultVisibility @default(AFTER_CLOSE)
+  planItemId           String?              @db.Uuid
+  planItem             PlanItem?            @relation(fields: [planItemId], references: [id], onDelete: SetNull)
+  createdById          String?              @db.Uuid
+  createdAt            DateTime             @default(now()) @db.Timestamptz(3)
+  publishedAt          DateTime?            @db.Timestamptz(3)
+  closedAt             DateTime?            @db.Timestamptz(3)
+
+  questions      TestQuestion[]
+  assignments    TestAssignment[]
+  overrides      TestWindowOverride[]
+  attempts       TestAttempt[]
+  offlineResults OfflineResult[]
+
+  // SQL: Test_window_check, Test_weighted_check, Test_offline_scale_check, Test_threshold_check
+  @@index([tenantId, subjectId, gradeId, status])
+  @@index([teacherId])
+  @@index([periodId])
+}
+
+model TestQuestion {
+  id                String          @id @default(uuid(7)) @db.Uuid
+  tenantId          String          @db.Uuid
+  tenant            Tenant          @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  testId            String          @db.Uuid
+  test              Test            @relation(fields: [testId], references: [id], onDelete: Cascade)
+  questionVersionId String          @db.Uuid
+  questionVersion   QuestionVersion @relation(fields: [questionVersionId], references: [id], onDelete: Restrict)
+  order             Int
+  points            Decimal         @db.Decimal(6, 2)
+
+  answers TestAnswer[]
+
+  @@unique([testId, order])
+  @@unique([testId, questionVersionId])
+}
+
+model TestAssignment {
+  id              String         @id @default(uuid(7)) @db.Uuid
+  tenantId        String         @db.Uuid
+  tenant          Tenant         @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  testId          String         @db.Uuid
+  test            Test           @relation(fields: [testId], references: [id], onDelete: Cascade)
+  teachingGroupId String?        @db.Uuid
+  teachingGroup   TeachingGroup? @relation(fields: [teachingGroupId], references: [id], onDelete: Restrict)
+  studentId       String?        @db.Uuid
+  student         Student?       @relation(fields: [studentId], references: [id], onDelete: Restrict)
+
+  // SQL: TestAssignment_target_check (exactly one target)
+  @@unique([testId, teachingGroupId])
+  @@unique([testId, studentId])
+}
+
+model TestWindowOverride {
+  id               String   @id @default(uuid(7)) @db.Uuid
+  tenantId         String   @db.Uuid
+  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  testId           String   @db.Uuid
+  test             Test     @relation(fields: [testId], references: [id], onDelete: Restrict)
+  studentId        String   @db.Uuid
+  student          Student  @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  startsAt         DateTime @db.Timestamptz(3)
+  endsAt           DateTime @db.Timestamptz(3)
+  timeLimitMinutes Int?
+  reason           String
+  createdById      String   @db.Uuid
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+
+  // SQL: TestWindowOverride_window_check
+  @@index([testId, studentId])
+}
+
+model TestAttempt {
+  id             String               @id @default(uuid(7)) @db.Uuid
+  tenantId       String               @db.Uuid
+  tenant         Tenant               @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  testId         String               @db.Uuid
+  test           Test                 @relation(fields: [testId], references: [id], onDelete: Restrict)
+  studentId      String               @db.Uuid
+  student        Student              @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  attemptNo      Int
+  status         AttemptStatus        @default(IN_PROGRESS)
+  finishReason   AttemptFinishReason?
+  startedAt      DateTime             @default(now()) @db.Timestamptz(3)
+  deadline       DateTime?            @db.Timestamptz(3)
+  finishedAt     DateTime?            @db.Timestamptz(3)
+  currentIndex   Int                  @default(0)
+  /// TestQuestion ids in the order this student sees them
+  questionOrder  Json
+  /// { [testQuestionId]: optionId[] } (MATCHING: right-side ids)
+  optionOrder    Json
+  violationCount Int                  @default(0)
+  score          Decimal?             @db.Decimal(8, 2)
+  maxScore       Decimal              @db.Decimal(8, 2)
+  percent        Decimal?             @db.Decimal(7, 4)
+  gradedAt       DateTime?            @db.Timestamptz(3)
+  /// The school day the attempt started (Asia/Tashkent)
+  schoolDate     DateTime             @db.Date
+
+  answers TestAnswer[]
+  events  TestEvent[]
+
+  // SQL: TestAttempt_one_in_progress (partial unique), TestAttempt_finish_check
+  @@unique([testId, studentId, attemptNo])
+  @@index([studentId, status])
+}
+
+model TestAnswer {
+  id             String       @id @default(uuid(7)) @db.Uuid
+  tenantId       String       @db.Uuid
+  tenant         Tenant       @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  attemptId      String       @db.Uuid
+  attempt        TestAttempt  @relation(fields: [attemptId], references: [id], onDelete: Restrict)
+  testQuestionId String       @db.Uuid
+  testQuestion   TestQuestion @relation(fields: [testQuestionId], references: [id], onDelete: Restrict)
+  /// { optionIds: string[] } | { text: string } | { pairs: [{ leftId, rightId }] }
+  answer         Json
+  savedAt        DateTime     @default(now()) @db.Timestamptz(3)
+  clientSeq      Int
+  isCorrect      Boolean?
+  pointsAwarded  Decimal?     @db.Decimal(6, 2)
+
+  @@unique([attemptId, testQuestionId])
+}
+
+model TestEvent {
+  id        String        @id @default(uuid(7)) @db.Uuid
+  tenantId  String        @db.Uuid
+  tenant    Tenant        @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  attemptId String        @db.Uuid
+  attempt   TestAttempt   @relation(fields: [attemptId], references: [id], onDelete: Restrict)
+  type      TestEventType
+  clientTs  DateTime?     @db.Timestamptz(3)
+  serverTs  DateTime      @default(now()) @db.Timestamptz(3)
+  clientSeq Int?
+  counted   Boolean       @default(false)
+
+  @@index([attemptId, serverTs])
+}
+
+model OfflineResult {
+  id             String              @id @default(uuid(7)) @db.Uuid
+  tenantId       String              @db.Uuid
+  tenant         Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  testId         String              @db.Uuid
+  test           Test                @relation(fields: [testId], references: [id], onDelete: Restrict)
+  studentId      String              @db.Uuid
+  student        Student             @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  rawScore       Decimal?            @db.Decimal(8, 2)
+  status         OfflineResultStatus
+  note           String?
+  enteredById    String              @db.Uuid
+  enteredAt      DateTime            @default(now()) @db.Timestamptz(3)
+  supersededById String?             @unique @db.Uuid
+  supersededBy   OfflineResult?      @relation("OfflineResultHistory", fields: [supersededById], references: [id], onDelete: Restrict)
+  supersedes     OfflineResult?      @relation("OfflineResultHistory")
+
+  // SQL: OfflineResult_score_check, OfflineResult_one_current (partial unique)
+  @@index([testId, studentId])
 }

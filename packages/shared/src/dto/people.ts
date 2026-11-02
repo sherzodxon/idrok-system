@@ -166,7 +166,7 @@ export const ImportOptionsSchema = z
   })
   .strict();
 /** Every kind a job can have: curriculum plans are uploaded through /curriculum-plans/import. */
-export const ImportJobKindSchema = z.enum([...ImportKindSchema.options, "CURRICULUM_PLAN"]);
+export const ImportJobKindSchema = z.enum([...ImportKindSchema.options, "CURRICULUM_PLAN", "QUESTIONS"]);
 export const ImportJobSchema = z.object({
   id: z.uuid(),
   kind: ImportJobKindSchema,

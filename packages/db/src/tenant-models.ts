@@ -50,6 +50,17 @@ export const TENANT_SCOPED_MODELS = [
   "ManualAssessmentScore",
   "PeriodResult",
   "PeriodCloseRun",
+  "TestType",
+  "Question",
+  "QuestionVersion",
+  "Test",
+  "TestQuestion",
+  "TestAssignment",
+  "TestWindowOverride",
+  "TestAttempt",
+  "TestAnswer",
+  "TestEvent",
+  "OfflineResult",
 ] as const;
 
 /** Child rows without tenantId: reached only through a tenant-checked parent (nested reads/writes). */

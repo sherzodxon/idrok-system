@@ -52,6 +52,20 @@ applied migration — add a new one.
 | `ManualAssessmentScore_one_current` | partial unique | ″ | one current manual score per period, subject, student and component |
 | `PeriodResult_one_current` | partial unique | ″ | one current result per student, period and subject (or overall) |
 | `PeriodResult_final_frozen` | TRIGGER | ″ | a `FINAL` result never changes (only `isStale`, and `isCurrent` → false) and is never deleted |
+| `QuestionVersion_append_only` | TRIGGER | `20261104090000_m4_tests` | a question version is never edited or deleted (an edit is a new version) |
+| `QuestionVersion_points_check` | CHECK | ″ | `points > 0` |
+| `Test_window_check` | CHECK | ″ | `startsAt < endsAt`; time limit and question count positive |
+| `Test_weighted_check` | CHECK | ″ | a `WEIGHTED` test has a period and a positive weight |
+| `Test_offline_scale_check` | CHECK | ″ | an `OFFLINE` test's `maxScore` ∈ {5, 10, 20, 25, 40, 50, 100} (Q-45) |
+| `Test_threshold_check` | CHECK | ″ | `violationThreshold >= 0`, `maxScore >= 0` |
+| `TestQuestion_points_check` | CHECK | ″ | `points > 0`, `order >= 0` |
+| `TestAssignment_target_check` | CHECK | ″ | exactly one of teaching group / student |
+| `TestWindowOverride_window_check` | CHECK | ″ | `startsAt < endsAt`, time limit positive |
+| `TestAttempt_one_in_progress` | partial unique | ″ | one running attempt per student and test |
+| `TestAttempt_finish_check` | CHECK | ″ | `FINISHED` ⇔ finish reason and time set; `attemptNo >= 1` |
+| `OfflineResult_score_check` | CHECK | ″ | `SCORED` ⇔ `rawScore` set; `rawScore >= 0` (≤ `maxScore` checked by the API) |
+| `OfflineResult_one_current` | partial unique | ″ | one current offline result per test and student |
+| `OfflineResult_history` | TRIGGER | ″ | offline results are never deleted; an update only links a row to its successor |
 
 Checking a new migration does not touch them:
 

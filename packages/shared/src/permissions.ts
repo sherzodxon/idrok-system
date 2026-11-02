@@ -56,6 +56,15 @@ export const PERMISSIONS = [
   { code: "assessment.manual_entry", module: "assessment" },
   { code: "assessment.approve", module: "assessment" },
   { code: "assessment.reopen", module: "assessment" },
+  // tests (M4)
+  { code: "questions.manage", module: "tests" },
+  { code: "questions.export", module: "tests" },
+  { code: "tests.create", module: "tests" },
+  { code: "tests.publish", module: "tests" },
+  { code: "tests.reopen", module: "tests" },
+  { code: "tests.results.view", module: "tests" },
+  { code: "tests.results.enter", module: "tests" },
+  { code: "test_types.manage", module: "tests" },
   // self-service portals (data is always limited to the user's own child / own record)
   { code: "portal.student", module: "portal" },
   { code: "portal.guardian", module: "portal" },

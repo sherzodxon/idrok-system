@@ -538,3 +538,93 @@ describe("assessment (M3)", () => {
     await expect(manual(16)).rejects.toThrow();
   });
 });
+
+describe("tests (M4)", () => {
+  async function basics() {
+    const { student } = await yearAndClass();
+    const grade = await root.grade.findFirstOrThrow({ where: { tenantId, level: 7 } });
+    const subject = await root.subject.create({ data: { tenantId, name: `Demo fan ${crypto.randomUUID()}` } });
+    const teacher = await root.employee.create({
+      data: { tenantId, employeeCode: `E-${crypto.randomUUID()}`, firstName: "Demo", lastName: "Ustoz" },
+    });
+    const type = await root.testType.create({
+      data: { tenantId, name: "Oddiy test", code: `T-${crypto.randomUUID()}` },
+    });
+    const base = { tenantId, subjectId: subject.id, gradeId: grade.id, teacherId: teacher.id, testTypeId: type.id };
+    return { student, grade, subject, teacher, base };
+  }
+
+  it("question versions are append-only", async () => {
+    const { base } = await basics();
+    const q = await root.question.create({
+      data: { tenantId, ownerId: base.teacherId, subjectId: base.subjectId, gradeId: base.gradeId, type: "SINGLE" },
+    });
+    const v = await root.questionVersion.create({
+      data: { tenantId, questionId: q.id, version: 1, text: "2+2?", contentHash: "h" },
+    });
+    await expect(root.questionVersion.update({ where: { id: v.id }, data: { text: "3+3?" } })).rejects.toThrow();
+    await expect(root.questionVersion.delete({ where: { id: v.id } })).rejects.toThrow();
+    await expect(
+      root.questionVersion.create({
+        data: { tenantId, questionId: q.id, version: 2, text: "?", contentHash: "h", points: 0 },
+      }),
+    ).rejects.toThrow();
+  });
+
+  it("test checks: window, weighted period, offline scale, assignment target", async () => {
+    const { base, student } = await basics();
+    const create = (data: Record<string, unknown>) =>
+      root.test.create({ data: { ...base, title: "T", format: "ONLINE", purpose: "PRACTICE", ...data } });
+    await expect(create({ startsAt: day("2026-11-11"), endsAt: day("2026-11-10") })).rejects.toThrow();
+    await expect(create({ purpose: "WEIGHTED" })).rejects.toThrow();
+    await expect(create({ format: "OFFLINE", maxScore: 30 })).rejects.toThrow();
+    const test = await create({ format: "OFFLINE", maxScore: 20 });
+    await expect(root.testAssignment.create({ data: { tenantId, testId: test.id } })).rejects.toThrow();
+    await root.testAssignment.create({ data: { tenantId, testId: test.id, studentId: student.id } });
+  });
+
+  it("one running attempt per student; offline results keep their history", async () => {
+    const { base, student } = await basics();
+    const test = await root.test.create({
+      data: { ...base, title: "T", format: "OFFLINE", purpose: "PRACTICE", maxScore: 20 },
+    });
+    const attempt = (attemptNo: number) =>
+      root.testAttempt.create({
+        data: {
+          tenantId,
+          testId: test.id,
+          studentId: student.id,
+          attemptNo,
+          questionOrder: [],
+          optionOrder: {},
+          maxScore: 0,
+          schoolDate: day("2026-11-10"),
+        },
+      });
+    const first = await attempt(1);
+    await expect(attempt(2)).rejects.toThrow();
+    await expect(root.testAttempt.update({ where: { id: first.id }, data: { status: "FINISHED" } })).rejects.toThrow(); // no reason / time
+    await root.testAttempt.update({
+      where: { id: first.id },
+      data: { status: "FINISHED", finishReason: "SUBMITTED", finishedAt: new Date() },
+    });
+    await attempt(2);
+
+    const result = (rawScore: number | null, status: "SCORED" | "ABSENT" = "SCORED") =>
+      root.offlineResult.create({
+        data: { tenantId, testId: test.id, studentId: student.id, rawScore, status, enteredById: crypto.randomUUID() },
+      });
+    await expect(result(null)).rejects.toThrow();
+    await expect(result(5, "ABSENT")).rejects.toThrow();
+    const old = await result(12);
+    await expect(result(14)).rejects.toThrow(); // one current
+    await expect(root.offlineResult.update({ where: { id: old.id }, data: { rawScore: 13 } })).rejects.toThrow();
+    await root.offlineResult.update({ where: { id: old.id }, data: { supersededById: old.id } });
+    const next = await result(14);
+    await root.offlineResult.update({ where: { id: old.id }, data: { supersededById: next.id } });
+    await expect(
+      root.offlineResult.update({ where: { id: old.id }, data: { supersededById: null } }),
+    ).rejects.toThrow();
+    await expect(root.offlineResult.delete({ where: { id: next.id } })).rejects.toThrow();
+  });
+});

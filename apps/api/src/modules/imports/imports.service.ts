@@ -34,12 +34,12 @@ const toDto = (j: JobRow): ImportJobDto => ({
 const include = { fileAsset: { select: { originalName: true } }, resultAsset: { select: { status: true } } } as const;
 
 /**
- * Without imports.run a caller (a teacher with curriculum.create) sees only their own curriculum plan imports;
+ * Without imports.run a caller (a teacher) sees only their own curriculum plan and question bank imports;
  * any other job does not exist for them.
  */
 function assertJobAccess(auth: RequestAuth | undefined, job: { kind: string; createdById: string }) {
   if (!auth || auth.permissions.includes("imports.run")) return;
-  if (job.kind !== "CURRICULUM_PLAN" || job.createdById !== auth.userId) throw notFound();
+  if (!["CURRICULUM_PLAN", "QUESTIONS"].includes(job.kind) || job.createdById !== auth.userId) throw notFound();
 }
 
 export class ImportsService {
