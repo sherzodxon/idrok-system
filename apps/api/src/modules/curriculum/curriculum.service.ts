@@ -705,4 +705,80 @@ export class CurriculumService {
       if (open) throw conflict("PLAN_HAS_OPEN_VERSION", { planId: open.id });
     }
   }
+
+  // ---------------------------------------------------------------- reflow (§4.6)
+
+  /** The caller may manage this group's plan: school roles, or the teacher of the subject in the group. */
+  private async assignmentFor(tx: DbTransaction | Db, auth: RequestAuth, id: string) {
+    const a = await tx.planAssignment.findUnique({
+      where: { id },
+      include: {
+        plan: { select: { academicYearId: true } },
+        teachingGroup: { select: { name: true, kind: true, classGroup: { select: { name: true } } } },
+      },
+    });
+    if (!a || a.status !== "ACTIVE") throw notFound();
+    const scope = await this.writeScope(auth);
+    if (!scope.school) {
+      const { today } = await schoolClock(this.db);
+      const own = await tx.teacherAssignment.count({
+        where: {
+          teacherId: scope.employeeId ?? "00000000-0000-0000-0000-000000000000",
+          subjectId: a.subjectId,
+          teachingGroupId: a.teachingGroupId,
+          ...activeOn(today),
+        },
+      });
+      if (!own) throw forbidden();
+    }
+    return a;
+  }
+
+  /**
+   * After a cancelled lesson, a new holiday or a timetable change: the topics of the coming lessons move along;
+   * held and past lessons keep theirs (acceptance 7). Preview first, then apply.
+   */
+  async reflow(auth: RequestAuth, id: string, apply: boolean) {
+    const { today } = await schoolClock(this.db);
+    const run = async (tx: DbTransaction) => {
+      const a = await this.assignmentFor(tx, auth, id);
+      const result = await placePlanOnGroup(
+        tx,
+        {
+          planId: a.planId,
+          teachingGroupId: a.teachingGroupId,
+          subjectId: a.subjectId,
+          academicYearId: a.plan.academicYearId,
+          today,
+        },
+        apply,
+      );
+      const itemIds = [...new Set(result.changed.flatMap((c) => [c.from, c.to]).filter((x): x is string => !!x))];
+      const items = await tx.planItem.findMany({
+        where: { id: { in: itemIds } },
+        select: { id: true, topic: { select: { title: true } } },
+      });
+      const title = new Map(items.map((i) => [i.id, i.topic.title]));
+      if (apply)
+        await writeAudit(tx, {
+          action: "curriculum_plan.reflow",
+          entityType: "PlanAssignment",
+          entityId: id,
+          after: { changed: result.changed.length },
+        });
+      const g = a.teachingGroup;
+      return {
+        assignmentId: id,
+        teachingGroupName: g.kind === "SUBGROUP" && g.classGroup ? `${g.classGroup.name} · ${g.name}` : g.name,
+        changes: result.changed.map((c) => ({
+          date: c.date,
+          lessonNumber: c.lessonNumber,
+          fromTopic: c.from ? (title.get(c.from) ?? null) : null,
+          toTopic: c.to ? (title.get(c.to) ?? null) : null,
+        })),
+        warnings: result.warnings,
+      };
+    };
+    return this.db.$transaction(run);
+  }
 }

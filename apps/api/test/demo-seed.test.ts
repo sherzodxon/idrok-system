@@ -1,5 +1,7 @@
 // Demo seed (implementation-plan step 8): a full synthetic school with the same invariants as imported data.
 import { runWithTenant } from "@idrok/db";
+import { parseSchoolDate, schoolDateToDb } from "@idrok/shared/time";
+import { findConflicts } from "../src/domain/timetable";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   DEMO_CLASSES,
@@ -16,6 +18,7 @@ let t: Awaited<ReturnType<typeof createTestApp>>;
 let tenantId: string;
 let actor: { userId: string; roles: string[] };
 let summary: DemoSummary;
+const day = (v: string) => schoolDateToDb(parseSchoolDate(v));
 
 const seed = () => runWithTenant({ tenantId, userId: actor.userId }, () => seedDemoSchool(t.deps.db, actor));
 
@@ -86,6 +89,40 @@ describe("seedDemoSchool", () => {
     expect(
       await t.deps.root.user.count({ where: { ...where(), mustChangePassword: true, roles: { some: {} } } }),
     ).toBeGreaterThanOrEqual(summary.accounts);
+  });
+
+  it("adds the demo calendar: two shifts, quarters, a conflict-free timetable, the year's lessons and plans", async () => {
+    const root = t.deps.root;
+    expect(summary.calendar).toMatchObject({ unplacedHours: 0, plans: 18 });
+    expect(summary.calendar!.lessons).toBeGreaterThan(5000);
+    expect(await root.shift.count({ where: where() })).toBe(2);
+    expect(await root.classGroup.count({ where: { ...where(), shiftId: null } })).toBe(0);
+    expect(await root.academicPeriod.count({ where: { ...where(), type: "QUARTER" } })).toBe(4);
+    const tt = await root.timetable.findFirstOrThrow({
+      where: { ...where(), status: "PUBLISHED" },
+      include: { entries: { include: { teachingGroup: { select: { kind: true, classGroupId: true } } } } },
+    });
+    const groups = new Map(tt.entries.map((e) => [e.teachingGroupId, { id: e.teachingGroupId, ...e.teachingGroup }]));
+    expect(findConflicts(tt.entries, groups)).toEqual([]);
+    // No lessons in vacations; every non-cancelled maths lesson after today has a planned topic.
+    expect(
+      await root.lessonSession.count({
+        where: { ...where(), date: { gte: day("2026-12-28"), lte: day("2027-01-10") } },
+      }),
+    ).toBe(0);
+    const maths = await root.subject.findFirstOrThrow({ where: { ...where(), name: DEMO_SUBJECTS[0] } });
+    expect(
+      await root.lessonSession.count({
+        where: {
+          ...where(),
+          subjectId: maths.id,
+          planItemId: null,
+          status: "SCHEDULED",
+          date: { lte: day("2027-05-25") },
+        },
+      }),
+    ).toBe(0);
+    expect(await root.curriculumPlan.count({ where: { ...where(), status: "APPROVED" } })).toBe(18);
   });
 
   it("only fills an empty school", async () => {

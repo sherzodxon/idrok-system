@@ -2,6 +2,8 @@ import {
   BookOpen,
   CalendarDays,
   CalendarRange,
+  ClipboardList,
+  Clock,
   FileSpreadsheet,
   LayoutDashboard,
   NotebookText,
@@ -26,6 +28,8 @@ export interface NavItem {
     | "timetable"
     | "plans"
     | "myPlans"
+    | "lessons"
+    | "mySchedule"
     | "imports"
     | "settings"
     | "myGroups";
@@ -44,12 +48,14 @@ export const NAV: Record<NavContext, NavItem[]> = {
     { key: "structure", href: "/admin/structure", icon: BookOpen, permission: "class_groups.view" },
     { key: "calendar", href: "/admin/calendar", icon: CalendarDays, permission: "calendar.manage" },
     { key: "timetable", href: "/admin/timetable", icon: CalendarRange, permission: "timetable.manage" },
+    { key: "lessons", href: "/admin/lessons", icon: ClipboardList, permission: "timetable.manage" },
     { key: "plans", href: "/admin/plans", icon: NotebookText, permission: "curriculum.approve" },
     { key: "imports", href: "/admin/imports", icon: FileSpreadsheet, permission: "imports.run" },
     { key: "settings", href: "/admin/settings", icon: Settings, permission: "settings.view" },
   ],
   teacher: [
     { key: "dashboard", href: "/dashboard", icon: LayoutDashboard },
+    { key: "mySchedule", href: "/teacher/schedule", icon: Clock, permission: "lessons.view" },
     { key: "myGroups", href: "/teacher/groups", icon: BookOpen, permission: "class_groups.view" },
     { key: "students", href: "/teacher/students", icon: Users, permission: "students.view" },
     { key: "myPlans", href: "/teacher/plans", icon: NotebookText, permission: "curriculum.create" },

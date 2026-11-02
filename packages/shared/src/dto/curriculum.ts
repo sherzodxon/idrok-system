@@ -177,3 +177,18 @@ export const PlanAssignmentSchema = z.object({
   warnings: z.array(PlacementWarningSchema),
 });
 export type PlanAssignmentDto = z.infer<typeof PlanAssignmentSchema>;
+
+export const ReflowPreviewSchema = z.object({
+  assignmentId: z.uuid(),
+  teachingGroupName: z.string(),
+  changes: z.array(
+    z.object({
+      date: z.string(),
+      lessonNumber: z.number().int(),
+      fromTopic: z.string().nullable(),
+      toTopic: z.string().nullable(),
+    }),
+  ),
+  warnings: z.array(PlacementWarningSchema),
+});
+export type ReflowPreviewDto = z.infer<typeof ReflowPreviewSchema>;

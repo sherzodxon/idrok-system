@@ -1,7 +1,14 @@
 import type { Router } from "express";
 import { z } from "zod";
 import {
+  CancelLessonResultSchema,
+  CancelLessonSchema,
   IdParamsSchema,
+  LessonCountQuerySchema,
+  LessonCountRowSchema,
+  MarkHeldSchema,
+  PortalWeekQuerySchema,
+  PortalWeekSchema,
   LessonGenerationApplySchema,
   LessonGenerationPreviewSchema,
   LessonGenerationRequestSchema,
@@ -73,5 +80,66 @@ export function lessonRoutes(router: Router, registry: OpenApiRegistry, deps: Ap
       responses: { 200: { description: "Lesson", schema: LessonSessionSchema } },
     },
     async ({ res, params, body }) => res.json(await lessons.setSubstitute(params.id, body)),
+  );
+  route(
+    {
+      method: "post",
+      path: "/lesson-sessions/:id/held",
+      summary: "Mark a lesson of today or the past as held (optionally another plan topic or a note)",
+      tags,
+      access: "lessons.mark",
+      params: IdParamsSchema,
+      body: MarkHeldSchema,
+      responses: { 200: { description: "Lesson", schema: LessonSessionSchema } },
+    },
+    async ({ res, auth, params, body }) => res.json(await lessons.markHeld(auth, params.id, body)),
+  );
+  route(
+    {
+      method: "post",
+      path: "/lesson-sessions/:id/cancel",
+      summary: "Cancel a scheduled lesson with a reason; returns the plan whose topics can be moved on",
+      tags,
+      access: "timetable.manage",
+      params: IdParamsSchema,
+      body: CancelLessonSchema,
+      responses: { 200: { description: "Cancelled", schema: CancelLessonResultSchema } },
+    },
+    async ({ res, params, body }) => res.json(await lessons.cancel(params.id, body)),
+  );
+  route(
+    {
+      method: "get",
+      path: "/me/lessons/today",
+      summary: "Today's lessons I teach or substitute, with topics",
+      tags,
+      access: "lessons.view",
+      responses: { 200: { description: "Lessons", schema: z.array(LessonSessionSchema) } },
+    },
+    async ({ res, auth }) => res.json(await lessons.today(auth)),
+  );
+  route(
+    {
+      method: "get",
+      path: "/me/timetable",
+      summary: "Portal: a student's week with topics and homework (guardians pass studentId)",
+      tags: ["portal"],
+      access: { anyOf: ["portal.student", "portal.guardian"] },
+      query: PortalWeekQuerySchema,
+      responses: { 200: { description: "Week", schema: PortalWeekSchema } },
+    },
+    async ({ res, auth, query }) => res.json(await lessons.portalWeek(auth, query)),
+  );
+  route(
+    {
+      method: "get",
+      path: "/reports/lesson-counts",
+      summary: "Planned hours against lessons per group and subject",
+      tags,
+      access: "curriculum.view",
+      query: LessonCountQuerySchema,
+      responses: { 200: { description: "Rows", schema: z.array(LessonCountRowSchema) } },
+    },
+    async ({ res, query }) => res.json(await lessons.lessonCounts(query)),
   );
 }

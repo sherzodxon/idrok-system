@@ -19,6 +19,7 @@ import type {
   TopicDto,
 } from "@idrok/shared";
 import { ImportDetail } from "@/components/imports/imports-pages";
+import { ReflowDialog } from "@/components/lessons/lessons-pages";
 import { useApi } from "@/components/providers/app-providers";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -875,6 +876,7 @@ function AssignmentsCard({ plan }: { plan: CurriculumPlanDetailDto }) {
   const [choosing, setChoosing] = useState(false);
   const [chosen, setChosen] = useState<string[]>([]);
   const [removing, setRemoving] = useState<string | null>(null);
+  const [reflowing, setReflowing] = useState<string | null>(null);
   const assign = useSave(
     () => api.post(`/curriculum-plans/${plan.id}/assignments`, { teachingGroupIds: chosen }),
     ["plan-assignments"],
@@ -920,7 +922,16 @@ function AssignmentsCard({ plan }: { plan: CurriculumPlanDetailDto }) {
                     {t("plans.notPlaced", { count: a.warnings.reduce((n, w) => n + w.hours, 0) })}
                   </Badge>
                 )}
-                <Button size="sm" variant="ghost" className="ml-auto" onClick={() => setRemoving(a.id)}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="ml-auto"
+                  onClick={() => setReflowing(a.id)}
+                  data-testid="plan-reflow"
+                >
+                  {t("lessons.reflow")}
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setRemoving(a.id)}>
                   {t("plans.unassign")}
                 </Button>
               </li>
@@ -971,6 +982,7 @@ function AssignmentsCard({ plan }: { plan: CurriculumPlanDetailDto }) {
           </div>
         </Modal>
       )}
+      {reflowing && <ReflowDialog assignmentId={reflowing} onClose={() => setReflowing(null)} />}
       <ConfirmDialog
         open={!!removing}
         title={t("plans.unassign")}
