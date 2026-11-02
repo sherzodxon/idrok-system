@@ -114,7 +114,7 @@ cd apps/api && node --import tsx src/scripts/seed.ts --yes-i-understand
 Ruxsatlar, `idrok` maktabi, tizim rollari va `admin` akkaunti yaratiladi. **Vaqtinchalik parol faqat shu yerda bir
 marta ko'rinadi** — darhol parol menejeriga yozing; birinchi kirishda u almashtiriladi.
 
-Demo maktab (sun'iy: 10 sinf, 300 o'quvchi, 600 vasiy, 40 o'qituvchi, 10 fan, biriktirishlar; M2'dan — 2 smena, choraklar, ta'tillar, jadval, yil darslari va tasdiqlangan rejalar):
+Demo maktab (sun'iy: 10 sinf, 300 o'quvchi, 600 vasiy, 40 o'qituvchi, 10 fan, biriktirishlar; M2'dan — 2 smena, choraklar, ta'tillar, jadval, yil darslari va tasdiqlangan rejalar; M3'dan — boshlangan choraklar faol, oxirgi 2 haftaning matematika va ona tili darslariga sun'iy ballar va davomat):
 
 ```bash
 cd apps/api && node --import tsx src/scripts/seed-demo.ts --yes-i-understand
