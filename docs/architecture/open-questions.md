@@ -173,3 +173,22 @@ A–D bo'limlari ochiq qoladi — tegishli bosqichdan oldin maktab hal qiladi. J
 | T-46 | Spec acceptance 17 ("limit 50, ishlatilgan 45, har biri +10 → bittasi o'tadi") — 45+10 = 55 > 50, ikkalasi ham rad etilardi. Test "ishlatilgan **40**" bilan yozildi (bittasi o'tadi, ikkinchisi rad) | scoring.md §11 |
 | T-47 | Davr yopilgandan keyin o'zgargan ball/davomat/MANUAL ball — FINAL natija o'zgarmaydi, "eskirgan" belgisi o'sha davr va undan yuqori davrlarning FINAL natijalariga qo'yiladi. `recompute` faqat eskirgan o'quvchilar uchun yangi FINAL versiya yaratadi, sabab majburiy | scoring.md §7.3 |
 
+
+## M4 davomida qabul qilingan texnik qarorlar (default, egasi tasdig'iga)
+
+C bo'limi (Q-19…Q-22, Q-36, Q-45) tavsiya etilgan default bilan qilindi: `multipleScoring` testda (default
+`ALL_OR_NOTHING`); buzilish **3-chisida** yakunlanadi (`violationThreshold`, 0 = o'chiq); to'g'ri javoblar o'quvchiga
+**ko'rsatilmaydi** (faqat ✅/❌ — oyna yopilgach); retake va individual vaqt — `tests.reopen` (admin, direktor
+o'rinbosari); `maxQuestionsPerTest` = 50 (maktab sozlamasi, 1–200), minimal chegara yo'q; offline shkala — spec ro'yxati.
+
+| # | Qaror | Asos |
+|---|---|---|
+| T-48 | Qoralamaga qo'shilgan savol e'lon paytida bankdagi **joriy** versiyasini oladi (o'qituvchi qoralama davomida savolni tuzatgan bo'lishi mumkin). Qo'lda o'zgartirilgan ball saqlanadi; versiyaning standart balli yangi versiya bilan almashadi. E'londan keyin versiya qotadi (acceptance 9) | tests.md §2 ("testda ishlatilgan versiya o'zgarmaydi") |
+| T-49 | Umumiy oynada **bitta** urinish. Retake oynasi (`TestWindowOverride`) — u **berilgan paytdan** keyin boshlangan bitta urinish; oynaning o'z vaqt limiti bo'lishi mumkin. Pool testda savollar urinish boshlanganda tanlanadi (seed = urinish id) | tests.md §4.2, §5 |
+| T-50 | Vaznli test natijasi yo'q bo'lsa: test hali ochiq (yoki o'quvchining retake oynasi ochiq) yoki offline `EXCUSED` — **kutilmoqda** (hisobga olinmaydi, `missedTest = ZERO` bo'lsa ham); test tugagan yoki offline `ABSENT` — **qatnashmagan** (`missedTest` bo'yicha). Offline natija kiritilmagan bo'lsa — kutilmoqda (avtomatik 0 yo'q) | scoring.md §5.2, tests.md §6 |
+| T-51 | Retake'da qaysi natija hisoblanishi — **testning** `retakePolicy`si (LAST/BEST); policy'dagi `retakePolicy` faqat testda ko'rsatilmagan holat uchun | tests.md §5 ("WEIGHTED testda qaysi natija hisoblanishi — retakePolicy") |
+| T-52 | Anti-cheat: bir xil tur 2 s ichida — bitta; `BLUR` va `VISIBILITY_HIDDEN` 2 s ichida bir-biriga yaqin bo'lsa ham **bitta** buzilish (tab almashtirish ikkalasini ham chiqaradi). `VISIBLE`, `FOCUS`, `RECONNECT` hech qachon sanalmaydi | tests.md §4.4 |
+| T-53 | Tarix bog'lanishi (`supersededById`) unique emas: ikkinchi tuzatishda eski ko'rsatkich bilan to'qnashardi (M3 MANUAL ballarida ham shu xato bor edi) — `20261104150000_m4_history_chain` migratsiyasi tuzatdi. "Bitta joriy qator" kafolati partial unique indeksda qoladi | xato tuzatish |
+| T-54 | O'qituvchi faqat **o'z** testlarini ko'radi va boshqaradi; direktor, o'rinbosar, uslubchi — barcha testlar (natijalarni ko'rish). Test faqat o'qituvchining **o'z guruhlariga** va testning **paralleliga** mos guruhlarga beriladi | rbac-matrix, xavfsizlik |
+| T-55 | Natijalar Excel eksporti (`tests.results.view`) savol matnini o'z ichiga oladi, lekin to'g'ri javoblarni emas. Savollar va javoblar faqat `questions.export` bilan (S4) | security-baseline.md S4 |
+| T-56 | Savol bo'yicha o'rtacha vaqt o'lchanmaydi (spec: "agar o'lchansa"). Taqqoslash: shu o'qituvchining shu fan va paralleldagi oldingi testi + testga biriktirilgan guruhlar kesimi | tests.md §8 |

@@ -219,9 +219,15 @@ export class TestsService {
     tx: DbTransaction,
     scope: DataScope,
     assignTo: { teachingGroupIds: string[]; studentIds: string[] },
+    gradeId: string,
   ) {
+    // A group of another grade (a 7th-grade test given to 8-A) is a mistake, not a choice.
     const groups = await tx.teachingGroup.findMany({
-      where: { id: { in: assignTo.teachingGroupIds }, archivedAt: null },
+      where: {
+        id: { in: assignTo.teachingGroupIds },
+        archivedAt: null,
+        OR: [{ classGroupId: null }, { classGroup: { gradeId } }],
+      },
       select: { id: true },
     });
     const allowed = (id: string) =>
@@ -301,7 +307,7 @@ export class TestsService {
         teacherId = chosen;
       } else throw forbidden();
       await this.checkRefs(tx, input);
-      await this.checkAssignees(tx, scope, input.assignTo);
+      await this.checkAssignees(tx, scope, input.assignTo, input.gradeId);
       const test = await tx.test
         .create({
           data: {
@@ -362,7 +368,7 @@ export class TestsService {
       }
       const scope = await this.scope(auth);
       await this.checkRefs(tx, input);
-      if (input.assignTo) await this.checkAssignees(tx, scope, input.assignTo);
+      if (input.assignTo) await this.checkAssignees(tx, scope, input.assignTo, test.gradeId);
       const { assignTo, applyToRunning, schoolDate, maxScore, startsAt: _s, endsAt: _e, ...fields } = input;
       const startsAt = input.startsAt === undefined ? test.startsAt : input.startsAt ? new Date(input.startsAt) : null;
       const endsAt = input.endsAt === undefined ? test.endsAt : input.endsAt ? new Date(input.endsAt) : null;

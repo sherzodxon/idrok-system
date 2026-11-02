@@ -110,6 +110,8 @@ describe("building and publishing", () => {
       assignTo: { teachingGroupIds: [s.c7b.classTeachingGroupId] },
     });
     expect(other.status).toBe(400);
+    // 7-A is the teacher's, but not of grade 4.
+    expect((await teacher1().raw("post", "/tests", { ...base(), gradeId: s.g4.id })).status).toBe(400);
     const mine = await teacher1().post("/tests", base());
     expect((await api(t, s.teacher2).raw("get", `/tests/${mine.id}`)).status).toBe(404);
     expect((await api(t, s.guardian).raw("get", "/tests")).status).toBe(403);

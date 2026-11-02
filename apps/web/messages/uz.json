@@ -1576,6 +1576,11 @@
       "right": "{n}-savol: to'g'ri",
       "wrong": "{n}-savol: noto'g'ri",
       "backToTests": "Testlarga qaytish"
+    },
+    "profile": {
+      "history": "Testlar tarixi",
+      "mastery": "Mavzular bo'yicha o'zlashtirish",
+      "noMastery": "Online test natijalari hali yo'q"
     }
   }
 }
