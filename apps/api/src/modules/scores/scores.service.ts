@@ -24,6 +24,7 @@ import {
 import type { RequestAuth } from "../../http/auth";
 import { AppError, forbidden, notFound } from "../../http/errors";
 import { activeOn, resolveScope } from "../access/scope";
+import { markStale } from "../assessment/closing.service";
 import { schoolClock } from "../access/school-clock";
 import { writeAudit } from "../audit/audit.service";
 import { LessonsService } from "../lessons/lessons.service";
@@ -249,6 +250,7 @@ export class ScoresService {
         select: entrySelect,
       });
       await this.markHeld(tx, auth, lesson);
+      if (isClosed(lesson)) await markStale(tx, lesson.periodId, [input.studentId]);
       await writeAudit(tx, {
         action: "score.create",
         entityType: "ScoreEntry",
@@ -370,6 +372,7 @@ export class ScoresService {
         },
         select: entrySelect,
       });
+      if (isClosed(lesson)) await markStale(tx, lesson.periodId, [original.studentId]);
       await writeAudit(tx, {
         action: "score.reverse",
         entityType: "ScoreEntry",
@@ -442,6 +445,12 @@ export class ScoresService {
         });
       if (changed.length) {
         await this.markHeld(tx, auth, lesson);
+        if (isClosed(lesson))
+          await markStale(
+            tx,
+            lesson.periodId,
+            changed.map((m) => m.studentId),
+          );
         await writeAudit(tx, {
           action: "lesson.attendance",
           entityType: "LessonSession",
