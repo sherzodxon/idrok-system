@@ -12,6 +12,11 @@ const INDEXES = [
   "CurriculumPlan_one_approved",
   "PlanAssignment_one_active",
   "ScoreLimitRule_one_active",
+  "AssessmentPolicy_one_default",
+  "AssessmentPolicyVersion_one_draft",
+  "PolicyBinding_one_current",
+  "ManualAssessmentScore_one_current",
+  "PeriodResult_one_current",
 ];
 const CONSTRAINTS = [
   "AcademicYear_dates_check",
@@ -36,6 +41,8 @@ const CONSTRAINTS = [
   "ScoreEntry_kind_check",
   "ScoreLimitRule_scope_check",
   "ScoreSettings_values_check",
+  "GradeScaleBand_range_check",
+  "ManualAssessmentScore_points_check",
 ];
 const TRIGGERS = [
   "AuditLog_append_only",
@@ -44,6 +51,8 @@ const TRIGGERS = [
   "PlanItem_frozen",
   "ScoreEntry_append_only",
   "ScoreEntry_reversal_matches",
+  "AssessmentPolicyVersion_frozen",
+  "PeriodResult_final_frozen",
 ];
 
 let client: pg.Client;
