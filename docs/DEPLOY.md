@@ -7,6 +7,20 @@ Tarkib: [0. Oldindan](#0-oldindan) · [1. Supabase](#1-supabase) · [2. Render B
 [3. Domen](#3-domen-va-cookie) · [4. Birinchi deploy](#4-birinchi-deploy) · [5. Seed](#5-seed) · [6. Smoke](#6-smoke-tekshiruv) ·
 [7. Migratsiyalar](#7-migratsiya-pipeline) · [8. Secret'lar](#8-secretlar) · [TRUST_PROXY](#klient-ip-va-trust_proxy-security-baselinemd-s2) · [Redis](#redis-render-key-value)
 
+## Lokal ishga tushirish (Render/Supabase'siz)
+
+Docker kerak emas. Bitta buyruq: doimiy embedded PostgreSQL (`.localdb/`, port 54339), xotiradagi Redis, demo maktab
+(birinchi marta), keyin API (4000), worker va web (3000, `next dev`).
+
+```bash
+pnpm --filter @idrok/e2e local
+```
+
+- Kirish: `http://localhost:3000`. `admin`, birinchi demo o'qituvchi va birinchi demo vasiy hisoblari lokal parolni oladi
+  (`LOCAL_PASSWORD` env, bo'lmasa `e2e/support/users.ts`dagi demo parol). Skript faqat login'larni chiqaradi.
+- Ma'lumot keyingi ishga tushirishda saqlanadi. Toza demo uchun to'xtatib, `.localdb/` papkasini o'chiring.
+- Faqat sun'iy ma'lumot (Q-30). API kodi o'zgarsa, skriptni qayta ishga tushiring (web avtomatik yangilanadi).
+
 ## Arxitektura
 
 ```

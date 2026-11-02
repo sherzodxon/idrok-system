@@ -67,9 +67,9 @@ export interface DemoClass {
 }
 
 /**
- * Greedy, conflict-free weekly timetable: a subject's hours are spread over the days with the fewest of them, each
- * in the earliest lesson free for the class and the teacher. A teacher is busy in a (day, lesson) slot whatever the
- * shift — simple and safe.
+ * Greedy, conflict-free weekly timetable: a subject's hours are spread over the days with the fewest of them (then the
+ * class's lightest days), each in the earliest lesson free for the class and the teacher. A teacher is busy in a
+ * (day, lesson) slot whatever the shift — simple and safe.
  */
 export function buildDemoTimetable(
   classes: DemoClass[],
@@ -96,8 +96,11 @@ export function buildDemoTimetable(
         continue;
       }
       for (let h = 0; h < hours; h++) {
+        // Fewest of this subject first, then the class's lightest day, so the whole week (Saturday too) is used.
+        const count = (key: string) => perDay.get(key) ?? 0;
         const days = [...WEEKDAYS].sort(
-          (a, b) => (perDay.get(`${subjectId}|${a}`) ?? 0) - (perDay.get(`${subjectId}|${b}`) ?? 0) || a - b,
+          (a, b) =>
+            count(`${subjectId}|${a}`) - count(`${subjectId}|${b}`) || count(`day|${a}`) - count(`day|${b}`) || a - b,
         );
         let placed = false;
         for (const weekday of days) {
@@ -106,7 +109,8 @@ export function buildDemoTimetable(
             if (classBusy.has(slot) || teacherBusy.has(`${teacherId}|${slot}`)) continue;
             classBusy.add(slot);
             teacherBusy.add(`${teacherId}|${slot}`);
-            perDay.set(`${subjectId}|${weekday}`, (perDay.get(`${subjectId}|${weekday}`) ?? 0) + 1);
+            perDay.set(`${subjectId}|${weekday}`, count(`${subjectId}|${weekday}`) + 1);
+            perDay.set(`day|${weekday}`, count(`day|${weekday}`) + 1);
             entries.push({ teachingGroupId: cls.teachingGroupId, subjectId, teacherId, weekday, lessonNumber });
             placed = true;
           }
