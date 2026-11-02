@@ -538,7 +538,9 @@
     },
     "warnings": {
       "LOW_CONTRAST": "Saqlandi, lekin oq matn bu rang ustida yomon o'qiladi"
-    }
+    },
+    "maxQuestions": "Testdagi savollar soni (ko'pi bilan)",
+    "maxQuestionsHint": "Bir testga qo'shiladigan savollar chegarasi"
   },
   "users": {
     "search": "Login",

@@ -302,6 +302,7 @@ model SchoolSettings {
   studentCodePrefix      String   @default("STD")
   studentAccountMinGrade Int      @default(5) // Q-27: import creates logins from this grade level up
   planApprovalRequired   Boolean  @default(true)
+  maxQuestionsPerTest    Int      @default(50) // Q-36; SQL: SchoolSettings_max_questions_check
   updatedById            String?  @db.Uuid
   updatedAt              DateTime @updatedAt @db.Timestamptz(3)
 }

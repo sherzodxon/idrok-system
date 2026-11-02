@@ -2,12 +2,19 @@
 import { Queue, type ConnectionOptions } from "bullmq";
 import { Redis } from "ioredis";
 
-export const QUEUES = { imports: "imports", maintenance: "maintenance" } as const;
+export const QUEUES = { imports: "imports", maintenance: "maintenance", tests: "tests" } as const;
 
 export interface ImportJobPayload {
   tenantId: string;
   importJobId: string;
   actorUserId: string;
+}
+
+/** Test window edges and attempt deadlines (delivered when due: the outbox event's availableAt). */
+export interface TestJobPayload {
+  tenantId: string;
+  testId?: string;
+  attemptId?: string;
 }
 
 export type JobRoute = { queue: keyof typeof QUEUES; name: string };
@@ -16,6 +23,8 @@ export type JobRoute = { queue: keyof typeof QUEUES; name: string };
 export const EVENT_ROUTES: Record<string, JobRoute> = {
   "import.parse_requested": { queue: "imports", name: "parse" },
   "import.commit_requested": { queue: "imports", name: "commit" },
+  "test.status_due": { queue: "tests", name: "status" },
+  "attempt.deadline_due": { queue: "tests", name: "deadline" },
 };
 
 export const DEFAULT_JOB_OPTIONS = {
@@ -34,6 +43,7 @@ export function createQueues(url: string) {
   const queues = {
     imports: new Queue(QUEUES.imports, { connection, defaultJobOptions: DEFAULT_JOB_OPTIONS }),
     maintenance: new Queue(QUEUES.maintenance, { connection, defaultJobOptions: DEFAULT_JOB_OPTIONS }),
+    tests: new Queue(QUEUES.tests, { connection, defaultJobOptions: DEFAULT_JOB_OPTIONS }),
   };
   return {
     queues,

@@ -55,6 +55,7 @@ const CONSTRAINTS = [
   "TestWindowOverride_window_check",
   "TestAttempt_finish_check",
   "OfflineResult_score_check",
+  "SchoolSettings_max_questions_check",
 ];
 const TRIGGERS = [
   "AuditLog_append_only",
