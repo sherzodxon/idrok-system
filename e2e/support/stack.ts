@@ -107,6 +107,10 @@ async function seed(url: string) {
         validFrom: day("2026-09-01"),
       },
     });
+    // The whole-class group membership follows the enrollment, as the API keeps it.
+    await root.teachingGroupMember.create({
+      data: { tenantId, teachingGroupId: classGroup.id, studentId: student.id, validFrom: day("2026-09-01") },
+    });
     const guardianUser = await root.user.create({
       data: { tenantId, username: USERS.guardian, passwordHash: await hash(PASSWORD), mustChangePassword: false },
     });
@@ -146,7 +150,7 @@ export async function startStack() {
     JWT_SECRET: "e2e-secret-e2e-secret-e2e-secret-123456",
     CORS_ORIGINS: WEB_URL,
     COOKIE_SECURE: "false",
-    LOG_LEVEL: "silent",
+    LOG_LEVEL: process.env.E2E_LOG_LEVEL ?? "silent",
     DEFAULT_TENANT_SLUG: "idrok",
     STORAGE_DRIVER: "local",
     STORAGE_LOCAL_DIR: storageDir,

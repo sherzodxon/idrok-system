@@ -2,7 +2,7 @@
 // an Excel import, so the demo has every invariant real data has (whole-class groups, enrollments, accounts, audit).
 // Runs inside the caller's tenant context. Account passwords are random and never shown: the admin resets the ones
 // needed for a demo in Settings → Users.
-import type { Db } from "@idrok/db";
+import { requireTenantId, type Db } from "@idrok/db";
 import { normalizeText } from "@idrok/shared";
 import { parseSchoolDate, schoolDateFromDb, type SchoolDate } from "@idrok/shared/time";
 import {
@@ -23,6 +23,7 @@ import {
 } from "../imports/parse";
 import { StructureService } from "../structure/structure.service";
 import { AccountsService, type Actor, type AuthStateSink } from "../users/accounts.service";
+import { DEMO_QUARTERS, seedDemoCalendar, type DemoCalendarSummary } from "./demo-calendar";
 import { DEMO_YEAR, classRows, studentRows, subjectRows, teacherRows } from "./demo-data";
 
 export interface DemoSummary {
@@ -31,6 +32,8 @@ export interface DemoSummary {
   employees: number;
   students: number;
   accounts: number;
+  /** null when the school's year is not the demo year */
+  calendar: DemoCalendarSummary | null;
 }
 
 export class DemoAlreadySeededError extends Error {
@@ -97,5 +100,14 @@ export async function seedDemoSchool(db: Db, actor: Actor): Promise<DemoSummary>
   );
   const employees = await apply(parseEmployeeRows(teacherRows(), await employeeLookup(db, yearId)), commitEmployeeRow);
   const students = await apply(parseStudentRows(studentRows(), await studentLookup(db, yearId)), commitStudentRow);
-  return { subjects, classes, employees, students, accounts: accountCount };
+  // The calendar part needs the demo year's dates (quarters, holidays); a school's own year is left alone.
+  const fresh =
+    schoolDateFromDb(year.startDate) <= DEMO_QUARTERS[0].startDate &&
+    schoolDateFromDb(year.endDate) >= DEMO_QUARTERS[3].endDate &&
+    !(await db.academicPeriod.count({ where: { academicYearId: yearId } })) &&
+    !(await db.timetable.count({ where: { academicYearId: yearId } }));
+  const calendar = fresh
+    ? await seedDemoCalendar(db, { userId: actor.userId, tenantId: requireTenantId(), username: "admin" }, yearId)
+    : null;
+  return { subjects, classes, employees, students, accounts: accountCount, calendar };
 }

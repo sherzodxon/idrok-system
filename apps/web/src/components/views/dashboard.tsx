@@ -7,6 +7,7 @@ import type { Page } from "@idrok/shared";
 import { useApi } from "@/components/providers/app-providers";
 import { useShellBranding } from "@/components/shell/branding-context";
 import { KpiHeroCard, StatCard } from "@/components/ui/stats";
+import { TodayLessonsCard } from "@/components/lessons/lessons-pages";
 import { ErrorState, LoadingState } from "@/components/ui/states";
 import { can, useMe } from "@/lib/use-me";
 
@@ -79,6 +80,7 @@ export function Dashboard() {
           )}
         </div>
       )}
+      <TodayLessonsCard />
     </div>
   );
 }

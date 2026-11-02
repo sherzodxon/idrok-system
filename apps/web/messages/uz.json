@@ -97,7 +97,9 @@
       "PLAN_EMPTY": "Rejada mavzu yo'q",
       "PLAN_NOT_SUBMITTED": "Reja tasdiqlashga yuborilmagan",
       "PLAN_NOT_APPROVED": "Yangi versiya faqat tasdiqlangan rejadan",
-      "PLAN_HAS_OPEN_VERSION": "Bu rejaning tahrirlanayotgan versiyasi bor"
+      "PLAN_HAS_OPEN_VERSION": "Bu rejaning tahrirlanayotgan versiyasi bor",
+      "LESSON_IN_FUTURE": "Kelgusi darsni o'tildi deb belgilab bo'lmaydi",
+      "LESSON_NOT_SCHEDULED": "Faqat rejadagi darsni bekor qilish mumkin"
     }
   },
   "states": {
@@ -126,7 +128,10 @@
     "calendar": "Kalendar",
     "timetable": "Dars jadvali",
     "plans": "O'quv rejalari",
-    "myPlans": "Dars rejalarim"
+    "myPlans": "Dars rejalarim",
+    "lessons": "Darslar",
+    "mySchedule": "Jadvalim",
+    "schedule": "Jadval"
   },
   "shell": {
     "context": "Ish rejimi",
@@ -752,7 +757,48 @@
     "blocked": "{count} ta dars o'tilgan yoki qo'lda o'zgartirilgan — ularga tegilmaydi",
     "noPeriod": "{count} ta ish kuni hech qaysi davrga kirmaydi (birinchisi {first}) — ularda dars yaratilmaydi",
     "noBellSlot": "{count} ta dars uchun qo'ng'iroq vaqti yo'q — ular yaratilmaydi",
-    "apply": "Qo'llash"
+    "apply": "Qo'llash",
+    "title": "Darslar",
+    "tabs": {
+      "week": "Hafta",
+      "counts": "Darslar soni"
+    },
+    "prevWeek": "Oldingi hafta",
+    "nextWeek": "Keyingi hafta",
+    "noTopic": "Mavzu belgilanmagan",
+    "substitute": "o'rinbosar: {name}",
+    "status": {
+      "SCHEDULED": "Rejada",
+      "HELD": "O'tildi",
+      "CANCELLED": "Bekor qilingan",
+      "MOVED": "Ko'chirilgan"
+    },
+    "markHeld": "O'tildi",
+    "editHeld": "Tahrirlash",
+    "plannedTopic": "Rejadagi mavzu",
+    "actualTopic": "Aslida o'tilgan mavzu",
+    "actualTopicHint": "Rejadagidan boshqa narsa o'tilgan bo'lsa yozing",
+    "today": "Bugungi darslarim",
+    "noLessonsToday": "Bugun darsingiz yo'q",
+    "mySchedule": "Jadvalim",
+    "noLessonsWeek": "Bu haftada dars yo'q",
+    "noLessons": "Darslar yo'q",
+    "setSubstitute": "O'rinbosar",
+    "noSubstitute": "O'rinbosarsiz",
+    "cancel": "Bekor qilish",
+    "cancelHint": "Dars o'chirilmaydi, bekor qilingan deb belgilanadi. Keyin rejadagi mavzularni surish taklif qilinadi",
+    "wholeYear": "Butun yil",
+    "planned": "Rejada soat",
+    "byTimetable": "Jadval bo'yicha",
+    "held": "O'tilgan",
+    "difference": "Farq",
+    "noPlan": "Reja yo'q",
+    "reflow": "Mavzularni surish",
+    "reflowHint": "Kelgusi darslar mavzulari qayta joylanadi; o'tilgan va o'tgan darslar o'zgarmaydi",
+    "reflowNothing": "Mavzular darslarga mos — o'zgartirish kerak emas",
+    "schedule": "Jadval",
+    "child": "Farzand",
+    "homeworkLine": "Uy vazifasi: {text}"
   },
   "plans": {
     "title": "O'quv rejalari",

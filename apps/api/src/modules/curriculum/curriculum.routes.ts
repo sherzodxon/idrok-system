@@ -7,6 +7,7 @@ import {
   PlanAssignmentSchema,
   PlanImportOptionsSchema,
   PlanTemplateQuerySchema,
+  ReflowPreviewSchema,
   CreateTopicSchema,
   CurriculumPlanDetailSchema,
   CurriculumPlanListQuerySchema,
@@ -239,4 +240,19 @@ export function curriculumRoutes(router: Router, registry: OpenApiRegistry, deps
       res.status(204).end();
     },
   );
+  for (const apply of [false, true])
+    route(
+      {
+        method: "post",
+        path: `/plan-assignments/:id/reflow/${apply ? "apply" : "preview"}`,
+        summary: apply
+          ? "Move the coming topics along the group's lessons (held and past lessons keep theirs)"
+          : "Which coming lessons would get another topic",
+        tags,
+        access: "curriculum.create",
+        params: IdParamsSchema,
+        responses: { 200: { description: "Reflow", schema: ReflowPreviewSchema } },
+      },
+      async ({ res, auth, params }) => res.json(await s.reflow(auth, params.id, apply)),
+    );
 }

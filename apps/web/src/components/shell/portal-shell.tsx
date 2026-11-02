@@ -1,6 +1,6 @@
 "use client";
 
-import { Home, UserRound } from "lucide-react";
+import { CalendarDays, Home, UserRound } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -15,6 +15,7 @@ import { ThemeToggle } from "./theme-toggle";
 
 const TABS = [
   { key: "home", href: "/home", icon: Home },
+  { key: "schedule", href: "/schedule", icon: CalendarDays },
   { key: "profile", href: "/me", icon: UserRound },
 ] as const;
 
