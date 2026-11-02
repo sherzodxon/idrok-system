@@ -15,17 +15,22 @@
   --color-primary-soft: var(--brand-primary-soft);
   --color-on-primary: #ffffff;
 
-  --color-background: #f5f8fc;
+  /* Brand: the logo's blue (#4E92CF). Neutrals are tinted from it, light blue to deep navy. */
+  --color-brand: var(--brand-primary);
+  --color-brand-deep: color-mix(in srgb, var(--brand-primary) 62%, #0a1826);
+  --color-on-brand: #ffffff;
+
+  --color-background: color-mix(in srgb, var(--brand-primary) 6%, #ffffff);
   --color-surface: #ffffff;
-  --color-surface-muted: #f0f4f9;
+  --color-surface-muted: color-mix(in srgb, var(--brand-primary) 9%, #ffffff);
   --color-sidebar: #ffffff;
-  --color-text-primary: #172b3a;
-  --color-text-secondary: #718096;
-  --color-text-disabled: #a0aec0;
-  --color-border: #e3eaf1;
-  --color-border-strong: #cbd5e1;
+  --color-text-primary: color-mix(in srgb, var(--brand-primary) 22%, #0a1826);
+  --color-text-secondary: color-mix(in srgb, var(--brand-primary) 30%, #3d5367);
+  --color-text-disabled: color-mix(in srgb, var(--brand-primary) 30%, #a3b1be);
+  --color-border: color-mix(in srgb, var(--brand-primary) 15%, #ffffff);
+  --color-border-strong: color-mix(in srgb, var(--brand-primary) 30%, #ffffff);
   --color-focus-ring: color-mix(in srgb, var(--brand-primary) 40%, transparent);
-  --color-overlay: rgb(23 43 58 / 0.45);
+  --color-overlay: rgb(14 32 50 / 0.45);
 
   --color-success: #16a36a;
   --color-success-soft: #e7f6ef;
@@ -36,19 +41,20 @@
   --color-info: var(--brand-primary);
   --color-info-soft: var(--brand-primary-soft);
 
-  --color-chart-1: #4e92cf;
-  --color-chart-2: #16a36a;
-  --color-chart-3: #e9a23b;
-  --color-chart-4: #8b5cf6;
-  --color-chart-5: #06b6d4;
-  --color-chart-6: #ec4899;
-  --color-chart-7: #eab308;
+  /* Blues first (light to dark), then contrasting hues for many series. */
+  --color-chart-1: var(--brand-primary);
+  --color-chart-2: color-mix(in srgb, var(--brand-primary) 55%, #0a1826);
+  --color-chart-3: color-mix(in srgb, var(--brand-primary) 50%, #ffffff);
+  --color-chart-4: #16a36a;
+  --color-chart-5: #e9a23b;
+  --color-chart-6: #8b5cf6;
+  --color-chart-7: #ec4899;
   --color-chart-8: #64748b;
 
   --radius-card: 12px;
   --radius-button: 8px;
   --radius-input: 8px;
-  --shadow-card: 0 1px 2px rgb(23 43 58 / 0.04), 0 4px 12px rgb(23 43 58 / 0.04);
+  --shadow-card: 0 1px 2px rgb(14 32 50 / 0.04), 0 4px 12px rgb(14 32 50 / 0.05);
   --space-page: 24px;
   --sidebar-width: 248px;
   --sidebar-collapsed: 72px;
@@ -67,17 +73,17 @@
   --color-primary: color-mix(in srgb, var(--brand-primary) 85%, white);
   --color-primary-hover: color-mix(in srgb, var(--brand-primary) 70%, white);
   --color-primary-strong: color-mix(in srgb, var(--brand-primary) 55%, white);
-  --color-primary-soft: color-mix(in srgb, var(--brand-primary) 18%, #161e27);
+  --color-primary-soft: color-mix(in srgb, var(--brand-primary) 22%, #111a24);
   --color-on-primary: #0b1622;
-  --color-background: #0e141b;
-  --color-surface: #161e27;
-  --color-surface-muted: #1c2632;
-  --color-sidebar: #121a23;
-  --color-text-primary: #e6edf3;
-  --color-text-secondary: #94a3b8;
-  --color-text-disabled: #5b6b7c;
-  --color-border: #2a3644;
-  --color-border-strong: #3a4858;
+  --color-background: color-mix(in srgb, var(--brand-primary) 8%, #0a1119);
+  --color-surface: color-mix(in srgb, var(--brand-primary) 10%, #111a24);
+  --color-surface-muted: color-mix(in srgb, var(--brand-primary) 14%, #141e29);
+  --color-sidebar: color-mix(in srgb, var(--brand-primary) 9%, #0e1620);
+  --color-text-primary: color-mix(in srgb, var(--brand-primary) 8%, #eef3f8);
+  --color-text-secondary: color-mix(in srgb, var(--brand-primary) 25%, #a3b1be);
+  --color-text-disabled: color-mix(in srgb, var(--brand-primary) 20%, #5b6b7c);
+  --color-border: color-mix(in srgb, var(--brand-primary) 20%, #1f2a36);
+  --color-border-strong: color-mix(in srgb, var(--brand-primary) 28%, #2c3a49);
   --color-overlay: rgb(0 0 0 / 0.6);
   --color-success: #34c78a;
   --color-success-soft: #123227;
@@ -94,17 +100,17 @@
     --color-primary: color-mix(in srgb, var(--brand-primary) 85%, white);
     --color-primary-hover: color-mix(in srgb, var(--brand-primary) 70%, white);
     --color-primary-strong: color-mix(in srgb, var(--brand-primary) 55%, white);
-    --color-primary-soft: color-mix(in srgb, var(--brand-primary) 18%, #161e27);
+    --color-primary-soft: color-mix(in srgb, var(--brand-primary) 22%, #111a24);
     --color-on-primary: #0b1622;
-    --color-background: #0e141b;
-    --color-surface: #161e27;
-    --color-surface-muted: #1c2632;
-    --color-sidebar: #121a23;
-    --color-text-primary: #e6edf3;
-    --color-text-secondary: #94a3b8;
-    --color-text-disabled: #5b6b7c;
-    --color-border: #2a3644;
-    --color-border-strong: #3a4858;
+    --color-background: color-mix(in srgb, var(--brand-primary) 8%, #0a1119);
+    --color-surface: color-mix(in srgb, var(--brand-primary) 10%, #111a24);
+    --color-surface-muted: color-mix(in srgb, var(--brand-primary) 14%, #141e29);
+    --color-sidebar: color-mix(in srgb, var(--brand-primary) 9%, #0e1620);
+    --color-text-primary: color-mix(in srgb, var(--brand-primary) 8%, #eef3f8);
+    --color-text-secondary: color-mix(in srgb, var(--brand-primary) 25%, #a3b1be);
+    --color-text-disabled: color-mix(in srgb, var(--brand-primary) 20%, #5b6b7c);
+    --color-border: color-mix(in srgb, var(--brand-primary) 20%, #1f2a36);
+    --color-border-strong: color-mix(in srgb, var(--brand-primary) 28%, #2c3a49);
     --color-overlay: rgb(0 0 0 / 0.6);
     --color-success: #34c78a;
     --color-success-soft: #123227;
