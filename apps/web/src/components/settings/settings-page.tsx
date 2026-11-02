@@ -164,6 +164,20 @@ function SchoolTab() {
                   </Select>
                 )}
               </Field>
+              <Field label={t("settings.maxQuestions")} hint={t("settings.maxQuestionsHint")}>
+                {(id, d) => (
+                  <Input
+                    id={id}
+                    aria-describedby={d}
+                    disabled={!manage}
+                    type="number"
+                    min={1}
+                    max={200}
+                    value={value.maxQuestionsPerTest}
+                    onChange={(e) => set({ maxQuestionsPerTest: Number(e.target.value) })}
+                  />
+                )}
+              </Field>
               <label className="flex items-center gap-2 text-sm">
                 <input
                   type="checkbox"

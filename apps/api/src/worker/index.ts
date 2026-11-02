@@ -7,8 +7,9 @@ import { buildDeps, closeDeps } from "../bootstrap";
 import type { Env } from "../config/env";
 import type { AppDeps } from "../deps";
 import { relayOutbox } from "../infra/outbox";
-import { QUEUES, bullConnection, type ImportJobPayload } from "../infra/queue";
+import { QUEUES, bullConnection, type ImportJobPayload, type TestJobPayload } from "../infra/queue";
 import { commitImport, parseImport } from "../modules/imports/imports.processor";
+import { refreshTestStatuses } from "../modules/tests/tests.service";
 
 const RELAY_INTERVAL_MS = 1_000;
 
@@ -19,6 +20,15 @@ async function processImport(deps: AppDeps, job: Job<ImportJobPayload>) {
     if (job.name === "parse") await parseImport(importDeps, importJobId);
     else if (job.name === "commit") await commitImport(importDeps, importJobId);
     else throw new Error(`Unknown import job ${job.name}`);
+  });
+}
+
+/** Window edges and deadlines: the same idempotent refresh every read does, run on time. */
+async function processTests(deps: AppDeps, job: Job<TestJobPayload>) {
+  const { tenantId, testId } = job.data;
+  await runWithTenant({ tenantId, requestId: `job:${job.id}` }, async () => {
+    if (job.name === "status" && testId) await refreshTestStatuses(deps.db, { id: testId });
+    else if (job.name !== "deadline") throw new Error(`Unknown tests job ${job.name}`);
   });
 }
 
@@ -45,13 +55,17 @@ export async function startWorker(env: Env, logger?: Logger) {
     concurrency: 2,
   });
   const housekeeping = new Worker(QUEUES.maintenance, () => maintenance(deps), { connection, concurrency: 1 });
+  const tests = new Worker<TestJobPayload>(QUEUES.tests, (job) => processTests(deps, job), {
+    connection,
+    concurrency: 4,
+  });
   await deps.queues.maintenance.upsertJobScheduler(
     "daily-cleanup",
     { pattern: "0 3 * * *", tz: "Asia/Tashkent" },
     { name: "cleanup" },
   );
 
-  for (const w of [imports, housekeeping]) {
+  for (const w of [imports, housekeeping, tests]) {
     w.on("failed", (job, err) =>
       deps.logger.error({ err, jobId: job?.id, queue: w.name, attempts: job?.attemptsMade }, "job failed"),
     );
@@ -73,7 +87,7 @@ export async function startWorker(env: Env, logger?: Logger) {
     deps,
     async stop() {
       clearInterval(relayTimer);
-      await Promise.all([imports.close(), housekeeping.close()]);
+      await Promise.all([imports.close(), housekeeping.close(), tests.close()]);
       await closeDeps(deps);
     },
   };

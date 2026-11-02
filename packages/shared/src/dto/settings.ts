@@ -45,6 +45,7 @@ export const SchoolSettingsSchema = z.object({
   weekStartsOn: z.number().int(),
   studentAccountMinGrade: z.number().int(),
   planApprovalRequired: z.boolean(),
+  maxQuestionsPerTest: z.number().int(),
 });
 export type SchoolSettingsDto = z.infer<typeof SchoolSettingsSchema>;
 
@@ -55,6 +56,7 @@ export const UpdateSchoolSettingsSchema = z
     weekStartsOn: z.number().int().min(1).max(7),
     studentAccountMinGrade: z.number().int().min(0).max(11),
     planApprovalRequired: z.boolean(),
+    maxQuestionsPerTest: z.number().int().min(1).max(200),
   })
   .partial()
   .strict();

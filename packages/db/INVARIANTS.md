@@ -66,6 +66,7 @@ applied migration — add a new one.
 | `OfflineResult_score_check` | CHECK | ″ | `SCORED` ⇔ `rawScore` set; `rawScore >= 0` (≤ `maxScore` checked by the API) |
 | `OfflineResult_one_current` | partial unique | ″ | one current offline result per test and student |
 | `OfflineResult_history` | TRIGGER | ″ | offline results are never deleted; an update only links a row to its successor |
+| `SchoolSettings_max_questions_check` | CHECK | `20261104120000_m4_test_settings` | `maxQuestionsPerTest` 1..200 (Q-36) |
 
 Checking a new migration does not touch them:
 

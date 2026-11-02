@@ -98,6 +98,7 @@ export class SettingsService {
       weekStartsOn: s?.weekStartsOn ?? 1,
       studentAccountMinGrade: s?.studentAccountMinGrade ?? 5,
       planApprovalRequired: s?.planApprovalRequired ?? true,
+      maxQuestionsPerTest: s?.maxQuestionsPerTest ?? 50,
     };
   }
 
