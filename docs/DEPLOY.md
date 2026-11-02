@@ -189,3 +189,8 @@ Staging'da tekshirish: ikki xil tarmoqdan (masalan uy Wi-Fi va mobil internet) b
 ## Redis (Render Key Value)
 
 `maxmemory-policy` = `noeviction` (BullMQ talabi). Boshqa siyosatda navbatdagi job'lar yo'qolishi mumkin.
+
+Navbatlar (M4 dan): `imports`, `maintenance`, `tests`. `tests` — test oynasi chegaralari (SCHEDULED → OPEN → CLOSED)
+va urinish deadline'lari; outbox'da `availableAt` bilan kechiktirilib yuboriladi. Worker ishlamay qolsa ham API har
+o'qishda holat va deadline'ni o'zi tekshiradi (lazy), shuning uchun natija kechikmaydi — faqat avtomatik yopilish
+worker qaytguncha "o'qilgunga qadar" kutadi.

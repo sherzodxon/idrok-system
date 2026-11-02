@@ -149,7 +149,7 @@ function MyTests() {
   );
 }
 
-function History({ studentId }: { studentId: string }) {
+export function History({ studentId }: { studentId: string }) {
   const t = useTranslations("tests");
   const api = useApi();
   const history = useQuery({

@@ -25,6 +25,7 @@ import { personName, useActiveYear, useClassGroups } from "@/lib/queries";
 import { useErrorText } from "@/lib/use-error-text";
 import { can, useMe } from "@/lib/use-me";
 import { GuardianFormSchema, StudentFormSchema, compact, type GuardianForm, type StudentForm } from "./form-schemas";
+import { StudentTestsCard } from "@/components/tests/student-tests-card";
 import { StatusBadge } from "./students-list";
 
 const RELATIONS = ["MOTHER", "FATHER", "GRANDPARENT", "SIBLING", "OTHER"] as const;
@@ -215,6 +216,7 @@ export function StudentProfile({ id, backHref }: { id: string; backHref: string 
                 ]}
               />
             </Card>
+            {can(me.data, "tests.results.view") && <StudentTestsCard studentId={s.id} />}
           </div>
 
           {dialog === "edit" && <EditStudentDrawer student={s} onClose={() => setDialog(null)} onSaved={refresh} />}
