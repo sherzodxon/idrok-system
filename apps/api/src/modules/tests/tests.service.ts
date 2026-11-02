@@ -23,6 +23,7 @@ import { activeOn, resolveScope, type DataScope } from "../access/scope";
 import { schoolClock } from "../access/school-clock";
 import { writeAudit } from "../audit/audit.service";
 import { gradable, versionDto } from "../question-bank/question-bank.service";
+import { finishRunning } from "./attempt-finish";
 
 type TestListQuery = z.infer<typeof TestListQuerySchema>;
 
@@ -597,6 +598,7 @@ export class TestsService {
       if (test.status === "DRAFT" || test.status === "CLOSED" || test.status === "ARCHIVED")
         throw new AppError("CONFLICT", 409, { reason: "TEST_NOT_OPEN" });
       await tx.test.update({ where: { id }, data: { status: "CLOSED", closedAt: new Date() } });
+      await finishRunning(tx, id);
       await writeAudit(tx, { action: "test.close", entityType: "Test", entityId: id });
     });
     return this.get(auth, id);

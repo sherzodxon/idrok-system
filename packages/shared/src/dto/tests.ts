@@ -347,3 +347,170 @@ export const TestProblemSchema = z.enum([
   "OFFLINE_SCALE",
 ]);
 export type TestProblem = z.infer<typeof TestProblemSchema>;
+
+// ---------------------------------------------------------------- attempts (§4.2–§4.5, §5) — student DTOs (S4)
+
+const OptionIds = z.array(LocalId).max(10);
+/** What a student sends: option ids, a text, or left → right pairs (ids only, never texts). */
+export const AnswerValueSchema = z.union([
+  z.object({ optionIds: OptionIds }).strict(),
+  z.object({ text: z.string().max(500) }).strict(),
+  z.object({ pairs: z.array(z.object({ leftId: LocalId, rightId: LocalId }).strict()).max(10) }).strict(),
+]);
+export type AnswerValue = z.infer<typeof AnswerValueSchema>;
+
+export const SaveAnswerSchema = z
+  .object({
+    answer: AnswerValueSchema,
+    /** Increases with every change on the client; an older one never overwrites a newer one. */
+    clientSeq: z.number().int().min(0).max(2_000_000_000),
+    currentIndex: z.number().int().min(0).max(500).optional(),
+  })
+  .strict();
+
+export const SavePositionSchema = z.object({ currentIndex: z.number().int().min(0).max(500) }).strict();
+
+export const TestEventTypeSchema = z.enum(["VISIBILITY_HIDDEN", "VISIBILITY_VISIBLE", "BLUR", "FOCUS", "RECONNECT"]);
+export const AttemptEventSchema = z
+  .object({
+    type: TestEventTypeSchema,
+    clientTs: z.iso.datetime({ offset: true }).optional(),
+    clientSeq: z.number().int().min(0).max(2_000_000_000).optional(),
+  })
+  .strict();
+
+export const FinishReasonSchema = z.enum(["SUBMITTED", "TIME_UP", "VIOLATION", "ADMIN_CLOSED"]);
+
+/** A question as a student sees it: no correct flags, no accepted answers, no pairing (S4). */
+export const StudentQuestionSchema = z
+  .object({
+    testQuestionId: z.uuid(),
+    type: QuestionTypeSchema,
+    text: z.string(),
+    imageAssetId: z.uuid().nullable(),
+    points: z.string(),
+    /** SINGLE / MULTIPLE, in this attempt's order */
+    options: z.array(z.object({ id: z.string(), text: z.string() }).strict()).optional(),
+    /** MATCHING: the left items in order, the right items shuffled */
+    leftItems: z.array(z.object({ id: z.string(), text: z.string() }).strict()).optional(),
+    rightItems: z.array(z.object({ id: z.string(), text: z.string() }).strict()).optional(),
+  })
+  .strict();
+
+export const AttemptResultSchema = z
+  .object({ score: z.string(), maxScore: z.string(), percent: z.string().nullable() })
+  .strict();
+
+export const AttemptViewSchema = z
+  .object({
+    id: z.uuid(),
+    testId: z.uuid(),
+    title: z.string(),
+    subjectName: z.string(),
+    attemptNo: z.number().int(),
+    status: z.enum(["IN_PROGRESS", "FINISHED"]),
+    finishReason: FinishReasonSchema.nullable(),
+    startedAt: z.string(),
+    deadline: z.string().nullable(),
+    /** The server clock: the client counts down from deadline − serverNow, whatever its own clock says. */
+    serverNow: z.string(),
+    currentIndex: z.number().int(),
+    violationCount: z.number().int(),
+    violationThreshold: z.number().int(),
+    questions: z.array(StudentQuestionSchema),
+    answers: z.record(z.string(), z.object({ answer: AnswerValueSchema, clientSeq: z.number().int() }).strict()),
+    /** Only when the test allows it (showResultToStudent). */
+    result: AttemptResultSchema.nullable(),
+    /** One boolean per question, only after the window and every retake window closed. */
+    perQuestion: z.record(z.string(), z.boolean()).nullable(),
+  })
+  .strict();
+export type AttemptViewDto = z.infer<typeof AttemptViewSchema>;
+
+export const SaveAnswerResultSchema = z.object({ saved: z.boolean(), clientSeq: z.number().int() }).strict();
+export const AttemptEventResultSchema = z
+  .object({
+    counted: z.boolean(),
+    violationCount: z.number().int(),
+    /** null when there is no threshold */
+    remaining: z.number().int().nullable(),
+    finished: z.boolean(),
+  })
+  .strict();
+
+export const StudentTestStateSchema = z.enum(["UPCOMING", "AVAILABLE", "IN_PROGRESS", "DONE", "MISSED"]);
+export const StudentTestSchema = z
+  .object({
+    id: z.uuid(),
+    title: z.string(),
+    subjectName: z.string(),
+    testTypeCode: z.string(),
+    testTypeName: z.string(),
+    format: TestFormatSchema,
+    purpose: TestPurposeSchema,
+    /** The student's own window (a retake window when there is one). */
+    startsAt: z.string().nullable(),
+    endsAt: z.string().nullable(),
+    timeLimitMinutes: z.number().int().nullable(),
+    questionCount: z.number().int(),
+    state: StudentTestStateSchema,
+    attempts: z.array(
+      z
+        .object({
+          id: z.uuid(),
+          attemptNo: z.number().int(),
+          status: z.enum(["IN_PROGRESS", "FINISHED"]),
+          finishReason: FinishReasonSchema.nullable(),
+          finishedAt: z.string().nullable(),
+          result: AttemptResultSchema.nullable(),
+        })
+        .strict(),
+    ),
+  })
+  .strict();
+export type StudentTestDto = z.infer<typeof StudentTestSchema>;
+
+// ---- teacher side of attempts
+
+export const TestAttemptSchema = z.object({
+  id: z.uuid(),
+  studentId: z.uuid(),
+  studentName: z.string(),
+  attemptNo: z.number().int(),
+  status: z.enum(["IN_PROGRESS", "FINISHED"]),
+  finishReason: FinishReasonSchema.nullable(),
+  startedAt: z.string(),
+  deadline: z.string().nullable(),
+  finishedAt: z.string().nullable(),
+  violationCount: z.number().int(),
+  score: z.string().nullable(),
+  maxScore: z.string(),
+  percent: z.string().nullable(),
+});
+export type TestAttemptDto = z.infer<typeof TestAttemptSchema>;
+
+export const ReopenAttemptSchema = z
+  .object({ reason: z.string().trim().min(3).max(500), minutes: z.number().int().min(1).max(600) })
+  .strict();
+
+export const CreateOverridesSchema = z
+  .object({
+    studentIds: z.array(z.uuid()).min(1).max(300),
+    startsAt: Instant,
+    endsAt: Instant,
+    timeLimitMinutes: z.number().int().min(1).max(600).nullable().optional(),
+    reason: z.string().trim().min(3).max(500),
+  })
+  .strict()
+  .refine((v) => v.startsAt < v.endsAt, { path: ["endsAt"], message: "end_before_start" });
+
+export const TestOverrideSchema = z.object({
+  id: z.uuid(),
+  studentId: z.uuid(),
+  studentName: z.string(),
+  startsAt: z.string(),
+  endsAt: z.string(),
+  timeLimitMinutes: z.number().int().nullable(),
+  reason: z.string(),
+  createdAt: z.string(),
+});
