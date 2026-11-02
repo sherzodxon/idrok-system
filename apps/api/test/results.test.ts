@@ -180,8 +180,9 @@ describe("manual components and closing (§5.1, §7)", () => {
     expect((await api(t, s.teacher2).raw("put", "/manual-scores", body)).status).toBe(403);
     expect((await api(t, s.teacher1).raw("put", "/manual-scores", { ...body, componentKey: "nope" })).status).toBe(400);
     await api(t, s.teacher1).put("/manual-scores", body);
-    await api(t, s.teacher1).put("/manual-scores", { ...body, points: 15 }); // a correction keeps the history
-    expect(await t.deps.root.manualAssessmentScore.count({ where: { studentId: s.s7a.id } })).toBe(2);
+    await api(t, s.teacher1).put("/manual-scores", { ...body, points: 14 }); // a correction keeps the history
+    await api(t, s.teacher1).put("/manual-scores", { ...body, points: 15 }); // and a second one (the chain grows)
+    expect(await t.deps.root.manualAssessmentScore.count({ where: { studentId: s.s7a.id } })).toBe(3);
     expect(mathsOf(await results(q1.id))).toMatchObject({ totalPoints: "84", percent: "84" });
     const book = await api(t, s.teacher1).get(
       `/gradebook?teachingGroupId=${s.c7a.classTeachingGroupId}&subjectId=${s.math.id}&periodId=${q1.id}`,

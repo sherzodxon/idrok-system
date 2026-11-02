@@ -3,6 +3,7 @@
 import { requireTenantId, type Db, type DbTransaction, type Prisma } from "@idrok/db";
 import type { AnswerValue } from "@idrok/shared";
 import { attemptScore, gradeAnswer, isPastDeadline, type MultipleScoring } from "../../domain/tests";
+import { markStale } from "../assessment/closing.service";
 import { gradable } from "../question-bank/question-bank.service";
 
 export type FinishReason = "SUBMITTED" | "TIME_UP" | "VIOLATION" | "ADMIN_CLOSED";
@@ -49,6 +50,13 @@ export async function finishAttempt(tx: DbTransaction, attemptId: string, reason
         data: { isCorrect: g.isCorrect, pointsAwarded: g.points.toString() },
       });
   const score = attemptScore(graded.map(({ tq, g }) => ({ points: tq.points.toString(), awarded: g.points })));
+  // A weighted test of a closed period: its FINAL results are now behind (scoring.md §7).
+  const test = await tx.test.findFirstOrThrow({
+    where: { id: attempt.testId },
+    select: { purpose: true, periodId: true, period: { select: { status: true } } },
+  });
+  if (test.purpose === "WEIGHTED" && test.period?.status === "CLOSED")
+    await markStale(tx, test.periodId!, [attempt.studentId]);
   // TIME_UP ends at the deadline itself, whenever the server noticed it.
   const finishedAt = reason === "TIME_UP" && attempt.deadline && attempt.deadline < now ? attempt.deadline : now;
   return tx.testAttempt.update({

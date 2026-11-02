@@ -6,7 +6,9 @@ import {
   AttemptViewSchema,
   CreateOverridesSchema,
   IdParamsSchema,
+  OfflineResultsSchema,
   ReopenAttemptSchema,
+  SaveOfflineResultsSchema,
   SaveAnswerResultSchema,
   SaveAnswerSchema,
   SavePositionSchema,
@@ -18,6 +20,7 @@ import type { AppDeps } from "../../deps";
 import { routesFor } from "../../http/route";
 import type { OpenApiRegistry } from "../../openapi/registry";
 import { AttemptsService } from "./attempts.service";
+import { OfflineResultsService } from "./offline-results.service";
 
 const tags = ["tests"];
 const VIEW = { anyOf: ["tests.create", "tests.results.view"] } as const;
@@ -29,6 +32,7 @@ const studentView = AttemptViewSchema.parse.bind(AttemptViewSchema);
 
 export function attemptRoutes(router: Router, registry: OpenApiRegistry, deps: AppDeps) {
   const s = new AttemptsService(deps.db);
+  const offline = new OfflineResultsService(deps.db);
   const route = routesFor(router, registry);
 
   route(
@@ -193,5 +197,32 @@ export function attemptRoutes(router: Router, registry: OpenApiRegistry, deps: A
       responses: { 201: { description: "Overrides", schema: z.array(TestOverrideSchema) } },
     },
     async ({ res, auth, params, body }) => res.status(201).json(await s.addOverrides(auth, params.id, body)),
+  );
+
+  // ---- offline results (§6)
+  route(
+    {
+      method: "get",
+      path: "/tests/:id/offline-results",
+      summary: "Offline results grid: every student of the test, current result and how often it was corrected",
+      tags,
+      access: VIEW,
+      params: IdParamsSchema,
+      responses: { 200: { description: "Results", schema: OfflineResultsSchema } },
+    },
+    async ({ res, auth, params }) => res.json(await offline.get(auth, params.id)),
+  );
+  route(
+    {
+      method: "put",
+      path: "/tests/:id/offline-results",
+      summary: "Enter or correct offline results (empty cells are simply not sent; history kept)",
+      tags,
+      access: "tests.results.enter",
+      params: IdParamsSchema,
+      body: SaveOfflineResultsSchema,
+      responses: { 200: { description: "Results", schema: OfflineResultsSchema } },
+    },
+    async ({ res, auth, params, body }) => res.json(await offline.save(auth, params.id, body)),
   );
 }
