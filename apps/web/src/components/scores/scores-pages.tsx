@@ -6,14 +6,15 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, Undo2, UsersRound } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useRef, useState, type KeyboardEvent } from "react";
 import type {
   AcademicPeriodDto,
   AttendanceStatusCode,
   GradebookDto,
   LessonJournalDto,
+  ManualScoreDto,
   Page,
   ProgressView,
   ScoreEntryDto,
@@ -333,6 +334,7 @@ export function GradebookPage({ journalBase = "/teacher/journal" }: { journalBas
   const api = useApi();
   const pathname = usePathname();
   const year = useActiveYear();
+  const me = useMe();
   const assignments = useQuery({
     queryKey: ["teacher-assignments", "gradebook", year.data?.id],
     queryFn: () =>
@@ -413,74 +415,255 @@ export function GradebookPage({ journalBase = "/teacher/journal" }: { journalBas
             empty={<EmptyState text={t("noLessonsInPeriod")} />}
           >
             {(b) => (
-              <div className="overflow-x-auto" data-testid="gradebook">
-                <table className="min-w-full border-collapse text-sm">
-                  <thead>
-                    <tr>
-                      <th scope="col" className="sticky left-0 z-10 bg-surface p-2 text-left font-semibold">
-                        {t("student")}
-                      </th>
-                      {b.sessions.map((s) => (
-                        <th
-                          key={s.id}
-                          scope="col"
-                          className="p-1 text-center font-normal text-muted"
-                          title={s.topicTitle ?? ""}
-                        >
-                          <Link
-                            href={`${journalBase}/${s.id}${back}`}
-                            className="tabular block rounded px-1 hover:bg-surface-muted"
-                          >
-                            {s.date.slice(5).split("-").reverse().join(".")}
-                          </Link>
-                        </th>
-                      ))}
-                      <th scope="col" className="p-2 text-right font-semibold">
-                        %
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {b.students.map((st) => (
-                      <tr key={st.studentId} className="border-t border-border" data-student={st.studentId}>
-                        <th
-                          scope="row"
-                          className="sticky left-0 z-10 bg-surface p-2 text-left font-medium whitespace-nowrap"
-                        >
-                          {st.name}
-                        </th>
-                        {b.sessions.map((s) => {
-                          const cell = st.cells.find((c) => c.sessionId === s.id);
-                          return (
-                            <td key={s.id} className="p-0 text-center">
-                              <Link
-                                href={`${journalBase}/${s.id}${back}`}
-                                className={cn(
-                                  "tabular block min-w-9 px-1 py-2 hover:bg-surface-muted focus:bg-primary-soft",
-                                  cell?.state === "ABSENT_UNEXCUSED" && "text-danger",
-                                  cell?.state === "PENDING" && "text-disabled",
-                                )}
-                                aria-label={`${st.name}, ${s.date}`}
-                              >
-                                {cell ? (cell.points ?? STATE_MARK[cell.state] ?? "") : ""}
-                              </Link>
-                            </td>
-                          );
-                        })}
-                        <td className="tabular p-2 text-right font-semibold" data-testid="row-percent">
-                          {st.displayPercent ?? "—"}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                <p className="p-3 text-xs text-muted">{t("legend")}</p>
-              </div>
+              <GradebookGrid
+                book={b}
+                lessonHref={(id) => `${journalBase}/${id}${back}`}
+                canScore={can(me.data, "scores.create") && b.periodStatus !== "CLOSED"}
+              />
             )}
           </QueryBoundary>
         )}
       </Card>
+      {book.data && book.data.manualComponents.length > 0 && (
+        <ManualScores
+          book={book.data}
+          query={{ periodId: chosenPeriod, teachingGroupId: groupId!, subjectId: subjectId! }}
+          canEdit={can(me.data, "assessment.manual_entry") && book.data.periodStatus !== "CLOSED"}
+        />
+      )}
     </>
+  );
+}
+
+const MOVES: Record<string, [number, number]> = {
+  ArrowUp: [-1, 0],
+  ArrowDown: [1, 0],
+  ArrowLeft: [0, -1],
+  ArrowRight: [0, 1],
+};
+
+/**
+ * Lessons × students. Keyboard: arrows move between cells; digits then Enter add that many points to the lesson
+ * (the same POST /scores as the journal, so limits apply); Enter on its own or a double click opens the lesson journal.
+ */
+function GradebookGrid({
+  book,
+  lessonHref,
+  canScore,
+}: {
+  book: GradebookDto;
+  lessonHref: (sessionId: string) => string;
+  canScore: boolean;
+}) {
+  const t = useTranslations("scores");
+  const api = useApi();
+  const router = useRouter();
+  const action = useAction();
+  const table = useRef<HTMLTableElement>(null);
+  const [active, setActive] = useState("0:0");
+  const [typed, setTyped] = useState<{ at: string; value: string } | null>(null);
+  const focusCell = (r: number, c: number) =>
+    table.current?.querySelector<HTMLElement>(`[data-cell="${r}:${c}"]`)?.focus();
+
+  const onKey = (e: KeyboardEvent<HTMLElement>, r: number, c: number, studentId: string, sessionId: string) => {
+    const at = `${r}:${c}`;
+    const move = MOVES[e.key];
+    if (move) {
+      e.preventDefault();
+      setTyped(null);
+      focusCell(r + move[0], c + move[1]);
+    } else if (canScore && /^[0-9]$/.test(e.key)) {
+      e.preventDefault();
+      setTyped((prev) => ({ at, value: `${prev?.at === at ? prev.value : ""}${e.key}`.slice(-3) }));
+    } else if (e.key === "Backspace" && typed?.at === at) {
+      e.preventDefault();
+      setTyped(typed.value.length > 1 ? { at, value: typed.value.slice(0, -1) } : null);
+    } else if (e.key === "Escape") {
+      setTyped(null);
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      const points = typed?.at === at ? Number(typed.value) : 0;
+      setTyped(null);
+      if (points <= 0) return router.push(lessonHref(sessionId));
+      void action
+        .run(
+          () =>
+            api.post("/scores", {
+              idempotencyKey: crypto.randomUUID(),
+              lessonSessionId: sessionId,
+              studentId,
+              points: String(points),
+            }),
+          ["gradebook", "journal"],
+        )
+        .then((ok) => ok && focusCell(r + 1, c));
+    }
+  };
+
+  return (
+    <div className="overflow-x-auto" data-testid="gradebook">
+      <table ref={table} className="min-w-full border-collapse text-sm">
+        <thead>
+          <tr>
+            <th scope="col" className="sticky left-0 z-10 bg-surface p-2 text-left font-semibold">
+              {t("student")}
+            </th>
+            {book.sessions.map((s) => (
+              <th key={s.id} scope="col" className="p-1 text-center font-normal text-muted" title={s.topicTitle ?? ""}>
+                <Link href={lessonHref(s.id)} className="tabular block rounded px-1 hover:bg-surface-muted">
+                  {s.date.slice(5).split("-").reverse().join(".")}
+                </Link>
+              </th>
+            ))}
+            <th scope="col" className="p-2 text-right font-semibold">
+              %
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {book.students.map((st, r) => (
+            <tr key={st.studentId} className="border-t border-border" data-student={st.studentId}>
+              <th scope="row" className="sticky left-0 z-10 bg-surface p-2 text-left font-medium whitespace-nowrap">
+                {st.name}
+              </th>
+              {book.sessions.map((s, c) => {
+                const cell = st.cells.find((x) => x.sessionId === s.id);
+                const at = `${r}:${c}`;
+                const pending = typed?.at === at;
+                return (
+                  <td key={s.id} className="p-0 text-center">
+                    <button
+                      type="button"
+                      data-cell={at}
+                      tabIndex={active === at ? 0 : -1}
+                      onFocus={() => setActive(at)}
+                      onBlur={() => pending && setTyped(null)}
+                      onKeyDown={(e) => onKey(e, r, c, st.studentId, s.id)}
+                      onClick={canScore ? undefined : () => router.push(lessonHref(s.id))}
+                      onDoubleClick={() => router.push(lessonHref(s.id))}
+                      aria-label={`${st.name}, ${s.date}`}
+                      aria-busy={action.busy && active === at}
+                      className={cn(
+                        "tabular block w-full min-w-9 px-1 py-2 hover:bg-surface-muted focus:bg-primary-soft focus:outline-2 focus:outline-primary",
+                        cell?.state === "ABSENT_UNEXCUSED" && "text-danger",
+                        cell?.state === "PENDING" && "text-disabled",
+                        pending && "font-semibold text-primary",
+                      )}
+                    >
+                      {pending ? `+${typed.value}` : cell ? (cell.points ?? STATE_MARK[cell.state] ?? "") : ""}
+                    </button>
+                  </td>
+                );
+              })}
+              <td className="tabular p-2 text-right font-semibold" data-testid="row-percent">
+                {st.displayPercent ?? "—"}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="p-3 text-xs text-muted">
+        {t("legend")} {canScore ? t("legendQuick") : t("legendOpen")}
+      </p>
+    </div>
+  );
+}
+
+/** MANUAL components (oral, project, ...) and a higher period's final control, entered per student (Q-12). */
+function ManualScores({
+  book,
+  query,
+  canEdit,
+}: {
+  book: GradebookDto;
+  query: { periodId: string; teachingGroupId: string; subjectId: string };
+  canEdit: boolean;
+}) {
+  const t = useTranslations("scores");
+  const api = useApi();
+  const toast = useToast();
+  const action = useAction();
+  const params = new URLSearchParams(query).toString();
+  const scores = useQuery({
+    queryKey: ["manual-scores", params],
+    queryFn: () => api.get<ManualScoreDto[]>(`/manual-scores?${params}`),
+  });
+  const save = (studentId: string, comp: GradebookDto["manualComponents"][number], value: string) => {
+    if (!/^\d{1,6}(\.\d{1,4})?$/.test(value) || Number(value) > Number(comp.maxPoints)) {
+      toast("error", t("manualInvalid", { max: comp.maxPoints }));
+      return;
+    }
+    void action.run(
+      () =>
+        api.put("/manual-scores", {
+          periodId: query.periodId,
+          subjectId: query.subjectId,
+          studentId,
+          componentKey: comp.key,
+          points: value,
+          maxPoints: comp.maxPoints,
+        }),
+      ["manual-scores", "gradebook"],
+    );
+  };
+  return (
+    <Card className="mt-4">
+      <CardHeader title={t("manualTitle")} />
+      <QueryBoundary query={scores}>
+        {(list) => (
+          <div className="overflow-x-auto" data-testid="manual-scores">
+            <table className="min-w-full border-collapse text-sm">
+              <thead>
+                <tr>
+                  <th scope="col" className="p-2 text-left font-semibold">
+                    {t("student")}
+                  </th>
+                  {book.manualComponents.map((comp) => (
+                    <th key={comp.key} scope="col" className="p-2 text-left font-semibold">
+                      {`${comp.name ?? t("finalControl")} / ${comp.maxPoints}`}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {book.students.map((st) => (
+                  <tr key={st.studentId} className="border-t border-border">
+                    <th scope="row" className="p-2 text-left font-medium whitespace-nowrap">
+                      {st.name}
+                    </th>
+                    {book.manualComponents.map((comp) => {
+                      const current = list.find((m) => m.studentId === st.studentId && m.componentKey === comp.key);
+                      return (
+                        <td key={comp.key} className="p-1">
+                          {canEdit ? (
+                            <Input
+                              key={current?.id ?? "none"}
+                              aria-label={`${st.name}, ${comp.name ?? t("finalControl")}`}
+                              inputMode="decimal"
+                              className="w-24"
+                              defaultValue={current?.points ?? ""}
+                              disabled={action.busy}
+                              onBlur={(e) => {
+                                const value = e.target.value.trim();
+                                if (value !== "" && value !== (current?.points ?? "")) save(st.studentId, comp, value);
+                              }}
+                              onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+                            />
+                          ) : (
+                            <span className="tabular">{current?.points ?? "—"}</span>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="p-3 text-xs text-muted">{canEdit ? t("manualHint") : t("manualReadOnly")}</p>
+          </div>
+        )}
+      </QueryBoundary>
+    </Card>
   );
 }
 

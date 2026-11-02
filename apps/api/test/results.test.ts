@@ -134,6 +134,7 @@ describe("progress and gradebook (§4, §8)", () => {
       `/gradebook?teachingGroupId=${s.c7a.classTeachingGroupId}&subjectId=${s.math.id}&periodId=${q1.id}`,
     );
     expect(book.sessions).toHaveLength(q1Maths.length);
+    expect(book).toMatchObject({ periodStatus: "ACTIVE", manualComponents: [] });
     const row = book.students.find((x: { studentId: string }) => x.studentId === s.s7a.id);
     expect(row.percent).toBe("90");
     expect(row.cells.slice(0, 4).map((c: { state: string; points: string | null }) => [c.state, c.points])).toEqual([
@@ -182,6 +183,14 @@ describe("manual components and closing (§5.1, §7)", () => {
     await api(t, s.teacher1).put("/manual-scores", { ...body, points: 15 }); // a correction keeps the history
     expect(await t.deps.root.manualAssessmentScore.count({ where: { studentId: s.s7a.id } })).toBe(2);
     expect(mathsOf(await results(q1.id))).toMatchObject({ totalPoints: "84", percent: "84" });
+    const book = await api(t, s.teacher1).get(
+      `/gradebook?teachingGroupId=${s.c7a.classTeachingGroupId}&subjectId=${s.math.id}&periodId=${q1.id}`,
+    );
+    expect(book.manualComponents).toEqual([{ key: "oral", name: "Og'zaki", maxPoints: "40", final: false }]);
+    const manual = await api(t, s.teacher1).get(
+      `/manual-scores?periodId=${q1.id}&teachingGroupId=${s.c7a.classTeachingGroupId}&subjectId=${s.math.id}`,
+    );
+    expect(manual.map((m: { points: string }) => m.points)).toEqual(["15"]);
   });
 
   it("prepare → close: FINAL results; acceptance 16: a new policy version does not change them", async () => {

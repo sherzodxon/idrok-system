@@ -300,7 +300,19 @@ export class ProgressService {
         planItem: { select: { topic: { select: { title: true } } } },
       },
     });
+    const rule = config.higherPeriods.find((h) => h.periodId === period.id) ?? config.higherDefault;
+    const manualComponents = [
+      ...config.components
+        .filter((c) => c.type === "MANUAL" && c.enabled)
+        .map((c) => ({ key: c.key, name: c.name, maxPoints: c.maxPoints, final: false })),
+      // The final control belongs to a period made of other periods (half-year, year).
+      ...(rule.aggregation === "WEIGHTED_WITH_FINAL" && rule.finalComponent && (await this.hasChildren(period.id))
+        ? [{ key: rule.finalComponent.key, name: null, maxPoints: "100", final: true }]
+        : []),
+    ];
     return {
+      periodStatus: period.status,
+      manualComponents,
       sessions: sessions.map((s) => ({
         id: s.id,
         date: schoolDateFromDb(s.date),
@@ -332,6 +344,10 @@ export class ProgressService {
         };
       }),
     };
+  }
+
+  private async hasChildren(periodId: string) {
+    return (await this.db.academicPeriod.count({ where: { parentId: periodId } })) > 0;
   }
 
   /** Period results of a group's students: live while the period is open, the FINAL snapshot once closed. */
