@@ -19,6 +19,15 @@ export function useErrorText() {
     ) {
       return t(`passwordReasons.${error.details.reason}`);
     }
+    // A refused score says which limit and how much still fits (scoring.md §3.1).
+    if (error.code === "SCORE_LIMIT_EXCEEDED" && typeof error.details?.window === "string") {
+      return t("scoreLimit", {
+        window: t.has(`limitWindows.${error.details.window}`)
+          ? t(`limitWindows.${error.details.window}`)
+          : error.details.window,
+        remaining: String(error.details.remaining ?? 0),
+      });
+    }
     // Business conflicts carry a reason code (e.g. STUDENT_BELOW_MIN_GRADE) with its own sentence.
     const reason = typeof error.details?.reason === "string" ? error.details.reason : undefined;
     if (reason && t.has(`reasons.${reason}`)) return t(`reasons.${reason}`, error.details as Record<string, string>);

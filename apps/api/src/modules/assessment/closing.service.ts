@@ -190,9 +190,12 @@ export class ClosingService {
       select: { id: true, firstName: true, lastName: true },
     });
     const emptyComponents: Record<string, number> = {};
+    // Policy components only (a higher period's parts and the overall result's subjects are not components).
+    const componentTypes = new Set(["DAILY_SCORES", "TESTS", "MANUAL"]);
     for (const r of results)
       for (const c of r.components)
-        if (c.percent === null) emptyComponents[c.type] = (emptyComponents[c.type] ?? 0) + 1;
+        if (c.percent === null && componentTypes.has(c.type))
+          emptyComponents[c.type] = (emptyComponents[c.type] ?? 0) + 1;
     return {
       students: studentIds.length,
       results: results.length,

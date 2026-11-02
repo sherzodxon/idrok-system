@@ -99,9 +99,32 @@
       "PLAN_NOT_APPROVED": "Yangi versiya faqat tasdiqlangan rejadan",
       "PLAN_HAS_OPEN_VERSION": "Bu rejaning tahrirlanayotgan versiyasi bor",
       "LESSON_IN_FUTURE": "Kelgusi darsni o'tildi deb belgilab bo'lmaydi",
-      "LESSON_NOT_SCHEDULED": "Faqat rejadagi darsni bekor qilish mumkin"
+      "LESSON_NOT_SCHEDULED": "Faqat rejadagi darsni bekor qilish mumkin",
+      "STUDENT_ABSENT": "O'quvchi darsda bo'lmagan — ball qo'yilmaydi",
+      "LATE_ENTRY": "Ball qo'yish muddati o'tgan",
+      "ALREADY_REVERSED": "Bu ball allaqachon bekor qilingan",
+      "NOT_OWN_ENTRY": "Boshqa o'qituvchining balini bekor qilish uchun ruxsat kerak",
+      "NOT_REVERSIBLE": "Bu yozuvni bekor qilib bo'lmaydi",
+      "RULE_EXISTS": "Bunday faol qoida allaqachon bor",
+      "SCALE_IN_USE": "Shkala e'lon qilingan siyosatda ishlatilmoqda — oraliqlarini o'zgartirib bo'lmaydi, yangi shkala yarating",
+      "NAME_TAKEN": "Bu nom band",
+      "NOT_DRAFT": "Faqat qoralama e'lon qilinadi",
+      "NOT_PUBLISHED": "Siyosatning e'lon qilingan versiyasi yo'q",
+      "RUN_NOT_PREPARED": "Avval davrni yopishga tayyorlang",
+      "PERIOD_NOT_CLOSED": "Davr yopilmagan",
+      "POLICY_INVALID": "Siyosatda xatolar bor",
+      "SCALE_INVALID": "Shkala oraliqlarida xato bor",
+      "READ_ONLY": "Faqat ko'rish mumkin"
     },
-    "SCORE_LIMIT_EXCEEDED": "Ball limiti oshib ketadi"
+    "SCORE_LIMIT_EXCEEDED": "Ball limiti oshib ketadi",
+    "scoreLimit": "Limit oshib ketadi: {window} uchun yana {remaining} ball qo'yish mumkin",
+    "limitWindows": {
+      "LESSON": "Dars",
+      "DAY": "Kun",
+      "WEEK": "Hafta",
+      "MONTH": "Oy",
+      "PERIOD": "Davr"
+    }
   },
   "states": {
     "emptyTitle": "Hozircha ma'lumot yo'q",
@@ -132,7 +155,10 @@
     "myPlans": "Dars rejalarim",
     "lessons": "Darslar",
     "mySchedule": "Jadvalim",
-    "schedule": "Jadval"
+    "schedule": "Jadval",
+    "gradebook": "Jurnal",
+    "assessment": "Baholash",
+    "progress": "Baholar"
   },
   "shell": {
     "context": "Ish rejimi",
@@ -889,5 +915,272 @@
     "unassign": "Olib tashlash",
     "unassignConfirm": "Kelgusi darslardan bu reja mavzulari olib tashlanadi; o'tilganlari qoladi",
     "openCreated": "Yaratilgan rejani ochish"
+  },
+  "scores": {
+    "journal": "Jurnal",
+    "gradebook": "Jurnal (jadval)",
+    "progress": "Baholar",
+    "back": "Orqaga",
+    "noTopic": "Mavzu belgilanmagan",
+    "lessonMax": "dars maksimumi: {max}",
+    "locked": {
+      "LESSON_CANCELLED": "Dars bekor qilingan — ball qo'yib bo'lmaydi.",
+      "LESSON_IN_FUTURE": "Dars hali boshlanmagan.",
+      "PERIOD_CLOSED": "Davr yopilgan — o'zgartirish uchun maxsus ruxsat kerak.",
+      "LATE_ENTRY": "Ball qo'yish muddati o'tgan — maxsus ruxsat kerak.",
+      "READ_ONLY": "Bu darsni faqat ko'rishingiz mumkin."
+    },
+    "criterion": "Mezon",
+    "noCriterion": "Mezonsiz",
+    "allPresent": "Hammasi keldi",
+    "bulkPoints": "Hammaga ball",
+    "pointsShort": "Ball",
+    "scoreEveryone": "Hammaga qo'yish",
+    "bulkDone": "Ballar qo'yildi",
+    "bulkRefused": "{count} ta o'quvchiga qo'yilmadi (limit yoki davomat)",
+    "noStudents": "Bu guruhda o'quvchi yo'q",
+    "leftToday": "bugun qoldi: {n}",
+    "attendance": "Davomat",
+    "attendanceShort": {
+      "PRESENT": "Keldi",
+      "LATE": "Kechikdi",
+      "ABSENT_EXCUSED": "Sababli",
+      "ABSENT_UNEXCUSED": "Sababsiz"
+    },
+    "points": "Ball",
+    "entries": "Qo'yilgan ballar",
+    "reverse": "Bekor qilish",
+    "groupSubject": "Guruh va fan",
+    "period": "Davr",
+    "chooseGroup": "Guruh va fanni tanlang",
+    "noLessonsInPeriod": "Bu davrda dars yo'q",
+    "student": "O'quvchi",
+    "legend": "· — ball qo'yilmagan, Sb — sababli, Ss — sababsiz, × — bekor qilingan. Sanani yoki katakni bosing — dars jurnali ochiladi.",
+    "views": {
+      "DAY": "Kun",
+      "WEEK": "Hafta",
+      "MONTH": "Oy",
+      "PERIOD": "Chorak"
+    },
+    "prev": "Oldingi",
+    "next": "Keyingi",
+    "overall": "Umumiy",
+    "noScores": "Hali ball yo'q",
+    "sessionsLine": "{scored} ta dars baholangan, {pending} ta kutilmoqda",
+    "incomplete": "To'liq emas",
+    "periodPoints": "davr: {points}/{max}",
+    "history": "Ballar tarixi",
+    "byDay": "Kunlar bo'yicha",
+    "child": "Farzand",
+    "noChild": "O'quvchi topilmadi"
+  },
+  "assessment": {
+    "title": "Baholash",
+    "tabs": {
+      "policy": "Siyosat",
+      "limits": "Limitlar",
+      "scales": "Baho shkalasi",
+      "closing": "Davrni yopish",
+      "missing": "Kim ball qo'ymagan"
+    },
+    "version": "Versiya",
+    "default": "asosiy",
+    "versionStatus": {
+      "DRAFT": "Qoralama",
+      "PUBLISHED": "E'lon qilingan",
+      "RETIRED": "Eski"
+    },
+    "newPolicyName": "Yangi siyosat nomi",
+    "newPolicy": "Yangi siyosat",
+    "f": {
+      "dailyView": "Kunlik ko'rinish",
+      "overallMethod": "Umumiy foiz usuli",
+      "absentExcused": "Sababli kelmaganlik",
+      "absentUnexcused": "Sababsiz kelmaganlik",
+      "ungradedPresentAs": "Baholanmagan dars",
+      "emptyComponent": "Bo'sh komponent",
+      "testsMode": "Testlar",
+      "missedTest": "Qatnashmagan test",
+      "retakePolicy": "Qayta topshirish",
+      "higherDefault": "Yarim yillik / yillik",
+      "rounding": "Yaxlitlash",
+      "decimals": "Kasr xonalari",
+      "gradeScale": "5 ballik shkala",
+      "periodMaxPoints": "Davr maksimumi",
+      "enabledViews": "Ko'rinishlar",
+      "overallPeriodResult": "Umumiy davr natijasi"
+    },
+    "o": {
+      "dailyView": {
+        "BY_SUBJECT": "Faqat fanlar bo'yicha",
+        "OVERALL": "Faqat umumiy",
+        "BOTH": "Fanlar va umumiy"
+      },
+      "overallMethod": {
+        "POOLED": "Barcha darslar bitta qozonda",
+        "WEIGHTED_SUBJECTS": "Fanlar foizlari (vaznli)"
+      },
+      "excludeZero": {
+        "EXCLUDE": "Hisobga olinmaydi",
+        "ZERO": "0 sifatida"
+      },
+      "ungraded": {
+        "PENDING": "Kutilmoqda (hisobga olinmaydi)",
+        "ZERO": "0 sifatida"
+      },
+      "emptyComponent": {
+        "REDISTRIBUTE": "Qolganlarga taqsimlanadi",
+        "ZERO": "0 sifatida",
+        "PENDING": "Natija chiqmaydi"
+      },
+      "testsMode": {
+        "COMBINED": "Barcha davr testlari",
+        "SEPARATE": "Natijaga kirmaydi",
+        "SELECTIVE": "Faqat belgilanganlari"
+      },
+      "retake": {
+        "LAST": "Oxirgisi",
+        "BEST": "Eng yaxshisi"
+      },
+      "aggregation": {
+        "AVERAGE": "Choraklar o'rtachasi",
+        "WEIGHTED": "Vaznli",
+        "WEIGHTED_WITH_FINAL": "Vaznli + yakuniy",
+        "INDEPENDENT": "Mustaqil hisob"
+      },
+      "rounding": {
+        "HALF_UP": "Matematik",
+        "FLOOR": "Pastga",
+        "CEIL": "Yuqoriga"
+      },
+      "componentType": {
+        "DAILY_SCORES": "Kundalik ballar",
+        "TESTS": "Testlar",
+        "MANUAL": "Qo'lda kiritiladi"
+      }
+    },
+    "views": {
+      "DAY": "Kun",
+      "WEEK": "Hafta",
+      "MONTH": "Oy",
+      "PERIOD": "Chorak"
+    },
+    "noScale": "Ishlatilmaydi",
+    "components": "Komponentlar",
+    "componentsSum": "Yig'indi: {sum} / {max}",
+    "componentName": "Nomi",
+    "componentType": "Turi",
+    "componentKey": "Kalit",
+    "componentMax": "Maksimum",
+    "componentEnabled": "Yoqilgan",
+    "remove": "O'chirish",
+    "manual": "Qo'lda",
+    "addComponent": "Komponent qo'shish",
+    "problems": {
+      "COMPONENTS_SUM_MISMATCH": "Komponentlar yig'indisi davr maksimumiga teng emas",
+      "NO_COMPONENTS": "Kamida bitta komponent yoqilishi kerak",
+      "DUPLICATE_COMPONENT_KEY": "Komponent kalitlari takrorlanmasin",
+      "TESTS_COMPONENT_IN_SEPARATE_MODE": "Testlar natijaga kirmaydigan rejimda testlar komponenti bo'lmasligi kerak",
+      "HIGHER_WEIGHTS_MISSING": "Vaznli hisob uchun davr vaznlari kerak",
+      "FINAL_COMPONENT_MISSING": "Yakuniy nazorat komponenti ko'rsatilmagan",
+      "GRADE_SCALE_MISSING": "Tanlangan shkala topilmadi",
+      "GAP_OR_OVERLAP": "Shkala oraliqlarida bo'shliq yoki kesishma bor",
+      "NOT_FROM_0_TO_100": "Shkala 0 dan 100 gacha bo'lishi kerak",
+      "BAND_EMPTY": "Oraliq bo'sh",
+      "DUPLICATE_LABEL": "Baholar takrorlanmasin",
+      "NO_BANDS": "Oraliqlar yo'q",
+      "PERIOD_MISSING": "Ko'rsatilgan davr topilmadi",
+      "INVALID": "Sozlamalar to'liq emas"
+    },
+    "saveDraft": "Qoralamani saqlash",
+    "publish": "E'lon qilish",
+    "newVersion": "Shu asosda yangi versiya",
+    "makeDefault": "Asosiy qilish",
+    "settings": "Umumiy sozlamalar",
+    "s": {
+      "lessonMaxPoints": "Dars maksimumi",
+      "hardCapPerLesson": "Bir darsda eng ko'pi",
+      "hardCapPerDay": "Bir kunda eng ko'pi",
+      "lateEntryDays": "Necha kun keyin ham qo'yish mumkin",
+      "allowScoreOnAbsent": "Kelmagan o'quvchiga ball qo'yish mumkin"
+    },
+    "save": "Saqlash",
+    "rules": "Limit qoidalari",
+    "noRules": "Qo'shimcha qoida yo'q — faqat umumiy limitlar",
+    "window": "Oraliq",
+    "scope": "Kimga",
+    "scopeValue": "Qaysi",
+    "scopeDefault": "Hammasi (default)",
+    "maxPoints": "Maksimum",
+    "addRule": "Qoida qo'shish",
+    "windows": {
+      "LESSON": "Dars",
+      "DAY": "Kun",
+      "WEEK": "Hafta",
+      "MONTH": "Oy",
+      "PERIOD": "Davr"
+    },
+    "scopes": {
+      "GLOBAL": "Barcha fanlar",
+      "SUBJECT": "Fan",
+      "GRADE": "Parallel",
+      "TEACHER": "O'qituvchi",
+      "TEACHING_GROUP": "Guruh"
+    },
+    "active": "Faol",
+    "inactive": "O'chirilgan",
+    "activate": "Yoqish",
+    "deactivate": "O'chirish",
+    "criteria": "Ball mezonlari",
+    "noCriteria": "Mezon yo'q",
+    "criterionName": "Mezon nomi",
+    "addCriterion": "Mezon qo'shish",
+    "noScales": "Shkala yo'q",
+    "inUse": "Ishlatilmoqda",
+    "newScale": "Yangi shkala",
+    "scaleName": "Shkala nomi",
+    "bandMin": "dan (%)",
+    "bandMax": "gacha (%)",
+    "bandLabel": "Baho",
+    "addBand": "Oraliq qo'shish",
+    "noPeriods": "Davrlar kiritilmagan",
+    "period": "Davr",
+    "periodStatus": {
+      "DRAFT": "Qoralama",
+      "ACTIVE": "Faol",
+      "CLOSED": "Yopilgan"
+    },
+    "bindings": "Davrga bog'langan siyosat",
+    "noBindings": "Bog'lanmagan — asosiy siyosat ishlatiladi",
+    "allSubjects": "Barcha fanlar",
+    "superseded": "Almashtirilgan",
+    "current": "Amalda",
+    "chooseVersion": "Versiyani tanlang",
+    "reason": "Sabab (faol davr uchun majburiy)",
+    "applyToPeriod": "Davrga qo'llash",
+    "closing": "Davrni yopish",
+    "closingHint": "Avval tayyorlang: tizim natijalarni hisoblaydi va to'liqmaslik hisobotini ko'rsatadi. Keyin yoping — natijalar o'zgarmas bo'ladi.",
+    "prepare": "Yopishga tayyorlash",
+    "close": "Davrni yopish",
+    "recomputeReason": "Qayta hisoblash sababi",
+    "recompute": "Eskirgan natijalarni qayta hisoblash",
+    "noRuns": "Hali tayyorlanmagan",
+    "runStatus": {
+      "PREPARED": "Tayyorlangan",
+      "CLOSED": "Yopilgan",
+      "CANCELLED": "Bekor qilingan"
+    },
+    "reportLine": "{students} o'quvchi, {results} natija, to'liq emas: {incomplete}",
+    "emptyComponentLine": "Bo'sh komponent «{type}»: {n}",
+    "pendingByTeacher": "Ball qo'yilmagan darslar (o'qituvchi bo'yicha)",
+    "closeConfirmTitle": "Davrni yopish",
+    "closeConfirm": "«{name}» yopilsinmi? Natijalar o'zgarmas bo'ladi.",
+    "from": "Dan",
+    "to": "Gacha",
+    "noLessonsInRange": "Bu oraliqda o'tilgan dars yo'q",
+    "teacher": "O'qituvchi",
+    "lessonsCol": "Darslar",
+    "unscored": "Ballsiz",
+    "unmarked": "Davomatsiz"
   }
 }

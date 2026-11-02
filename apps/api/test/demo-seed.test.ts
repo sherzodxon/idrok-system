@@ -95,6 +95,16 @@ describe("seedDemoSchool", () => {
     const root = t.deps.root;
     expect(summary.calendar).toMatchObject({ unplacedHours: 0, plans: 18 });
     expect(summary.calendar!.lessons).toBeGreaterThan(5000);
+    // M3: started quarters are active and bound to the default policy; recent lessons carry synthetic scores.
+    const active = await root.academicPeriod.findMany({
+      where: { ...where(), status: "ACTIVE" },
+      select: { id: true },
+    });
+    expect(await root.policyBinding.count({ where: { periodId: { in: active.map((p) => p.id) } } })).toBe(
+      active.length,
+    );
+    expect(summary.calendar!.scores).toBe(await root.scoreEntry.count({ where: where() }));
+    expect(await root.scoreEntry.count({ where: { ...where(), points: { gt: 10 } } })).toBe(0);
     expect(await root.shift.count({ where: where() })).toBe(2);
     expect(await root.classGroup.count({ where: { ...where(), shiftId: null } })).toBe(0);
     expect(await root.academicPeriod.count({ where: { ...where(), type: "QUARTER" } })).toBe(4);

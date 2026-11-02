@@ -1,9 +1,10 @@
 // Synthetic demo calendar for the demo school (Q-30): two shifts (Q-35), bells, quarters, holidays and vacations,
 // a conflict-free weekly timetable, the year's lessons and approved maths / mother-tongue plans applied to every class.
 // Goes through the same services as the admin screens, so the data obeys the same rules.
-import type { Db } from "@idrok/db";
+import { randomUUID } from "node:crypto";
+import { requireTenantId, type Db } from "@idrok/db";
 import { PERMISSION_CODES } from "@idrok/shared";
-import { parseSchoolDate } from "@idrok/shared/time";
+import { addSchoolDays, parseSchoolDate, schoolDateToDb, schoolToday } from "@idrok/shared/time";
 import type { RequestAuth } from "../../http/auth";
 import { CalendarService } from "../calendar/calendar.service";
 import { CurriculumService } from "../curriculum/curriculum.service";
@@ -135,6 +136,7 @@ export interface DemoCalendarSummary {
   timetableEntries: number;
   unplacedHours: number;
   plans: number;
+  scores: number;
 }
 
 export async function seedDemoCalendar(
@@ -272,5 +274,98 @@ export async function seedDemoCalendar(
       plans++;
     }
   }
-  return { lessons: applied.added, timetableEntries: entries.length, unplacedHours: unplaced, plans };
+  // Quarters that have started are active (each binds the default assessment policy).
+  const todayDate = schoolToday();
+  const periods = await db.academicPeriod.findMany({
+    where: { academicYearId: yearId },
+    select: { id: true, startDate: true },
+  });
+  for (const p of periods) if (p.startDate <= schoolDateToDb(todayDate)) await calendar.activatePeriod(p.id);
+
+  const scores = await seedDemoScores(
+    db,
+    admin.userId,
+    [mathId, motherId].filter((x): x is string => !!x),
+  );
+  return { lessons: applied.added, timetableEntries: entries.length, unplacedHours: unplaced, plans, scores };
+}
+
+/**
+ * Synthetic scores for the last two weeks of maths and mother tongue (M3): most students 5–10 points a lesson, some
+ * not scored yet, a few absent. Inserted directly (thousands of rows) but inside every rule: one entry per student and
+ * lesson, at most 10, far under the daily cap.
+ */
+async function seedDemoScores(db: Db, userId: string, subjectIds: string[]) {
+  const today = schoolToday();
+  const lessons = await db.lessonSession.findMany({
+    where: {
+      subjectId: { in: subjectIds },
+      status: { not: "CANCELLED" },
+      date: { gte: schoolDateToDb(addSchoolDays(today, -14)), lt: schoolDateToDb(today) },
+    },
+    orderBy: [{ date: "asc" }, { startsAt: "asc" }],
+    select: {
+      id: true,
+      date: true,
+      academicYearId: true,
+      periodId: true,
+      subjectId: true,
+      teacherId: true,
+      substituteTeacherId: true,
+      teachingGroupId: true,
+      teachingGroup: { select: { classGroup: { select: { gradeId: true } } } },
+      planItem: { select: { topicId: true } },
+    },
+  });
+  const tenantId = requireTenantId();
+  let count = 0;
+  for (const [n, lesson] of lessons.entries()) {
+    const members = await db.teachingGroupMember.findMany({
+      where: {
+        teachingGroupId: lesson.teachingGroupId,
+        validFrom: { lte: lesson.date },
+        OR: [{ validTo: null }, { validTo: { gte: lesson.date } }],
+      },
+      orderBy: { studentId: "asc" },
+      select: { studentId: true },
+    });
+    const gradeId = lesson.teachingGroup.classGroup?.gradeId;
+    if (!gradeId) continue;
+    const roll = (j: number) => (j * 31 + n * 17) % 20;
+    const scored = members.filter((_, j) => roll(j) > 3);
+    await db.lessonAttendance.createMany({
+      data: members.map((m, j) => ({
+        tenantId,
+        lessonSessionId: lesson.id,
+        studentId: m.studentId,
+        status: roll(j) === 0 ? ("ABSENT_UNEXCUSED" as const) : ("PRESENT" as const),
+        markedById: userId,
+        markedAt: new Date(),
+      })),
+    });
+    await db.scoreEntry.createMany({
+      data: scored.map((m) => ({
+        tenantId,
+        studentId: m.studentId,
+        teacherId: lesson.substituteTeacherId ?? lesson.teacherId,
+        subjectId: lesson.subjectId,
+        teachingGroupId: lesson.teachingGroupId,
+        gradeId,
+        lessonSessionId: lesson.id,
+        topicId: lesson.planItem?.topicId ?? null,
+        academicYearId: lesson.academicYearId,
+        periodId: lesson.periodId,
+        schoolDate: lesson.date,
+        points: 5 + (roll(members.indexOf(m)) % 6),
+        idempotencyKey: randomUUID(),
+        createdById: userId,
+      })),
+    });
+    count += scored.length;
+    await db.lessonSession.update({
+      where: { id: lesson.id },
+      data: { status: "HELD", heldMarkedAt: new Date(), heldMarkedById: userId },
+    });
+  }
+  return count;
 }
