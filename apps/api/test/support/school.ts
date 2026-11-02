@@ -132,3 +132,15 @@ export async function buildSchool(t: T, tenant: Tenant) {
     guardianUsername: gAcc.username as string,
   };
 }
+
+/** A student login (from grade 5), past its first-login password change. */
+export async function studentAuth(t: T, s: { a: ReturnType<typeof api> }, studentId: string, tenantSlug: string) {
+  const acc = await s.a.post(`/students/${studentId}/account`, {});
+  const auth = await bearerFor(t, acc.username, acc.temporaryPassword, tenantSlug);
+  await request(t.app)
+    .post("/api/v1/auth/change-password")
+    .set(auth)
+    .send({ currentPassword: acc.temporaryPassword, newPassword: "Yangi-demo-77" })
+    .expect(204);
+  return auth;
+}

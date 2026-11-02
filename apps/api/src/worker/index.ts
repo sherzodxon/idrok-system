@@ -9,6 +9,7 @@ import type { AppDeps } from "../deps";
 import { relayOutbox } from "../infra/outbox";
 import { QUEUES, bullConnection, type ImportJobPayload, type TestJobPayload } from "../infra/queue";
 import { commitImport, parseImport } from "../modules/imports/imports.processor";
+import { processDeadline } from "../modules/tests/attempt-finish";
 import { refreshTestStatuses } from "../modules/tests/tests.service";
 
 const RELAY_INTERVAL_MS = 1_000;
@@ -25,10 +26,11 @@ async function processImport(deps: AppDeps, job: Job<ImportJobPayload>) {
 
 /** Window edges and deadlines: the same idempotent refresh every read does, run on time. */
 async function processTests(deps: AppDeps, job: Job<TestJobPayload>) {
-  const { tenantId, testId } = job.data;
+  const { tenantId, testId, attemptId } = job.data;
   await runWithTenant({ tenantId, requestId: `job:${job.id}` }, async () => {
     if (job.name === "status" && testId) await refreshTestStatuses(deps.db, { id: testId });
-    else if (job.name !== "deadline") throw new Error(`Unknown tests job ${job.name}`);
+    else if (job.name === "deadline" && attemptId) await processDeadline(deps.db, attemptId);
+    else throw new Error(`Unknown tests job ${job.name}`);
   });
 }
 
