@@ -262,6 +262,11 @@ model Tenant {
   curriculumPlans      CurriculumPlan[]
   planItems            PlanItem[]
   planAssignments      PlanAssignment[]
+  scoreCriteria        ScoreCriterion[]
+  lessonAttendance     LessonAttendance[]
+  scoreEntries         ScoreEntry[]
+  scoreLimitRules      ScoreLimitRule[]
+  scoreSettings        ScoreSettings?
 }
 
 model SchoolSettings {
@@ -567,6 +572,7 @@ model AcademicYear {
   timetables         Timetable[]
   lessonSessions     LessonSession[]
   curriculumPlans    CurriculumPlan[]
+  scoreEntries       ScoreEntry[]
 
   // SQL: AcademicYear_one_active, AcademicYear_dates_check
   @@unique([tenantId, name])
@@ -585,6 +591,8 @@ model Grade {
   calendarDays    CalendarDayGrade[]
   topics          Topic[]
   curriculumPlans CurriculumPlan[]
+  scoreEntries    ScoreEntry[]
+  scoreLimitRules ScoreLimitRule[]
 
   // SQL: Grade_level_check (0..11)
   @@unique([tenantId, level])
@@ -639,6 +647,8 @@ model TeachingGroup {
   timetableEntries   TimetableEntry[]
   lessonSessions     LessonSession[]
   planAssignments    PlanAssignment[]
+  scoreEntries       ScoreEntry[]
+  scoreLimitRules    ScoreLimitRule[]
 
   // SQL: TeachingGroup_one_class_group, TeachingGroup_class_check
   @@index([tenantId, academicYearId])
@@ -678,6 +688,8 @@ model Subject {
   lessonSessions     LessonSession[]
   topics             Topic[]
   curriculumPlans    CurriculumPlan[]
+  scoreEntries       ScoreEntry[]
+  scoreLimitRules    ScoreLimitRule[]
 
   @@unique([tenantId, name])
 }
@@ -706,6 +718,8 @@ model Employee {
   lessons            LessonSession[]     @relation("LessonTeacher")
   curriculumPlans    CurriculumPlan[]
   substituteLessons  LessonSession[]     @relation("LessonSubstitute")
+  scoreEntries       ScoreEntry[]
+  scoreLimitRules    ScoreLimitRule[]
 
   @@unique([tenantId, employeeCode])
   @@index([tenantId, lastName, firstName])
@@ -760,6 +774,8 @@ model Student {
   guardians        StudentGuardian[]
   enrollments      StudentEnrollment[]
   groupMemberships TeachingGroupMember[]
+  lessonAttendance LessonAttendance[]
+  scoreEntries     ScoreEntry[]
 
   @@unique([tenantId, studentCode])
   @@index([tenantId, lastName, firstName])
@@ -852,6 +868,7 @@ model AcademicPeriod {
 
   lessonSessions LessonSession[]
   planItems      PlanItem[]
+  scoreEntries   ScoreEntry[]
 
   // SQL: AcademicPeriod_dates_check, AcademicPeriod_no_overlap (same type)
   @@unique([academicYearId, type, order])
@@ -1058,6 +1075,8 @@ model LessonSession {
   cancelReason        String?
   createdAt           DateTime            @default(now()) @db.Timestamptz(3)
   updatedAt           DateTime            @updatedAt @db.Timestamptz(3)
+  attendance          LessonAttendance[]
+  scoreEntries        ScoreEntry[]
 
   // SQL: LessonSession_times_check, LessonSession_no_delete
   @@unique([teachingGroupId, date, lessonNumber])
@@ -1092,7 +1111,8 @@ model Topic {
   archivedAt      DateTime? @db.Timestamptz(3)
   createdAt       DateTime  @default(now()) @db.Timestamptz(3)
 
-  planItems PlanItem[]
+  planItems    PlanItem[]
+  scoreEntries ScoreEntry[]
 
   @@unique([tenantId, subjectId, gradeId, normalizedTitle])
 }
@@ -1176,4 +1196,159 @@ model PlanAssignment {
   // SQL: PlanAssignment_one_active — one active plan per group and subject
   @@index([planId])
   @@index([teachingGroupId, subjectId])
+}
+
+// =====================================================================================================================
+// M3 — scoring (docs/spec/scoring.md)
+// =====================================================================================================================
+
+enum AttendanceStatus {
+  PRESENT
+  LATE
+  ABSENT_EXCUSED
+  ABSENT_UNEXCUSED
+}
+
+enum ScoreEntryKind {
+  NORMAL
+  REVERSAL
+}
+
+enum ScoreLimitWindow {
+  LESSON
+  DAY
+  WEEK
+  MONTH
+  PERIOD
+}
+
+enum ScoreLimitScope {
+  GLOBAL
+  SUBJECT
+  GRADE
+  TEACHER
+  TEACHING_GROUP
+}
+
+model ScoreCriterion {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  tenantId    String   @db.Uuid
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  name        String
+  description String?
+  isActive    Boolean  @default(true)
+  order       Int      @default(0)
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+
+  scoreEntries ScoreEntry[]
+
+  @@unique([tenantId, name])
+}
+
+// One current mark per student and lesson; every change is in AuditLog (scoring.md §2).
+model LessonAttendance {
+  id              String           @id @default(uuid(7)) @db.Uuid
+  tenantId        String           @db.Uuid
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  lessonSessionId String           @db.Uuid
+  lessonSession   LessonSession    @relation(fields: [lessonSessionId], references: [id], onDelete: Restrict)
+  studentId       String           @db.Uuid
+  student         Student          @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  status          AttendanceStatus
+  note            String?
+  markedById      String           @db.Uuid
+  markedAt        DateTime         @db.Timestamptz(3)
+
+  @@unique([lessonSessionId, studentId])
+  @@index([tenantId, studentId])
+}
+
+// LEDGER: insert only (SQL trigger rejects UPDATE/DELETE). A correction is a REVERSAL (negative) + a new NORMAL.
+model ScoreEntry {
+  id              String          @id @default(uuid(7)) @db.Uuid
+  tenantId        String          @db.Uuid
+  tenant          Tenant          @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  studentId       String          @db.Uuid
+  student         Student         @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  // who teaches the lesson (the substitute when there is one)
+  teacherId       String          @db.Uuid
+  teacher         Employee        @relation(fields: [teacherId], references: [id], onDelete: Restrict)
+  subjectId       String          @db.Uuid
+  subject         Subject         @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  teachingGroupId String          @db.Uuid
+  teachingGroup   TeachingGroup   @relation(fields: [teachingGroupId], references: [id], onDelete: Restrict)
+  // the student's grade at the time (GRADE limits)
+  gradeId         String          @db.Uuid
+  grade           Grade           @relation(fields: [gradeId], references: [id], onDelete: Restrict)
+  lessonSessionId String          @db.Uuid
+  lessonSession   LessonSession   @relation(fields: [lessonSessionId], references: [id], onDelete: Restrict)
+  // copied from the lesson's plan item
+  topicId         String?         @db.Uuid
+  topic           Topic?          @relation(fields: [topicId], references: [id], onDelete: Restrict)
+  academicYearId  String          @db.Uuid
+  academicYear    AcademicYear    @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+  periodId        String          @db.Uuid
+  period          AcademicPeriod  @relation(fields: [periodId], references: [id], onDelete: Restrict)
+  // = the lesson's date, never the time of writing
+  schoolDate      DateTime        @db.Date
+  criterionId     String?         @db.Uuid
+  criterion       ScoreCriterion? @relation(fields: [criterionId], references: [id], onDelete: Restrict)
+  // NORMAL > 0, REVERSAL < 0 (SQL CHECK)
+  points          Decimal         @db.Decimal(8, 2)
+  note            String?
+  kind            ScoreEntryKind  @default(NORMAL)
+  reversesEntryId String?         @unique @db.Uuid
+  reversesEntry   ScoreEntry?     @relation("ScoreReversal", fields: [reversesEntryId], references: [id], onDelete: Restrict)
+  reversedBy      ScoreEntry?     @relation("ScoreReversal")
+  // required on a REVERSAL by a teacher after lateEntryDays or by someone else (service), reason column free text
+  reason          String?
+  idempotencyKey  String
+  createdById     String          @db.Uuid
+  createdAt       DateTime        @default(now()) @db.Timestamptz(3)
+
+  // SQL: ScoreEntry_kind_check, ScoreEntry_append_only
+  @@unique([tenantId, idempotencyKey])
+  @@index([tenantId, studentId, schoolDate])
+  @@index([lessonSessionId, studentId])
+  @@index([periodId, subjectId, studentId])
+  @@index([teacherId, schoolDate])
+}
+
+model ScoreLimitRule {
+  id              String           @id @default(uuid(7)) @db.Uuid
+  tenantId        String           @db.Uuid
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  window          ScoreLimitWindow
+  scopeType       ScoreLimitScope
+  // One column per scope type instead of a polymorphic id, for foreign keys. All null = the default of the type.
+  subjectId       String?          @db.Uuid
+  subject         Subject?         @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  gradeId         String?          @db.Uuid
+  grade           Grade?           @relation(fields: [gradeId], references: [id], onDelete: Restrict)
+  teacherId       String?          @db.Uuid
+  teacher         Employee?        @relation(fields: [teacherId], references: [id], onDelete: Restrict)
+  teachingGroupId String?          @db.Uuid
+  teachingGroup   TeachingGroup?   @relation(fields: [teachingGroupId], references: [id], onDelete: Restrict)
+  maxPoints       Decimal          @db.Decimal(8, 2)
+  isActive        Boolean          @default(true)
+  createdAt       DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime         @updatedAt @db.Timestamptz(3)
+
+  // SQL: ScoreLimitRule_scope_check, ScoreLimitRule_one_active (partial unique)
+  @@index([tenantId, window, scopeType, isActive])
+}
+
+// Q-06, Q-07 defaults.
+model ScoreSettings {
+  id                 String   @id @default(uuid(7)) @db.Uuid
+  tenantId           String   @unique @db.Uuid
+  tenant             Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  hardCapPerLesson   Decimal  @default(10) @db.Decimal(8, 2)
+  hardCapPerDay      Decimal  @default(70) @db.Decimal(8, 2)
+  lessonMaxPoints    Decimal  @default(10) @db.Decimal(8, 2)
+  allowScoreOnAbsent Boolean  @default(false)
+  lateEntryDays      Int      @default(3)
+  updatedById        String?  @db.Uuid
+  updatedAt          DateTime @updatedAt @db.Timestamptz(3)
 }

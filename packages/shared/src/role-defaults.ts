@@ -13,7 +13,15 @@ const STRUCTURE_VIEW: PermissionCode[] = [
 const PEOPLE_VIEW: PermissionCode[] = ["students.view", "guardians.view", "employees.view"];
 const LESSONS_VIEW: PermissionCode[] = ["timetable.view", "lessons.view", "curriculum.view", "curriculum.export"];
 // Teachers plan and mark only their own groups (scope in the services).
-const TEACHING: PermissionCode[] = [...LESSONS_VIEW, "lessons.mark", "curriculum.create"];
+const ASSESSMENT_VIEW: PermissionCode[] = ["gradebook.view", "assessment.view"];
+const TEACHING: PermissionCode[] = [
+  ...LESSONS_VIEW,
+  "lessons.mark",
+  "curriculum.create",
+  ...ASSESSMENT_VIEW,
+  "scores.create",
+  "assessment.manual_entry",
+];
 
 const SCHOOL_ADMIN: PermissionCode[] = PERMISSION_CODES.filter((c) => !c.startsWith("portal."));
 
@@ -27,6 +35,7 @@ export const ROLE_DEFAULT_PERMISSIONS: Record<SystemRoleCode, readonly Permissio
     ...STRUCTURE_VIEW,
     ...PEOPLE_VIEW,
     ...LESSONS_VIEW,
+    ...ASSESSMENT_VIEW,
     "exports.run",
     "audit_logs.view",
   ],
@@ -51,6 +60,12 @@ export const ROLE_DEFAULT_PERMISSIONS: Record<SystemRoleCode, readonly Permissio
     "timetable.publish",
     ...LESSONS_VIEW,
     "curriculum.approve",
+    // M3: policies, period closing and late corrections; reopening a closed period stays with the admin
+    ...ASSESSMENT_VIEW,
+    "assessment.manage",
+    "assessment.approve",
+    "scores.correct",
+    "scores.late_entry",
   ],
   METHODIST: [
     ...STRUCTURE_VIEW,
@@ -59,6 +74,7 @@ export const ROLE_DEFAULT_PERMISSIONS: Record<SystemRoleCode, readonly Permissio
     "exports.run",
     ...LESSONS_VIEW,
     "curriculum.approve",
+    ...ASSESSMENT_VIEW,
   ],
   TEACHER: [...STRUCTURE_VIEW, "students.view", ...TEACHING],
   CLASS_TEACHER: [...STRUCTURE_VIEW, "students.view", "guardians.view", ...TEACHING],

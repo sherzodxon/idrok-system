@@ -353,3 +353,84 @@ describe("curriculum plans (M2)", () => {
     await plan(2); // a new open version next to the approved one is fine
   });
 });
+
+describe("score ledger (M3)", () => {
+  it("is insert-only; reversals match their entry exactly, once", async () => {
+    const { year, cls, student } = await yearAndClass();
+    const grade = await root.grade.findFirstOrThrow({ where: { tenantId, level: 7 } });
+    const group = await root.teachingGroup.create({
+      data: { tenantId, academicYearId: year.id, classGroupId: cls.id, kind: "CLASS", name: cls.name },
+    });
+    const subject = await root.subject.create({ data: { tenantId, name: `Demo fan ${crypto.randomUUID()}` } });
+    const teacher = await root.employee.create({ data: { tenantId, firstName: "Demo", lastName: "Ustoz" } });
+    const period = await root.academicPeriod.create({
+      data: {
+        tenantId,
+        academicYearId: year.id,
+        type: "YEAR",
+        name: "Y",
+        order: 1,
+        startDate: day("2026-09-01"),
+        endDate: day("2027-06-30"),
+      },
+    });
+    const at = (minute: number) => atSchoolTime(parseSchoolDate("2026-09-08"), minute);
+    const lesson = await root.lessonSession.create({
+      data: {
+        tenantId,
+        academicYearId: year.id,
+        periodId: period.id,
+        teachingGroupId: group.id,
+        subjectId: subject.id,
+        teacherId: teacher.id,
+        date: day("2026-09-08"),
+        lessonNumber: 1,
+        sequenceNo: 1,
+        startsAt: at(480),
+        endsAt: at(525),
+      },
+    });
+    const base = {
+      tenantId,
+      studentId: student.id,
+      teacherId: teacher.id,
+      subjectId: subject.id,
+      teachingGroupId: group.id,
+      gradeId: grade.id,
+      lessonSessionId: lesson.id,
+      academicYearId: year.id,
+      periodId: period.id,
+      schoolDate: day("2026-09-08"),
+      createdById: crypto.randomUUID(),
+    };
+    const key = () => crypto.randomUUID();
+    const entry = await root.scoreEntry.create({ data: { ...base, points: 5, idempotencyKey: key() } });
+    await expect(root.scoreEntry.create({ data: { ...base, points: 0, idempotencyKey: key() } })).rejects.toThrow();
+    await expect(root.scoreEntry.update({ where: { id: entry.id }, data: { note: "x" } })).rejects.toThrow();
+    await expect(root.scoreEntry.delete({ where: { id: entry.id } })).rejects.toThrow();
+    const reversal = (points: number) =>
+      root.scoreEntry.create({
+        data: { ...base, kind: "REVERSAL", points, reversesEntryId: entry.id, idempotencyKey: key() },
+      });
+    await expect(reversal(-4)).rejects.toThrow();
+    await expect(reversal(5)).rejects.toThrow();
+    await reversal(-5);
+    await expect(reversal(-5)).rejects.toThrow();
+    // Same idempotency key twice in one tenant.
+    const k = key();
+    await root.scoreEntry.create({ data: { ...base, points: 1, idempotencyKey: k } });
+    await expect(root.scoreEntry.create({ data: { ...base, points: 1, idempotencyKey: k } })).rejects.toThrow();
+  });
+
+  it("limit rules: one column per scope type, one active rule per scope", async () => {
+    const subject = await root.subject.create({ data: { tenantId, name: `Demo fan ${crypto.randomUUID()}` } });
+    const rule = (data: { scopeType: "GLOBAL" | "SUBJECT"; subjectId?: string; maxPoints?: number }) =>
+      root.scoreLimitRule.create({ data: { tenantId, window: "WEEK", maxPoints: 30, ...data } });
+    await expect(rule({ scopeType: "GLOBAL", subjectId: subject.id })).rejects.toThrow();
+    await expect(rule({ scopeType: "SUBJECT", subjectId: subject.id, maxPoints: 0 })).rejects.toThrow();
+    await rule({ scopeType: "SUBJECT", subjectId: subject.id });
+    await expect(rule({ scopeType: "SUBJECT", subjectId: subject.id })).rejects.toThrow();
+    await rule({ scopeType: "SUBJECT" });
+    await expect(rule({ scopeType: "SUBJECT" })).rejects.toThrow();
+  });
+});
