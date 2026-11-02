@@ -13,6 +13,7 @@ import { cn } from "@/lib/cn";
 import type { ThemeMode } from "@/lib/theme";
 import { can, homePath, isPortalUser, useMe } from "@/lib/use-me";
 import { useShellBranding } from "./branding-context";
+import { BrandBadge } from "@/components/shell/brand-mark";
 import { LocaleSwitcher } from "./locale-switcher";
 import { NAV, availableContexts, type NavContext } from "./nav-config";
 import { ThemeToggle } from "./theme-toggle";
@@ -107,9 +108,7 @@ export function AppShell({ children, initialTheme }: { children: ReactNode; init
 
   const brand = (compact: boolean) => (
     <Link href="/dashboard" className="flex h-14 items-center gap-2 px-3">
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-button bg-primary text-sm font-bold text-on-primary">
-        {branding.schoolName.slice(0, 1)}
-      </span>
+      <BrandBadge className="size-9 rounded-button" />
       {!compact && (
         <span className="truncate text-sm font-semibold leading-tight text-foreground">{branding.schoolName}</span>
       )}

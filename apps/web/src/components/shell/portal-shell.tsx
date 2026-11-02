@@ -10,6 +10,7 @@ import { cn } from "@/lib/cn";
 import type { ThemeMode } from "@/lib/theme";
 import { homePath, isPortalUser, useMe } from "@/lib/use-me";
 import { useShellBranding } from "./branding-context";
+import { BrandBadge } from "@/components/shell/brand-mark";
 import { LocaleSwitcher } from "./locale-switcher";
 import { ThemeToggle } from "./theme-toggle";
 
@@ -56,6 +57,7 @@ export function PortalShell({ children, initialTheme }: { children: ReactNode; i
     <div className="min-h-dvh pb-16 md:pb-0">
       <header className="sticky top-0 z-20 border-b border-border bg-surface">
         <div className="mx-auto flex h-14 max-w-3xl items-center gap-2 px-4">
+          <BrandBadge className="size-8 rounded-button" />
           <span className="truncate font-semibold">{branding.schoolName}</span>
           <nav aria-label={t("mainMenu")} className="ml-4 hidden md:flex">
             {tabs}

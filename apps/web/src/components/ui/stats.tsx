@@ -49,7 +49,7 @@ export function KpiHeroCard({
   loading?: boolean;
 }) {
   return (
-    <div className="rounded-card bg-primary p-5 text-on-primary shadow-card">
+    <div className="rounded-card bg-linear-135 from-brand to-brand-deep p-5 text-on-brand shadow-card">
       <p className="text-sm opacity-90">{label}</p>
       {loading ? (
         <Skeleton className="mt-2 h-9 w-20 opacity-40" />
