@@ -12,6 +12,7 @@ export const USERS = {
   teacher: "e2e.ustoz",
   planner: "e2e.rejachi",
   guardian: "+998900000001",
+  student: "e2e.oquvchi",
 } as const;
 
 export const PORTS = { api: 4310, web: 3310 } as const;

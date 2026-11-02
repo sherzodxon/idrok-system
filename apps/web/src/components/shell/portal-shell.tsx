@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays, GraduationCap, Home, UserRound } from "lucide-react";
+import { CalendarDays, ClipboardCheck, GraduationCap, Home, UserRound } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -18,6 +18,7 @@ const TABS = [
   { key: "home", href: "/home", icon: Home },
   { key: "schedule", href: "/schedule", icon: CalendarDays },
   { key: "progress", href: "/progress", icon: GraduationCap },
+  { key: "tests", href: "/tests", icon: ClipboardCheck },
   { key: "profile", href: "/me", icon: UserRound },
 ] as const;
 
@@ -36,7 +37,7 @@ export function PortalShell({ children, initialTheme }: { children: ReactNode; i
   if (!me.data || me.data.mustChangePassword || !isPortalUser(me.data)) return <LoadingState rows={4} />;
 
   const tabs = TABS.map(({ key, href, icon: Icon }) => {
-    const active = pathname === href;
+    const active = pathname === href || pathname.startsWith(`${href}/`);
     return (
       <Link
         key={key}

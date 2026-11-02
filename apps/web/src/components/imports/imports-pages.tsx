@@ -261,6 +261,7 @@ function rowSummary(kind: ImportJobDto["kind"], data: Record<string, unknown> | 
   const d = data ?? {};
   const s = (k: string) => (typeof d[k] === "string" || typeof d[k] === "number" ? String(d[k]) : "");
   if (kind === "CURRICULUM_PLAN") return d.topicTitle ? `${s("topicTitle")} · ${s("hours")}` : "—";
+  if (kind === "QUESTIONS") return s("text") || "—";
   if (kind === "STUDENTS_GUARDIANS") return `${s("lastName")} ${s("firstName")} · ${s("className")}`;
   if (kind === "EMPLOYEES_ASSIGNMENTS") return `${s("lastName")} ${s("firstName")}`;
   if (kind === "CLASS_GROUPS") return `${s("level")}-${s("section")}`;

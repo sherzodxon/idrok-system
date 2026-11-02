@@ -142,6 +142,12 @@ async function seed(url: string) {
     await root.teachingGroupMember.create({
       data: { tenantId, teachingGroupId: classGroup.id, studentId: student.id, validFrom: day("2026-09-01") },
     });
+    // M4: the child also has a student login (takes tests on a phone).
+    const studentUser = await root.user.create({
+      data: { tenantId, username: USERS.student, passwordHash: await hash(PASSWORD), mustChangePassword: false },
+    });
+    await root.userRole.create({ data: { tenantId, userId: studentUser.id, roleId: roles.STUDENT } });
+    await root.student.update({ where: { id: student.id }, data: { userId: studentUser.id } });
     const guardianUser = await root.user.create({
       data: { tenantId, username: USERS.guardian, passwordHash: await hash(PASSWORD), mustChangePassword: false },
     });

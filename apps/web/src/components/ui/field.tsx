@@ -3,8 +3,11 @@ import { cn } from "@/lib/cn";
 
 const base =
   "rounded-input border border-border bg-surface text-foreground placeholder:text-disabled focus:border-primary focus:outline-none aria-[invalid=true]:border-danger";
-const control = `${base} w-full h-10 px-3 text-sm`;
+const control = `${base} px-3 text-sm`;
 const compactControl = `${base} h-8 px-2 text-xs`;
+/** The default width and height unless the caller sets its own (cn does not merge Tailwind classes). */
+const sized = (className?: string) =>
+  cn(!/(^|\s)w-/.test(className ?? "") && "w-full", !/(^|\s)h-/.test(className ?? "") && "h-10");
 
 export function Field({
   label,
@@ -43,7 +46,14 @@ export function Field({
 
 export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement> & { invalid?: boolean }>(
   function Input({ className, invalid, ...rest }, ref) {
-    return <input ref={ref} aria-invalid={invalid || undefined} className={cn(control, className)} {...rest} />;
+    return (
+      <input
+        ref={ref}
+        aria-invalid={invalid || undefined}
+        className={cn(control, sized(className), className)}
+        {...rest}
+      />
+    );
   },
 );
 
@@ -53,5 +63,5 @@ export function Select({
   compact,
   ...rest
 }: SelectHTMLAttributes<HTMLSelectElement> & { compact?: boolean }) {
-  return <select className={cn(compact ? compactControl : control, "pr-8", className)} {...rest} />;
+  return <select className={cn(compact ? compactControl : [control, sized(className)], "pr-8", className)} {...rest} />;
 }
