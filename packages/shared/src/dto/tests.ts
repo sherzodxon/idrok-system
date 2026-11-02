@@ -558,3 +558,91 @@ export const SaveOfflineResultsSchema = z
     reason: z.string().trim().min(3).max(500).optional(),
   })
   .strict();
+
+// ---------------------------------------------------------------- statistics (§8)
+
+export const SummarySchema = z.object({
+  count: z.number().int(),
+  mean: z.string().nullable(),
+  median: z.string().nullable(),
+  min: z.string().nullable(),
+  max: z.string().nullable(),
+  /** Ten buckets of 10 percent points. */
+  histogram: z.array(z.number().int()),
+});
+
+export const TestStatsSchema = z.object({
+  assigned: z.number().int(),
+  participants: z.number().int(),
+  summary: SummarySchema,
+  finishReasons: z.record(z.string(), z.number().int()),
+  groups: z.array(
+    z.object({ teachingGroupId: z.uuid(), name: z.string(), count: z.number().int(), mean: z.string().nullable() }),
+  ),
+  previous: z.object({ id: z.uuid(), title: z.string(), mean: z.string().nullable() }).nullable(),
+  /** One row per student: the counted result (LAST/BEST for online retakes, the current one offline). */
+  students: z.array(
+    z.object({
+      studentId: z.uuid(),
+      studentName: z.string(),
+      score: z.string().nullable(),
+      maxScore: z.string().nullable(),
+      percent: z.string().nullable(),
+      attempts: z.number().int(),
+      finishReason: z.string().nullable(),
+      offlineStatus: z.string().nullable(),
+    }),
+  ),
+});
+export type TestStatsDto = z.infer<typeof TestStatsSchema>;
+
+export const QuestionStatsSchema = z.object({
+  testQuestionId: z.uuid(),
+  order: z.number().int(),
+  type: QuestionTypeSchema,
+  text: z.string(),
+  topicTitle: z.string().nullable(),
+  points: z.string(),
+  /** Finished attempts that had this question. */
+  shown: z.number().int(),
+  answered: z.number().int(),
+  correctPercent: z.string().nullable(),
+  /** SINGLE / MULTIPLE: how often each option was chosen (teacher view — with the key). */
+  options: z.array(
+    z.object({ id: z.string(), text: z.string(), isCorrect: z.boolean(), share: z.string().nullable() }),
+  ),
+});
+export type QuestionStatsDto = z.infer<typeof QuestionStatsSchema>;
+
+export const TopicMasterySchema = z.object({
+  topicId: z.uuid().nullable(),
+  topicTitle: z.string().nullable(),
+  subjectId: z.uuid(),
+  subjectName: z.string(),
+  earned: z.string(),
+  max: z.string(),
+  percent: z.string().nullable(),
+  questions: z.number().int(),
+});
+export type TopicMasteryDto = z.infer<typeof TopicMasterySchema>;
+
+export const TopicMasteryQuerySchema = z.object({ subjectId: z.uuid().optional() });
+export const GroupTopicMasteryQuerySchema = z.object({ teachingGroupId: z.uuid(), subjectId: z.uuid() });
+
+export const TestHistoryItemSchema = z
+  .object({
+    testId: z.uuid(),
+    title: z.string(),
+    subjectName: z.string(),
+    testTypeName: z.string(),
+    format: TestFormatSchema,
+    purpose: TestPurposeSchema,
+    date: z.string().nullable(),
+    /** Only when the student may see it (showResultToStudent) — for students and guardians. */
+    percent: z.string().nullable(),
+    score: z.string().nullable(),
+    maxScore: z.string().nullable(),
+    status: z.enum(["DONE", "MISSED", "EXCUSED", "PENDING"]),
+  })
+  .strict();
+export type TestHistoryItemDto = z.infer<typeof TestHistoryItemSchema>;
