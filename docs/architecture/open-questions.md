@@ -73,7 +73,7 @@ A–D bo'limlari ochiq qoladi — tegishli bosqichdan oldin maktab hal qiladi. J
 
 ## D. Coin (M5 dan oldin)
 
-> M5 tavsiya etilgan default bilan qilindi (2026-11-03), egasi tasdig'ini kutmoqda. Q-24 va Q-25 sozlama: qarz va uning chegarasi — `Coin → Sozlamalar`; mezondan kim foydalanishi — har mezonda (`Barcha o'qituvchilar` / `Tanlangan o'qituvchilar`).
+> M5 tavsiya etilgan default bilan qilindi (2026-11-03). Egasi 2026-11-04 tasdiqladi. Q-24 va Q-25 sozlama: qarz va uning chegarasi — `Coin → Sozlamalar`; mezondan kim foydalanishi — har mezonda (`Barcha o'qituvchilar` / `Tanlangan o'qituvchilar`).
 
 | # | Savol | Nega muhim | Variantlar | Tavsiya etilgan default | Kim hal qiladi |
 |---|---|---|---|---|---|
@@ -196,7 +196,7 @@ o'rinbosari); `maxQuestionsPerTest` = 50 (maktab sozlamasi, 1–200), minimal ch
 | T-55 | Natijalar Excel eksporti (`tests.results.view`) savol matnini o'z ichiga oladi, lekin to'g'ri javoblarni emas. Savollar va javoblar faqat `questions.export` bilan (S4) | security-baseline.md S4 |
 | T-56 | Savol bo'yicha o'rtacha vaqt o'lchanmaydi (spec: "agar o'lchansa"). Taqqoslash: shu o'qituvchining shu fan va paralleldagi oldingi testi + testga biriktirilgan guruhlar kesimi | tests.md §8 |
 
-## M5 davomida qabul qilingan texnik qarorlar (default, egasi tasdig'iga)
+## M5 davomida qabul qilingan texnik qarorlar (egasi 2026-11-04 tasdiqladi)
 
 | # | Qaror | Asos |
 |---|---|---|
