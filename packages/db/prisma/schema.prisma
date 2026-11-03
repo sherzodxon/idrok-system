@@ -58,6 +58,7 @@ enum FileKind {
   BRANDING
   OTHER
   QUESTION_IMAGE
+  PRODUCT_IMAGE
 }
 
 enum FileStatus {
@@ -288,6 +289,16 @@ model Tenant {
   testAnswers         TestAnswer[]
   testEvents          TestEvent[]
   offlineResults      OfflineResult[]
+
+  coinSettings          CoinSettings?
+  coinCriteria          CoinCriterion[]
+  coinCriterionTeachers CoinCriterionTeacher[]
+  coinLimitRules        CoinLimitRule[]
+  coinAccounts          CoinAccount[]
+  coinTransactions      CoinTransaction[]
+  coinProducts          CoinProduct[]
+  coinOrders            CoinOrder[]
+  coinAutoRules         CoinAutoRule[]
 }
 
 model SchoolSettings {
@@ -492,6 +503,8 @@ model FileAsset {
 
   questionImages QuestionVersion[]
 
+  coinProductImages CoinProduct[]
+
   @@index([tenantId, kind, createdAt])
 }
 
@@ -599,6 +612,9 @@ model AcademicYear {
   scoreEntries       ScoreEntry[]
 
   // SQL: AcademicYear_one_active, AcademicYear_dates_check
+
+  coinTransactions CoinTransaction[]
+
   @@unique([tenantId, name])
 }
 
@@ -726,6 +742,8 @@ model Subject {
   questions Question[]
   tests     Test[]
 
+  coinCriteria CoinCriterion[]
+
   @@unique([tenantId, name])
 }
 
@@ -758,6 +776,10 @@ model Employee {
 
   questions Question[]
   tests     Test[]
+
+  coinCriteria     CoinCriterionTeacher[]
+  coinLimitRules   CoinLimitRule[]
+  coinTransactions CoinTransaction[]
 
   @@unique([tenantId, employeeCode])
   @@index([tenantId, lastName, firstName])
@@ -821,6 +843,10 @@ model Student {
   testWindowOverrides TestWindowOverride[]
   testAttempts        TestAttempt[]
   offlineResults      OfflineResult[]
+
+  coinAccount      CoinAccount?
+  coinTransactions CoinTransaction[]
+  coinOrders       CoinOrder[]
 
   @@unique([tenantId, studentCode])
   @@index([tenantId, lastName, firstName])
@@ -1939,4 +1965,288 @@ model OfflineResult {
   // SQL: OfflineResult_score_check, OfflineResult_one_current (partial unique)
   @@index([testId, studentId])
   @@index([supersededById])
+}
+
+// =====================================================================================================================
+// M5 — COIN (MASTER_SPEC §14). Coins are whole numbers and never mix with academic scores.
+// =====================================================================================================================
+
+enum CoinCriterionType {
+  REWARD
+  PENALTY
+  BOTH
+}
+
+enum CoinEligibility {
+  ALL_TEACHERS
+  SELECTED_TEACHERS
+}
+
+enum CoinTxType {
+  REWARD
+  PENALTY
+  PURCHASE
+  REFUND
+  ADMIN_ADJUSTMENT
+  REVERSAL
+  CORRECTION
+}
+
+enum CoinTxSource {
+  TEACHER_CRITERION
+  ATTENDANCE
+  TEST_RESULT
+  ADMIN_ADJUST
+  SHOP_PURCHASE
+  REFUND
+  OTHER
+}
+
+enum CoinLimitScope {
+  GLOBAL
+  CRITERION
+  TEACHER
+  TEACHER_CRITERION
+  EACH_CRITERION
+  EACH_TEACHER
+  EACH_TEACHER_CRITERION
+}
+
+enum CoinLimitPeriod {
+  DAY
+  WEEK
+  MONTH
+  ROLLING
+}
+
+enum CoinDirection {
+  REWARD
+  PENALTY
+}
+
+enum CoinOrderStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  DELIVERED
+  CANCELLED
+}
+
+enum CoinAutoSource {
+  TEST_RESULT
+  ATTENDANCE // connected after M6
+}
+
+/// Every part of the coin system can be switched off (§14). Q-24: no debt by default.
+model CoinSettings {
+  id                       String   @id @default(uuid(7)) @db.Uuid
+  tenantId                 String   @unique @db.Uuid
+  tenant                   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  isEnabled                Boolean  @default(true)
+  rewardsEnabled           Boolean  @default(true)
+  penaltiesEnabled         Boolean  @default(true)
+  teacherEvaluationEnabled Boolean  @default(true)
+  adminAdjustmentEnabled   Boolean  @default(true)
+  autoCoinsEnabled         Boolean  @default(true)
+  shopEnabled              Boolean  @default(true)
+  newOrdersEnabled         Boolean  @default(true)
+  orderApprovalRequired    Boolean  @default(true)
+  allowNegativeBalance     Boolean  @default(false)
+  /// With debt allowed: the deepest balance is −maxDebt (null = no floor).
+  maxDebt                  Int?
+  activityWindowDays       Int      @default(7)
+  /// % of the teacher's students evaluated within the window
+  activityMinCoverage      Int      @default(30)
+  activityStaleDays        Int      @default(3)
+  updatedById              String?  @db.Uuid
+  updatedAt                DateTime @updatedAt @db.Timestamptz(3)
+  // SQL: CoinSettings_check
+}
+
+model CoinCriterion {
+  id          String            @id @default(uuid(7)) @db.Uuid
+  tenantId    String            @db.Uuid
+  tenant      Tenant            @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  name        String
+  description String?
+  type        CoinCriterionType
+  minAmount   Int
+  maxAmount   Int
+  /// Only teachers of this subject, only for its students
+  subjectId   String?           @db.Uuid
+  subject     Subject?          @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  /// Q-25: selected teachers by default
+  eligibility CoinEligibility   @default(SELECTED_TEACHERS)
+  /// Used by automatic rules only — teachers cannot pick it
+  isAutomatic Boolean           @default(false)
+  isActive    Boolean           @default(true)
+  createdAt   DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime          @updatedAt @db.Timestamptz(3)
+
+  teachers     CoinCriterionTeacher[]
+  limitRules   CoinLimitRule[]
+  transactions CoinTransaction[]
+  autoRules    CoinAutoRule[]
+
+  // SQL: CoinCriterion_amount_check
+  @@unique([tenantId, name])
+}
+
+model CoinCriterionTeacher {
+  tenantId    String        @db.Uuid
+  tenant      Tenant        @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  criterionId String        @db.Uuid
+  criterion   CoinCriterion @relation(fields: [criterionId], references: [id], onDelete: Cascade)
+  teacherId   String        @db.Uuid
+  teacher     Employee      @relation(fields: [teacherId], references: [id], onDelete: Restrict)
+
+  @@id([criterionId, teacherId])
+  @@index([teacherId])
+}
+
+model CoinLimitRule {
+  id                   String          @id @default(uuid(7)) @db.Uuid
+  tenantId             String          @db.Uuid
+  tenant               Tenant          @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  scope                CoinLimitScope
+  criterionId          String?         @db.Uuid
+  criterion            CoinCriterion?  @relation(fields: [criterionId], references: [id], onDelete: Restrict)
+  teacherId            String?         @db.Uuid
+  teacher              Employee?       @relation(fields: [teacherId], references: [id], onDelete: Restrict)
+  /// null = both types
+  type                 CoinDirection?
+  period               CoinLimitPeriod
+  /// ROLLING only
+  durationMinutes      Int?
+  maxAmount            Int?
+  maxCount             Int?
+  countTypesSeparately Boolean         @default(false)
+  isActive             Boolean         @default(true)
+  createdAt            DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt            DateTime        @updatedAt @db.Timestamptz(3)
+
+  // SQL: CoinLimitRule_check
+  @@index([tenantId, isActive])
+}
+
+/// Balance cache and the lock point of a student's coins. Changed only together with a ledger row; the daily
+/// reconciliation compares it with the ledger sum.
+model CoinAccount {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  tenantId  String   @db.Uuid
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  studentId String   @unique @db.Uuid
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  balance   Int      @default(0)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+}
+
+/// LEDGER: insert only. A mistake is undone by a REVERSAL or lowered by a CORRECTION row.
+model CoinTransaction {
+  id                    String            @id @default(uuid(7)) @db.Uuid
+  tenantId              String            @db.Uuid
+  tenant                Tenant            @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  studentId             String            @db.Uuid
+  student               Student           @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  type                  CoinTxType
+  source                CoinTxSource
+  /// Signed: + credit, − debit
+  amount                Int
+  balanceAfter          Int
+  /// The school day (Asia/Tashkent) — limits and reports go by it
+  schoolDate            DateTime          @db.Date
+  academicYearId        String            @db.Uuid
+  academicYear          AcademicYear      @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+  criterionId           String?           @db.Uuid
+  criterion             CoinCriterion?    @relation(fields: [criterionId], references: [id], onDelete: Restrict)
+  criterionNameSnapshot String?
+  /// The evaluating teacher (REWARD/PENALTY from a teacher; their reversals and corrections keep it for reports)
+  teacherId             String?           @db.Uuid
+  teacher               Employee?         @relation(fields: [teacherId], references: [id], onDelete: Restrict)
+  actorUserId           String?           @db.Uuid
+  orderId               String?           @db.Uuid
+  order                 CoinOrder?        @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  reversesTransactionId String?           @unique @db.Uuid
+  reversesTransaction   CoinTransaction?  @relation("CoinReversal", fields: [reversesTransactionId], references: [id], onDelete: Restrict)
+  reversedBy            CoinTransaction?  @relation("CoinReversal")
+  correctsTransactionId String?           @db.Uuid
+  correctsTransaction   CoinTransaction?  @relation("CoinCorrection", fields: [correctsTransactionId], references: [id], onDelete: Restrict)
+  corrections           CoinTransaction[] @relation("CoinCorrection")
+  /// Automatic coins: e.g. "test:<testId>" — never awarded twice
+  sourceRef             String?
+  reason                String?
+  idempotencyKey        String
+  createdAt             DateTime          @default(now()) @db.Timestamptz(3)
+
+  // SQL: CoinTransaction_append_only, CoinTransaction_shape_check
+  @@unique([tenantId, idempotencyKey])
+  @@unique([tenantId, studentId, source, sourceRef])
+  @@index([tenantId, studentId, schoolDate])
+  @@index([tenantId, teacherId, schoolDate])
+  @@index([tenantId, type, schoolDate])
+  @@index([criterionId])
+  @@index([correctsTransactionId])
+  @@index([orderId])
+}
+
+model CoinProduct {
+  id           String      @id @default(uuid(7)) @db.Uuid
+  tenantId     String      @db.Uuid
+  tenant       Tenant      @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  name         String
+  description  String?
+  imageAssetId String?     @db.Uuid
+  imageAsset   FileAsset?  @relation(fields: [imageAssetId], references: [id], onDelete: SetNull)
+  price        Int
+  stock        Int         @default(0)
+  isVisible    Boolean     @default(true)
+  archivedAt   DateTime?   @db.Timestamptz(3)
+  createdAt    DateTime    @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime    @updatedAt @db.Timestamptz(3)
+  orders       CoinOrder[]
+
+  // SQL: CoinProduct_check
+  @@index([tenantId, archivedAt])
+}
+
+model CoinOrder {
+  id                  String            @id @default(uuid(7)) @db.Uuid
+  tenantId            String            @db.Uuid
+  tenant              Tenant            @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  studentId           String            @db.Uuid
+  student             Student           @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  productId           String            @db.Uuid
+  product             CoinProduct       @relation(fields: [productId], references: [id], onDelete: Restrict)
+  productNameSnapshot String
+  priceAtOrder        Int
+  status              CoinOrderStatus   @default(PENDING)
+  note                String?
+  processedById       String?           @db.Uuid
+  approvedAt          DateTime?         @db.Timestamptz(3)
+  deliveredAt         DateTime?         @db.Timestamptz(3)
+  closedAt            DateTime?         @db.Timestamptz(3)
+  idempotencyKey      String
+  createdAt           DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime          @updatedAt @db.Timestamptz(3)
+  transactions        CoinTransaction[]
+
+  @@unique([tenantId, idempotencyKey])
+  @@index([tenantId, status, createdAt])
+  @@index([studentId, createdAt])
+}
+
+/// Automatic coin rule (TEST_RESULT now; ATTENDANCE after M6). config: zod schema in packages/shared.
+model CoinAutoRule {
+  id          String         @id @default(uuid(7)) @db.Uuid
+  tenantId    String         @db.Uuid
+  tenant      Tenant         @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  source      CoinAutoSource
+  criterionId String         @db.Uuid
+  criterion   CoinCriterion  @relation(fields: [criterionId], references: [id], onDelete: Restrict)
+  config      Json
+  isActive    Boolean        @default(true)
+  createdAt   DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime       @updatedAt @db.Timestamptz(3)
+
+  @@index([tenantId, source, isActive])
 }

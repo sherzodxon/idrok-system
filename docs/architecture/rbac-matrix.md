@@ -61,6 +61,15 @@
 | `tests.results.view` | tests | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |
 | `tests.results.enter` | tests | ✓ | ✓ |  |  |  | ✓ | ✓ |  |  |
 | `test_types.manage` | tests | ✓ | ✓ |  | ✓ |  |  |  |  |  |
+| `coins.view` | coins | ✓ | ✓ | ✓ | ✓ |  |  |  |  |  |
+| `coins.give` | coins | ✓ | ✓ |  |  |  | ✓ | ✓ |  |  |
+| `coins.adjust` | coins | ✓ | ✓ |  |  |  |  |  |  |  |
+| `coins.reverse` | coins | ✓ | ✓ |  | ✓ |  |  |  |  |  |
+| `coins.settings.manage` | coins | ✓ | ✓ |  |  |  |  |  |  |  |
+| `coins.criteria.manage` | coins | ✓ | ✓ |  |  |  |  |  |  |  |
+| `coins.limits.manage` | coins | ✓ | ✓ |  |  |  |  |  |  |  |
+| `coin_shop.manage` | coins | ✓ | ✓ |  |  |  |  |  |  |  |
+| `coin_orders.process` | coins | ✓ | ✓ |  | ✓ |  |  |  |  |  |
 | `portal.student` | portal |  |  |  |  |  |  |  | ✓ |  |
 | `portal.guardian` | portal |  |  |  |  |  |  |  |  | ✓ |
 
