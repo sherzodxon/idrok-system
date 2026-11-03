@@ -73,6 +73,8 @@ A–D bo'limlari ochiq qoladi — tegishli bosqichdan oldin maktab hal qiladi. J
 
 ## D. Coin (M5 dan oldin)
 
+> M5 tavsiya etilgan default bilan qilindi (2026-11-03), egasi tasdig'ini kutmoqda. Q-24 va Q-25 sozlama: qarz va uning chegarasi — `Coin → Sozlamalar`; mezondan kim foydalanishi — har mezonda (`Barcha o'qituvchilar` / `Tanlangan o'qituvchilar`).
+
 | # | Savol | Nega muhim | Variantlar | Tavsiya etilgan default | Kim hal qiladi |
 |---|---|---|---|---|---|
 | Q-23 | Xodimlarga ham coin beriladimi (Registo'da bor)? | Ledger modeli `studentId` bilan | faqat o'quvchi / xodim ham | Faqat o'quvchi; xodim — kengaytirish nuqtasi | Maktab |
@@ -193,3 +195,17 @@ o'rinbosari); `maxQuestionsPerTest` = 50 (maktab sozlamasi, 1–200), minimal ch
 | T-54 | O'qituvchi faqat **o'z** testlarini ko'radi va boshqaradi; direktor, o'rinbosar, uslubchi — barcha testlar (natijalarni ko'rish). Test faqat o'qituvchining **o'z guruhlariga** va testning **paralleliga** mos guruhlarga beriladi | rbac-matrix, xavfsizlik |
 | T-55 | Natijalar Excel eksporti (`tests.results.view`) savol matnini o'z ichiga oladi, lekin to'g'ri javoblarni emas. Savollar va javoblar faqat `questions.export` bilan (S4) | security-baseline.md S4 |
 | T-56 | Savol bo'yicha o'rtacha vaqt o'lchanmaydi (spec: "agar o'lchansa"). Taqqoslash: shu o'qituvchining shu fan va paralleldagi oldingi testi + testga biriktirilgan guruhlar kesimi | tests.md §8 |
+
+## M5 davomida qabul qilingan texnik qarorlar (default, egasi tasdig'iga)
+
+| # | Qaror | Asos |
+|---|---|---|
+| T-57 | Limitlarga faqat o'qituvchi baholari (`TEACHER_CRITERION`) kiradi. Avtomatik coin, admin tuzatishi, xarid va qaytarish limitni band qilmaydi. Bekor qilingan baho hisobga olinmaydi, kamaytirilgani yangi miqdorda bitta baho sifatida sanaladi (EdexTest bilan bir xil) | MASTER_SPEC §14, edextest-audit §5 |
+| T-58 | O'qituvchi **o'z** bahosini **shu kuni** sababsiz bekor qila oladi (tez baholashdagi xato bosish uchun). Boshqa holatlarda `coins.reverse` (admin, direktor o'rinbosari) va sabab kerak. Kamaytirish (correction) faqat `coins.reverse` bilan va faqat pastga | CLAUDE.md §4 (reversal) |
+| T-59 | Qarz chegarasi faqat jarima, bekor qilish, kamaytirish va admin ayirishiga qo'llanadi. Xarid hech qachon balansni 0 dan pastga tushirmaydi, qarzdor o'quvchi xarid qila olmaydi. Mukofot avval qarzni yopadi (ledger yig'indisi) | MASTER_SPEC §14 "Coin debt" |
+| T-60 | Test natijasi uchun avtomatik coin: bitta o'quvchiga bitta testdan **bir marta** (`sourceRef = test:<id>`), qoidalardan eng kattasi. Onlayn test yopilganda, yopiq testda retake tugaganda va offline natija saqlanganda beriladi. Natija keyin ko'tarilsa (masalan, offline tuzatish) va hali coin olinmagan bo'lsa, beriladi. Coin keyin qaytarib olinmaydi. Anti-cheat bilan tugagan urinish coin olmaydi | MASTER_SPEC §14 "Avtomatik coin" |
+| T-61 | `orderApprovalRequired = false` bo'lsa buyurtma darhol `APPROVED` bo'ladi (topshirish baribir xodim tomonidan). O'quvchi faqat `PENDING` buyurtmasini bekor qila oladi; xodim `APPROVED`ni ham bekor qilishi mumkin. Rad etish va bekor qilish narxni qaytaradi va mahsulotni qoldiqqa qaytaradi | MASTER_SPEC §14 "Coin Shop" |
+| T-62 | O'quvchining do'kon va buyurtma amallari `portal.student` ruxsati bilan (`coin_shop.order` alohida kod qo'shilmadi — M4'dagi `tests.take` kabi portal doirasida) | api-plan.md §6 |
+| T-63 | O'qituvchi faolligi faqat coin baholari bo'yicha: so'nggi N maktab kunida o'qituvchi o'z guruhlaridagi o'quvchilarning kamida X foizini baholagan bo'lishi kerak; oxirgi bahodan keyin `staleDays` kundan ko'p o'tsa — kam faol | MASTER_SPEC §14 |
+| T-64 | `cached balance` (`CoinAccount`) har kecha ledger yig'indisi va oxirgi `balanceAfter` bilan solishtiriladi. Farq faqat logga yoziladi, avtomatik tuzatilmaydi | edextest-audit §5 |
+
