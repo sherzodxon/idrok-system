@@ -56,7 +56,8 @@ async function seed(url: string) {
       });
     };
     await staff(USERS.firstLogin, true);
-    for (const u of [USERS.theme, USERS.branding, USERS.sidebar, USERS.mobile, USERS.importer]) await staff(u, false);
+    for (const u of [USERS.theme, USERS.branding, USERS.sidebar, USERS.mobile, USERS.importer, USERS.coinAdmin])
+      await staff(u, false);
     // A teacher with no groups yet: sees the teacher menu only, and empty states.
     const teacher = await root.user.create({
       data: { tenantId, username: USERS.teacher, passwordHash: await hash(PASSWORD), mustChangePassword: false },

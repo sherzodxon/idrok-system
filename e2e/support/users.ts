@@ -13,6 +13,7 @@ export const USERS = {
   planner: "e2e.rejachi",
   guardian: "+998900000001",
   student: "e2e.oquvchi",
+  coinAdmin: "e2e.coin",
 } as const;
 
 export const PORTS = { api: 4310, web: 3310 } as const;

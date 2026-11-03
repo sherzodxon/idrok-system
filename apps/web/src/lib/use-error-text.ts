@@ -28,6 +28,16 @@ export function useErrorText() {
         remaining: String(error.details.remaining ?? 0),
       });
     }
+    // A refused coin evaluation names the tightest limit (all failing rules are in details.reasons).
+    if (error.code === "COIN_LIMIT_EXCEEDED" && Array.isArray(error.details?.reasons) && error.details.reasons[0]) {
+      const r = error.details.reasons[0] as { period: string; blockedBy: string; remainingAmount: number | null };
+      const period = t.has(`coinPeriods.${r.period}`) ? t(`coinPeriods.${r.period}`) : r.period;
+      return r.blockedBy === "AMOUNT"
+        ? t("coinLimitAmount", { period, remaining: String(r.remainingAmount ?? 0) })
+        : t("coinLimitCount", { period });
+    }
+    if (error.code === "COIN_INSUFFICIENT_BALANCE" && typeof error.details?.available === "number")
+      return t("coinBalance", { available: String(error.details.available) });
     // Business conflicts carry a reason code (e.g. STUDENT_BELOW_MIN_GRADE) with its own sentence.
     const reason = typeof error.details?.reason === "string" ? error.details.reason : undefined;
     if (reason && t.has(`reasons.${reason}`)) return t(`reasons.${reason}`, error.details as Record<string, string>);
