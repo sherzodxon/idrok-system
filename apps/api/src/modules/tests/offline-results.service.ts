@@ -12,6 +12,7 @@ import { activeOn } from "../access/scope";
 import { markStale } from "../assessment/closing.service";
 import { writeAudit } from "../audit/audit.service";
 import { TestsService } from "./tests.service";
+import { requestTestCoins } from "../coins/auto-coins";
 
 export class OfflineResultsService {
   private readonly tests: TestsService;
@@ -122,6 +123,7 @@ export class OfflineResultsService {
         changed.push(r.studentId);
       }
       if (closedPeriod && changed.length) await markStale(tx, test.periodId!, changed);
+      if (changed.length) await requestTestCoins(tx, testId);
       if (changed.length)
         await writeAudit(tx, {
           action: "test.offline_results",

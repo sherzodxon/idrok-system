@@ -24,6 +24,7 @@ import { schoolClock } from "../access/school-clock";
 import { writeAudit } from "../audit/audit.service";
 import { gradable, versionDto } from "../question-bank/question-bank.service";
 import { finishRunning } from "./attempt-finish";
+import { requestTestCoins } from "../coins/auto-coins";
 
 type TestListQuery = z.infer<typeof TestListQuerySchema>;
 
@@ -605,6 +606,7 @@ export class TestsService {
         throw new AppError("CONFLICT", 409, { reason: "TEST_NOT_OPEN" });
       await tx.test.update({ where: { id }, data: { status: "CLOSED", closedAt: new Date() } });
       await finishRunning(tx, id);
+      await requestTestCoins(tx, id);
       await writeAudit(tx, { action: "test.close", entityType: "Test", entityId: id });
     });
     return this.get(auth, id);
