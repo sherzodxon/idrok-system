@@ -194,3 +194,6 @@ Navbatlar (M4 dan): `imports`, `maintenance`, `tests`. `tests` — test oynasi c
 va urinish deadline'lari; outbox'da `availableAt` bilan kechiktirilib yuboriladi. Worker ishlamay qolsa ham API har
 o'qishda holat va deadline'ni o'zi tekshiradi (lazy), shuning uchun natija kechikmaydi — faqat avtomatik yopilish
 worker qaytguncha "o'qilgunga qadar" kutadi.
+M5 dan: `tests` navbati test natijasi uchun avtomatik coinlarni ham beradi (`coins.test_results_due`, idempotent).
+`maintenance` har kecha coin balanslarini ledger bilan solishtiradi; farq bo'lsa `coin balance mismatch` xatosi logga
+yoziladi (alert shu xabarga qo'yiladi).
