@@ -37,7 +37,7 @@ const imageUpload = multer({
   limits: { fileSize: MAX_IMAGE_BYTES, files: 1, fields: 2 },
 });
 
-async function receiveImage(req: Request, res: Response): Promise<Express.Multer.File> {
+export async function receiveImage(req: Request, res: Response): Promise<Express.Multer.File> {
   await new Promise<void>((resolve, reject) =>
     imageUpload.single("file")(req, res, (err: unknown) => {
       if (err instanceof multer.MulterError)
