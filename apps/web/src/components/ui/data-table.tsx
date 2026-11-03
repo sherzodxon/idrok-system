@@ -59,20 +59,20 @@ export function DataTable<T extends { id: string }>({
       <ul className="divide-y divide-border md:hidden">
         {rows.map((row) => (
           <li key={row.id}>
-            <button
-              type="button"
-              disabled={!onRowClick}
-              onClick={onRowClick ? () => onRowClick(row) : undefined}
-              className="flex w-full flex-col gap-1 px-4 py-3 text-left disabled:cursor-default"
-            >
-              <span className="font-medium text-foreground">{primary.cell(row)}</span>
-              {rest.map((c) => (
-                <span key={c.key} className="flex min-w-0 gap-2 text-sm">
-                  <span className="shrink-0 text-muted">{c.header}:</span>
-                  <span className="min-w-0 truncate">{c.cell(row)}</span>
-                </span>
-              ))}
-            </button>
+            {/* Without a row action the card is a plain block, so buttons inside cells are not nested buttons. */}
+            {onRowClick ? (
+              <button
+                type="button"
+                onClick={() => onRowClick(row)}
+                className="flex w-full flex-col gap-1 px-4 py-3 text-left"
+              >
+                <MobileCard row={row} primary={primary} rest={rest} />
+              </button>
+            ) : (
+              <div className="flex w-full flex-col gap-1 px-4 py-3">
+                <MobileCard row={row} primary={primary} rest={rest} />
+              </div>
+            )}
           </li>
         ))}
       </ul>
@@ -120,5 +120,19 @@ export function Pagination({
         </button>
       </div>
     </div>
+  );
+}
+
+function MobileCard<T>({ row, primary, rest }: { row: T; primary: Column<T>; rest: Column<T>[] }) {
+  return (
+    <>
+      <span className="font-medium text-foreground">{primary.cell(row)}</span>
+      {rest.map((c) => (
+        <span key={c.key} className="flex min-w-0 gap-2 text-sm">
+          {c.header && <span className="shrink-0 text-muted">{c.header}:</span>}
+          <span className="min-w-0 truncate">{c.cell(row)}</span>
+        </span>
+      ))}
+    </>
   );
 }

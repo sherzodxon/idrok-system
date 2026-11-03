@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays, ClipboardCheck, GraduationCap, Home, UserRound } from "lucide-react";
+import { CalendarDays, ClipboardCheck, Coins, GraduationCap, Home, UserRound } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -19,6 +19,7 @@ const TABS = [
   { key: "schedule", href: "/schedule", icon: CalendarDays },
   { key: "progress", href: "/progress", icon: GraduationCap },
   { key: "tests", href: "/tests", icon: ClipboardCheck },
+  { key: "coins", href: "/coins", icon: Coins },
   { key: "profile", href: "/me", icon: UserRound },
 ] as const;
 

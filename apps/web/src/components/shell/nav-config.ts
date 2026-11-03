@@ -5,8 +5,10 @@ import {
   CalendarRange,
   ClipboardList,
   Clock,
+  Coins,
   FileQuestion,
   FileSpreadsheet,
+  Gift,
   GraduationCap,
   Gauge,
   LayoutDashboard,
@@ -40,7 +42,9 @@ export interface NavItem {
     | "gradebook"
     | "assessment"
     | "tests"
-    | "questions";
+    | "questions"
+    | "coins"
+    | "coinShop";
   href: string;
   icon: LucideIcon;
   /** Hidden without it — the API checks again (CLAUDE.md §4). */
@@ -61,6 +65,8 @@ export const NAV: Record<NavContext, NavItem[]> = {
     { key: "gradebook", href: "/admin/gradebook", icon: GraduationCap, permission: "gradebook.view" },
     { key: "assessment", href: "/admin/assessment", icon: Gauge, permission: "assessment.view" },
     { key: "tests", href: "/admin/tests", icon: ClipboardCheck, permission: "tests.results.view" },
+    { key: "coins", href: "/admin/coins", icon: Coins, permission: "coins.view" },
+    { key: "coinShop", href: "/admin/shop", icon: Gift, permission: "coin_orders.process" },
     { key: "imports", href: "/admin/imports", icon: FileSpreadsheet, permission: "imports.run" },
     { key: "settings", href: "/admin/settings", icon: Settings, permission: "settings.view" },
   ],
@@ -70,6 +76,7 @@ export const NAV: Record<NavContext, NavItem[]> = {
     { key: "gradebook", href: "/teacher/gradebook", icon: GraduationCap, permission: "gradebook.view" },
     { key: "tests", href: "/teacher/tests", icon: ClipboardCheck, permission: "tests.create" },
     { key: "questions", href: "/teacher/questions", icon: FileQuestion, permission: "questions.manage" },
+    { key: "coins", href: "/teacher/coins", icon: Coins, permission: "coins.give" },
     { key: "myGroups", href: "/teacher/groups", icon: BookOpen, permission: "class_groups.view" },
     { key: "students", href: "/teacher/students", icon: Users, permission: "students.view" },
     { key: "myPlans", href: "/teacher/plans", icon: NotebookText, permission: "curriculum.create" },

@@ -26,6 +26,7 @@ import { useErrorText } from "@/lib/use-error-text";
 import { can, useMe } from "@/lib/use-me";
 import { GuardianFormSchema, StudentFormSchema, compact, type GuardianForm, type StudentForm } from "./form-schemas";
 import { StudentTestsCard } from "@/components/tests/student-tests-card";
+import { StudentCoinsCard } from "@/components/coins/portal-coins";
 import { StatusBadge } from "./students-list";
 
 const RELATIONS = ["MOTHER", "FATHER", "GRANDPARENT", "SIBLING", "OTHER"] as const;
@@ -217,6 +218,7 @@ export function StudentProfile({ id, backHref }: { id: string; backHref: string 
               />
             </Card>
             {can(me.data, "tests.results.view") && <StudentTestsCard studentId={s.id} />}
+            {(can(me.data, "coins.view") || can(me.data, "coins.give")) && <StudentCoinsCard studentId={s.id} />}
           </div>
 
           {dialog === "edit" && <EditStudentDrawer student={s} onClose={() => setDialog(null)} onSaved={refresh} />}
