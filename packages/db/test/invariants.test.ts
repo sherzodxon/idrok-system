@@ -56,6 +56,12 @@ const CONSTRAINTS = [
   "TestAttempt_finish_check",
   "OfflineResult_score_check",
   "SchoolSettings_max_questions_check",
+  "CoinSettings_check",
+  "CoinCriterion_amount_check",
+  "CoinLimitRule_check",
+  "CoinTransaction_shape_check",
+  "CoinProduct_check",
+  "CoinOrder_price_check",
 ];
 const TRIGGERS = [
   "AuditLog_append_only",
@@ -68,6 +74,7 @@ const TRIGGERS = [
   "PeriodResult_final_frozen",
   "QuestionVersion_append_only",
   "OfflineResult_history",
+  "CoinTransaction_append_only",
 ];
 
 let client: pg.Client;

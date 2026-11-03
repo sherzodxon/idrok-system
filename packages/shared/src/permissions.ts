@@ -65,6 +65,16 @@ export const PERMISSIONS = [
   { code: "tests.results.view", module: "tests" },
   { code: "tests.results.enter", module: "tests" },
   { code: "test_types.manage", module: "tests" },
+  // coins (M5)
+  { code: "coins.view", module: "coins" },
+  { code: "coins.give", module: "coins" },
+  { code: "coins.adjust", module: "coins" },
+  { code: "coins.reverse", module: "coins" },
+  { code: "coins.settings.manage", module: "coins" },
+  { code: "coins.criteria.manage", module: "coins" },
+  { code: "coins.limits.manage", module: "coins" },
+  { code: "coin_shop.manage", module: "coins" },
+  { code: "coin_orders.process", module: "coins" },
   // self-service portals (data is always limited to the user's own child / own record)
   { code: "portal.student", module: "portal" },
   { code: "portal.guardian", module: "portal" },

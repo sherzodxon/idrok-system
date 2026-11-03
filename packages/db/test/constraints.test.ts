@@ -1,6 +1,7 @@
 // Behaviour of the SQL-only invariants, including under concurrency.
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { atSchoolTime, parseSchoolDate, schoolDateToDb } from "@idrok/shared/time";
+import type { Prisma } from "../src";
 import { clients } from "./helpers";
 
 const { root } = clients();
@@ -630,5 +631,68 @@ describe("tests (M4)", () => {
     const third = await result(16);
     await root.offlineResult.update({ where: { id: next.id }, data: { supersededById: third.id } });
     await expect(root.offlineResult.delete({ where: { id: third.id } })).rejects.toThrow();
+  });
+});
+
+describe("coins (M5)", () => {
+  it("the ledger is insert-only and its rows keep their shape", async () => {
+    const { year, student } = await yearAndClass();
+    const base = {
+      tenantId,
+      studentId: student.id,
+      academicYearId: year.id,
+      schoolDate: day("2026-11-11"),
+      balanceAfter: 0,
+    };
+    const key = () => crypto.randomUUID();
+    const tx = (data: Partial<Prisma.CoinTransactionUncheckedCreateInput>) =>
+      root.coinTransaction.create({
+        data: { ...base, type: "REWARD", source: "TEACHER_CRITERION", amount: 3, idempotencyKey: key(), ...data },
+      });
+    const reward = await tx({});
+    await expect(root.coinTransaction.update({ where: { id: reward.id }, data: { reason: "x" } })).rejects.toThrow();
+    await expect(root.coinTransaction.delete({ where: { id: reward.id } })).rejects.toThrow();
+    await expect(tx({ amount: 0 })).rejects.toThrow();
+    await expect(tx({ amount: -3 })).rejects.toThrow();
+    await expect(tx({ type: "PENALTY", amount: 3 })).rejects.toThrow();
+    await expect(tx({ type: "PURCHASE", source: "SHOP_PURCHASE", amount: 5 })).rejects.toThrow();
+    // A reversal needs its target, and only one reversal per target.
+    await expect(tx({ type: "REVERSAL", amount: -3 })).rejects.toThrow();
+    await expect(tx({ type: "REWARD", reversesTransactionId: reward.id })).rejects.toThrow();
+    await tx({ type: "REVERSAL", amount: -3, reversesTransactionId: reward.id });
+    await expect(tx({ type: "REVERSAL", amount: -3, reversesTransactionId: reward.id })).rejects.toThrow();
+    await expect(tx({ type: "CORRECTION", amount: -1 })).rejects.toThrow();
+    // Automatic coins: one per source reference and student.
+    await tx({ source: "TEST_RESULT", sourceRef: "test:1" });
+    await expect(tx({ source: "TEST_RESULT", sourceRef: "test:1" })).rejects.toThrow();
+    const k = key();
+    await tx({ idempotencyKey: k });
+    await expect(tx({ idempotencyKey: k })).rejects.toThrow();
+  });
+
+  it("criteria, limits, products and settings are range-checked", async () => {
+    const criterion = (minAmount: number, maxAmount: number) =>
+      root.coinCriterion.create({
+        data: { tenantId, name: `Demo ${crypto.randomUUID()}`, type: "REWARD", minAmount, maxAmount },
+      });
+    await expect(criterion(0, 5)).rejects.toThrow();
+    await expect(criterion(5, 4)).rejects.toThrow();
+    const c = await criterion(1, 5);
+    const limit = (data: Partial<Prisma.CoinLimitRuleUncheckedCreateInput>) =>
+      root.coinLimitRule.create({ data: { tenantId, scope: "GLOBAL", period: "DAY", maxAmount: 10, ...data } });
+    await expect(limit({ maxAmount: null })).rejects.toThrow();
+    await expect(limit({ maxCount: 0 })).rejects.toThrow();
+    await expect(limit({ period: "ROLLING" })).rejects.toThrow();
+    await expect(limit({ durationMinutes: 60 })).rejects.toThrow();
+    await expect(limit({ scope: "CRITERION" })).rejects.toThrow();
+    await expect(limit({ criterionId: c.id })).rejects.toThrow();
+    await limit({ scope: "CRITERION", criterionId: c.id, period: "ROLLING", durationMinutes: 60 });
+    await expect(root.coinProduct.create({ data: { tenantId, name: "Demo", price: 0 } })).rejects.toThrow();
+    await expect(root.coinProduct.create({ data: { tenantId, name: "Demo", price: 1, stock: -1 } })).rejects.toThrow();
+    const other = await root.tenant.create({ data: { slug: `c-${crypto.randomUUID()}`, name: "Demo C2" } });
+    await expect(
+      root.coinSettings.create({ data: { tenantId: other.id, activityMinCoverage: 101 } }),
+    ).rejects.toThrow();
+    await expect(root.coinSettings.create({ data: { tenantId: other.id, maxDebt: -1 } })).rejects.toThrow();
   });
 });

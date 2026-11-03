@@ -139,6 +139,8 @@
       "NOT_OFFLINE": "Это не офлайн-тест"
     },
     "SCORE_LIMIT_EXCEEDED": "Превышен лимит баллов",
+    "COIN_LIMIT_EXCEEDED": "Превышен лимит коинов",
+    "COIN_INSUFFICIENT_BALANCE": "Недостаточно коинов на балансе",
     "scoreLimit": "Превышен лимит: за {window} можно ещё {remaining} балл.",
     "limitWindows": {
       "LESSON": "Урок",

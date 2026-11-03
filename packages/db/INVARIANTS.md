@@ -67,6 +67,13 @@ applied migration — add a new one.
 | `OfflineResult_one_current` | partial unique | ″ | one current offline result per test and student |
 | `OfflineResult_history` | TRIGGER | ″ | offline results are never deleted; an update only links a row to its successor |
 | `SchoolSettings_max_questions_check` | CHECK | `20261104120000_m4_test_settings` | `maxQuestionsPerTest` 1..200 (Q-36) |
+| `CoinSettings_check` | CHECK | `20261105090000_m5_coins` | `maxDebt >= 0`; activity window 1..90 days, coverage 0..100 %, stale days ≥ 0 |
+| `CoinCriterion_amount_check` | CHECK | ″ | `1 <= minAmount <= maxAmount` |
+| `CoinLimitRule_check` | CHECK | ″ | a limit has an amount or a count (≥ 1); `ROLLING` ⇔ duration; the scope decides which of teacher / criterion is set |
+| `CoinTransaction_append_only` | TRIGGER | ″ | the coin ledger is never updated or deleted (mistakes: `REVERSAL` / `CORRECTION` rows) |
+| `CoinTransaction_shape_check` | CHECK | ″ | amount ≠ 0; `REWARD`/`REFUND` > 0, `PENALTY`/`PURCHASE` < 0; only a `REVERSAL` points at the row it undoes, only a `CORRECTION` at the row it lowers |
+| `CoinProduct_check` | CHECK | ″ | `price >= 1`, `stock >= 0` |
+| `CoinOrder_price_check` | CHECK | ″ | `priceAtOrder >= 1` |
 
 Checking a new migration does not touch them:
 

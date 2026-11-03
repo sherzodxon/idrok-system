@@ -28,6 +28,8 @@ const TEACHING: PermissionCode[] = [
   "tests.publish",
   "tests.results.view",
   "tests.results.enter",
+  // M5: coins to the students of own groups (scope and criterion permission in the service)
+  "coins.give",
 ];
 
 const SCHOOL_ADMIN: PermissionCode[] = PERMISSION_CODES.filter((c) => !c.startsWith("portal."));
@@ -44,6 +46,7 @@ export const ROLE_DEFAULT_PERMISSIONS: Record<SystemRoleCode, readonly Permissio
     ...LESSONS_VIEW,
     ...ASSESSMENT_VIEW,
     "tests.results.view",
+    "coins.view",
     "exports.run",
     "audit_logs.view",
   ],
@@ -78,6 +81,10 @@ export const ROLE_DEFAULT_PERMISSIONS: Record<SystemRoleCode, readonly Permissio
     "tests.results.view",
     "tests.reopen",
     "test_types.manage",
+    // M5: coin overview, corrections and shop orders; settings, criteria and limits stay with the admin
+    "coins.view",
+    "coins.reverse",
+    "coin_orders.process",
   ],
   METHODIST: [
     ...STRUCTURE_VIEW,

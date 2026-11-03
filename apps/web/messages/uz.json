@@ -139,6 +139,8 @@
       "NOT_OFFLINE": "Bu offline test emas"
     },
     "SCORE_LIMIT_EXCEEDED": "Ball limiti oshib ketadi",
+    "COIN_LIMIT_EXCEEDED": "Coin limiti oshib ketadi",
+    "COIN_INSUFFICIENT_BALANCE": "Coin balansi yetarli emas",
     "scoreLimit": "Limit oshib ketadi: {window} uchun yana {remaining} ball qo'yish mumkin",
     "limitWindows": {
       "LESSON": "Dars",

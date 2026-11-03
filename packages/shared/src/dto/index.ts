@@ -11,3 +11,4 @@ export * from "./curriculum";
 export * from "./assessment";
 export * from "./scores";
 export * from "./tests";
+export * from "./coins";

@@ -8,6 +8,7 @@ import type { Env } from "../config/env";
 import type { AppDeps } from "../deps";
 import { relayOutbox } from "../infra/outbox";
 import { QUEUES, bullConnection, type ImportJobPayload, type TestJobPayload } from "../infra/queue";
+import { reconcileCoins } from "../modules/coins/ledger";
 import { commitImport, parseImport } from "../modules/imports/imports.processor";
 import { processDeadline } from "../modules/tests/attempt-finish";
 import { refreshTestStatuses } from "../modules/tests/tests.service";
@@ -46,6 +47,13 @@ export async function maintenance(deps: AppDeps) {
     }),
   ]);
   deps.logger.info({ idempotency: idempotency.count, outbox: outbox.count }, "maintenance done");
+  // The cached coin balances must match the ledger; a mismatch is reported, never fixed silently.
+  const mismatched = await reconcileCoins(deps.root);
+  if (mismatched.length)
+    deps.logger.error(
+      { accounts: mismatched.map((m) => ({ tenantId: m.tenantId, studentId: m.studentId })) },
+      "coin balance mismatch",
+    );
 }
 
 export async function startWorker(env: Env, logger?: Logger) {
