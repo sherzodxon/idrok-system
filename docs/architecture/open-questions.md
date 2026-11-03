@@ -19,6 +19,7 @@
 | Q-46 | Ball lock kaliti — `hash(tenantId, studentId)` (spec tuzatildi) |
 | Q-37 | `references/` → `docs/references/` (M1 1-qadamda ko'chiriladi) |
 | E bo'limining qolganlari (Q-28, Q-33, Q-34, Q-42) | Tavsiya etilgan default qabul qilindi |
+| C bo'limi (Q-19, Q-20, Q-21, Q-22, Q-36, Q-45) | Tavsiya etilgan default qabul qilindi (egasi, 2026-11-03): `multipleScoring` testda, default `ALL_OR_NOTHING`; 3-chi buzilishda yakunlanadi; to'g'ri javoblar ko'rsatilmaydi (faqat ✅/❌); retake — `tests.reopen` (admin, direktor o'rinbosari); max 50 savol, minimal yo'q; offline shkala {5,10,20,25,40,50,100} |
 
 A–D bo'limlari ochiq qoladi — tegishli bosqichdan oldin maktab hal qiladi. Javob kelguncha tavsiya etilgan default ishlatiladi.
 
@@ -59,7 +60,7 @@ A–D bo'limlari ochiq qoladi — tegishli bosqichdan oldin maktab hal qiladi. J
 | Q-43 | O'qituvchi boshqa o'qituvchilar shu o'quvchiga qo'ygan ballarni ko'radimi? | Jurnalda "bugun qoldi: N" — umumiy limitdan | faqat qoldiq / to'liq ro'yxat | Faqat qoldiq raqami (kim qo'ygani ko'rinmaydi) | Maktab |
 | Q-46 | **Texnik ziddiyat:** lock kaliti `hash(tenantId, studentId, schoolDate)` (spec §3.1), lekin WEEK/MONTH/PERIOD limitlari turli kunlarga parallel yozuvda chetlab o'tilishi mumkin | Limit to'g'riligi | (a) o'quvchi darajasidagi kalit (b) kunlik + haftalik ikki lock | (a) — `hash(tenantId, studentId)`; spec'ning "bir o'quvchiga bir vaqtda bitta yozish" talabiga mos | Texnik → Egasi |
 
-## C. Test tizimi (M4 dan oldin)
+## C. Test tizimi (M4 dan oldin) — ✅ default qabul qilindi (2026-11-03)
 
 | # | Savol | Nega muhim | Variantlar | Tavsiya etilgan default | Kim hal qiladi |
 |---|---|---|---|---|---|
@@ -176,7 +177,7 @@ A–D bo'limlari ochiq qoladi — tegishli bosqichdan oldin maktab hal qiladi. J
 
 ## M4 davomida qabul qilingan texnik qarorlar (default, egasi tasdig'iga)
 
-C bo'limi (Q-19…Q-22, Q-36, Q-45) tavsiya etilgan default bilan qilindi: `multipleScoring` testda (default
+C bo'limi (Q-19…Q-22, Q-36, Q-45) tavsiya etilgan default bilan qilindi (egasi 2026-11-03 tasdiqladi): `multipleScoring` testda (default
 `ALL_OR_NOTHING`); buzilish **3-chisida** yakunlanadi (`violationThreshold`, 0 = o'chiq); to'g'ri javoblar o'quvchiga
 **ko'rsatilmaydi** (faqat ✅/❌ — oyna yopilgach); retake va individual vaqt — `tests.reopen` (admin, direktor
 o'rinbosari); `maxQuestionsPerTest` = 50 (maktab sozlamasi, 1–200), minimal chegara yo'q; offline shkala — spec ro'yxati.
