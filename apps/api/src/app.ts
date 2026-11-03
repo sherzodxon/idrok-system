@@ -19,6 +19,7 @@ import { questionBankRoutes } from "./modules/question-bank/question-bank.routes
 import { attemptRoutes } from "./modules/tests/attempts.routes";
 import { statsRoutes } from "./modules/tests/stats.routes";
 import { coinRoutes } from "./modules/coins/coins.routes";
+import { shopRoutes } from "./modules/coins/shop.routes";
 import { testRoutes } from "./modules/tests/tests.routes";
 import { scoreRoutes } from "./modules/scores/scores.routes";
 import { curriculumRoutes } from "./modules/curriculum/curriculum.routes";
@@ -97,6 +98,7 @@ export function createApp(deps: AppDeps): express.Express {
   attemptRoutes(v1, registry, deps);
   statsRoutes(v1, registry, deps);
   coinRoutes(v1, registry, deps);
+  shopRoutes(v1, registry, deps);
   peopleRoutes(v1, registry, deps);
   usersRoutes(v1, registry, deps);
   importsRoutes(v1, registry, deps);
