@@ -8,6 +8,7 @@ import type { Env } from "../config/env";
 import type { AppDeps } from "../deps";
 import { relayOutbox } from "../infra/outbox";
 import { QUEUES, bullConnection, type ImportJobPayload, type TestJobPayload } from "../infra/queue";
+import { awardTestCoins } from "../modules/coins/auto-coins";
 import { reconcileCoins } from "../modules/coins/ledger";
 import { commitImport, parseImport } from "../modules/imports/imports.processor";
 import { processDeadline } from "../modules/tests/attempt-finish";
@@ -29,8 +30,12 @@ async function processImport(deps: AppDeps, job: Job<ImportJobPayload>) {
 async function processTests(deps: AppDeps, job: Job<TestJobPayload>) {
   const { tenantId, testId, attemptId } = job.data;
   await runWithTenant({ tenantId, requestId: `job:${job.id}` }, async () => {
-    if (job.name === "status" && testId) await refreshTestStatuses(deps.db, { id: testId });
-    else if (job.name === "deadline" && attemptId) await processDeadline(deps.db, attemptId);
+    if (job.name === "status" && testId) {
+      await refreshTestStatuses(deps.db, { id: testId });
+      // The window just closed: final results may earn automatic coins (idempotent).
+      await awardTestCoins(deps.db, testId);
+    } else if (job.name === "deadline" && attemptId) await processDeadline(deps.db, attemptId);
+    else if (job.name === "coins" && testId) await awardTestCoins(deps.db, testId);
     else throw new Error(`Unknown tests job ${job.name}`);
   });
 }

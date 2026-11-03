@@ -5,6 +5,7 @@ import type { AnswerValue } from "@idrok/shared";
 import { attemptScore, gradeAnswer, isPastDeadline, type MultipleScoring } from "../../domain/tests";
 import { markStale } from "../assessment/closing.service";
 import { gradable } from "../question-bank/question-bank.service";
+import { requestTestCoins } from "../coins/auto-coins";
 
 export type FinishReason = "SUBMITTED" | "TIME_UP" | "VIOLATION" | "ADMIN_CLOSED";
 
@@ -53,10 +54,12 @@ export async function finishAttempt(tx: DbTransaction, attemptId: string, reason
   // A weighted test of a closed period: its FINAL results are now behind (scoring.md §7).
   const test = await tx.test.findFirstOrThrow({
     where: { id: attempt.testId },
-    select: { purpose: true, periodId: true, period: { select: { status: true } } },
+    select: { status: true, purpose: true, periodId: true, period: { select: { status: true } } },
   });
   if (test.purpose === "WEIGHTED" && test.period?.status === "CLOSED")
     await markStale(tx, test.periodId!, [attempt.studentId]);
+  // A retake on a closed test: its result may earn automatic coins (closing the test requests them itself).
+  if (test.status === "CLOSED" && reason !== "ADMIN_CLOSED") await requestTestCoins(tx, attempt.testId);
   // TIME_UP ends at the deadline itself, whenever the server noticed it.
   const finishedAt = reason === "TIME_UP" && attempt.deadline && attempt.deadline < now ? attempt.deadline : now;
   return tx.testAttempt.update({

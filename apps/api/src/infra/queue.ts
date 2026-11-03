@@ -25,6 +25,7 @@ export const EVENT_ROUTES: Record<string, JobRoute> = {
   "import.commit_requested": { queue: "imports", name: "commit" },
   "test.status_due": { queue: "tests", name: "status" },
   "attempt.deadline_due": { queue: "tests", name: "deadline" },
+  "coins.test_results_due": { queue: "tests", name: "coins" },
 };
 
 export const DEFAULT_JOB_OPTIONS = {

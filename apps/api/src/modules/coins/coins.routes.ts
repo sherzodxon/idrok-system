@@ -6,6 +6,10 @@ import {
   CoinAutoRuleSchema,
   CoinCapacitySchema,
   CoinCriterionSchema,
+  CoinOverviewSchema,
+  CoinRangeQuerySchema,
+  CoinRankingQuerySchema,
+  CoinRankingSchema,
   CoinLimitRuleSchema,
   CoinSettingsSchema,
   CoinStatusSchema,
@@ -18,6 +22,7 @@ import {
   IdParamsSchema,
   ReverseCoinSchema,
   SetCriterionTeachersSchema,
+  TeacherActivitySchema,
   TeacherCoinBoardSchema,
   UpdateCoinSettingsSchema,
   UpsertCoinAutoRuleSchema,
@@ -30,6 +35,7 @@ import { routesFor } from "../../http/route";
 import type { OpenApiRegistry } from "../../openapi/registry";
 import { CoinConfigService } from "./coin-config.service";
 import { CoinsService } from "./coins.service";
+import { CoinOverviewService } from "./overview.service";
 
 const tags = ["coins"];
 /** Anyone who deals with coins — the status says which parts are switched on. */
@@ -51,6 +57,7 @@ const Ok = z.object({ deleted: z.boolean() });
 export function coinRoutes(router: Router, registry: OpenApiRegistry, deps: AppDeps) {
   const config = new CoinConfigService(deps.db);
   const coins = new CoinsService(deps.db);
+  const overview = new CoinOverviewService(deps.db);
   const route = routesFor(router, registry);
 
   route(
@@ -366,5 +373,42 @@ export function coinRoutes(router: Router, registry: OpenApiRegistry, deps: AppD
       responses: { 200: { description: "Page", schema: pageOf(CoinTransactionSchema) } },
     },
     async ({ res, auth, params, query }) => res.json(await coins.studentHistory(auth, params.id, query)),
+  );
+
+  // ---- dashboard
+  route(
+    {
+      method: "get",
+      path: "/coins/overview",
+      summary: "Totals over a school-date range (default: the last 30 days)",
+      tags,
+      access: "coins.view",
+      query: CoinRangeQuerySchema,
+      responses: { 200: { description: "Overview", schema: CoinOverviewSchema } },
+    },
+    async ({ res, query }) => res.json(await overview.overview(query)),
+  );
+  route(
+    {
+      method: "get",
+      path: "/coins/overview/ranking",
+      summary: "Students by balance (staff only)",
+      tags,
+      access: "coins.view",
+      query: CoinRankingQuerySchema,
+      responses: { 200: { description: "Ranking", schema: CoinRankingSchema } },
+    },
+    async ({ res, query }) => res.json(await overview.ranking(query)),
+  );
+  route(
+    {
+      method: "get",
+      path: "/coins/overview/teachers",
+      summary: "Teacher activity",
+      tags,
+      access: "coins.view",
+      responses: { 200: { description: "Activity", schema: TeacherActivitySchema } },
+    },
+    async ({ res }) => res.json(await overview.teachers()),
   );
 }
