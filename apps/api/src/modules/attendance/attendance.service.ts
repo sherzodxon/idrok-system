@@ -1,6 +1,7 @@
 // School attendance journal (SCHOOL_ATTENDANCE): the day list of expected students, a student's history, manual marks
 // and the raw event / monitoring views. Statuses are derived on read: a manual mark wins, then the device result, then
-// "not arrived yet" / "absent" by the end of the student's shift. Days off are not counted.
+// "not arrived yet" / "absent" by the end of the student's shift. Days off are not counted, and neither are days on
+// which no terminal recorded anything (before the launch, or every terminal down): those are NO_DATA, never absent.
 import type { z } from "zod";
 import { requireTenantId, type Db, type Prisma } from "@idrok/db";
 import type {
@@ -33,7 +34,7 @@ import { activeBands, attendanceSettings } from "./attendance-config.service";
 import { studentDays, type StudentDay } from "./school-day";
 
 const MAX_RANGE_DAYS = 92;
-const STATUSES: SchoolAttendanceStatusDto[] = ["PRESENT", "LATE", "ABSENT", "NOT_ARRIVED", "EXCUSED"];
+const STATUSES: SchoolAttendanceStatusDto[] = ["PRESENT", "LATE", "ABSENT", "NOT_ARRIVED", "EXCUSED", "NO_DATA"];
 
 /** Attendance is a class matter: teachers see their homeroom classes only (rbac-matrix). */
 function attendanceStudentWhere(scope: DataScope, today: SchoolDate): Prisma.StudentWhereInput {
@@ -57,9 +58,9 @@ const recordSelect = {
 } satisfies Prisma.AttendanceRecordSelect;
 type RecordRow = Prisma.AttendanceRecordGetPayload<{ select: typeof recordSelect }>;
 
-function dayFields(rec: RecordRow | undefined, day: Pick<StudentDay, "rules">, now: Date) {
+function dayFields(rec: RecordRow | undefined, day: Pick<StudentDay, "rules">, now: Date, tracked: boolean) {
   const deviceStatus: SchoolAttendanceStatusDto =
-    rec?.deviceStatus ?? (isDayOver(day.rules, now) ? "ABSENT" : "NOT_ARRIVED");
+    rec?.deviceStatus ?? (!isDayOver(day.rules, now) ? "NOT_ARRIVED" : tracked ? "ABSENT" : "NO_DATA");
   return {
     status: rec?.manualStatus ?? deviceStatus,
     deviceStatus,
@@ -78,6 +79,15 @@ const countBy = (statuses: SchoolAttendanceStatusDto[]) =>
 
 export class AttendanceService {
   constructor(private readonly db: Db) {}
+
+  /** School days on which at least one terminal event was stored. */
+  private async trackedDates(from: SchoolDate, to: SchoolDate): Promise<Set<string>> {
+    const rows = await this.db.accessEvent.groupBy({
+      by: ["schoolDate"],
+      where: { schoolDate: { gte: schoolDateToDb(from), lte: schoolDateToDb(to) } },
+    });
+    return new Set(rows.map((r) => schoolDateFromDb(r.schoolDate)));
+  }
 
   private async ctx() {
     const [settings, bands, clock] = await Promise.all([
@@ -109,6 +119,7 @@ export class AttendanceService {
     ]);
     const recOf = new Map(records.map((r) => [r.studentId, r]));
     const studentOf = new Map(students.map((s) => [s.id, s]));
+    const tracked = (await this.trackedDates(date, date)).has(date);
     const now = new Date();
     let rows: AttendanceDayRowDto[] = expected.map((d) => {
       const s = studentOf.get(d.studentId)!;
@@ -118,7 +129,7 @@ export class AttendanceService {
         firstName: s.firstName,
         lastName: s.lastName,
         className: d.className,
-        ...dayFields(recOf.get(d.studentId), d, now),
+        ...dayFields(recOf.get(d.studentId), d, now, tracked),
       };
     });
     const text = q.q?.toLowerCase();
@@ -168,6 +179,7 @@ export class AttendanceService {
       select: recordSelect,
     });
     const recOf = new Map(records.map((r) => [schoolDateFromDb(r.schoolDate), r]));
+    const tracked = await this.trackedDates(from, to);
     const now = new Date();
     const days: StudentAttendanceDto["days"] = [];
     for (const date of eachSchoolDate(from, to)) {
@@ -176,6 +188,8 @@ export class AttendanceService {
       const rec = recOf.get(date);
       // Days without a class or off for the grade are skipped unless something was recorded.
       if (!rec && (!day || !day.expected)) continue;
+      // Nothing was recorded at school that day: not an absence, just no data (today is still open).
+      if (!rec && !tracked.has(date) && date !== ctx.today) continue;
       const rules = day ?? {
         rules: {
           schoolDate: date,
@@ -186,7 +200,7 @@ export class AttendanceService {
           tz: ctx.tz,
         },
       };
-      const f = dayFields(rec, rules, now);
+      const f = dayFields(rec, rules, now, tracked.has(date));
       days.push({
         date,
         status: f.status,

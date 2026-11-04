@@ -124,6 +124,9 @@ const env = {
   DATABASE_URL: db.url,
   REDIS_URL: `redis://127.0.0.1:${await redis.getPort()}`,
   JWT_SECRET: "local-dev-secret-local-dev-secret-0001",
+  // Not a secret: a fixed key for this computer's synthetic data only (face photos, device passwords).
+  DATA_ENCRYPTION_KEY: "bG9jYWwtZGV2LWtleS1sb2NhbC1kZXYta2V5LTAwMDE=",
+  DEVICE_PUBLIC_API_URL: API_URL,
   CORS_ORIGINS: WEB_URL,
   COOKIE_SECURE: "false",
   LOG_LEVEL: process.env.LOCAL_LOG_LEVEL ?? "warn",
