@@ -21,6 +21,15 @@ export class IsapiError extends Error {
   ) {
     super(message);
   }
+  /** The terminal does not know this call (older firmware). */
+  get notSupported(): boolean {
+    const sub = (this.subStatusCode ?? "").toLowerCase();
+    return this.status === 404 || this.status === 405 || sub === "notsupport" || sub === "invalidoperation";
+  }
+  /** The record is already there (create of an existing person). */
+  get alreadyExists(): boolean {
+    return (this.subStatusCode ?? "").toLowerCase().includes("alreadyexist");
+  }
   /** "Already gone" answers of delete calls. */
   get notFound(): boolean {
     return (
@@ -171,8 +180,13 @@ export class IsapiClient {
   }
 
   /** Creates or updates the person record (employeeNo = the student code). */
+  /**
+   * Creates or updates the person record (employeeNo = the student code). Newer firmware has UserInfo/SetUp; where it
+   * is missing (some Value Series terminals, e.g. DS-K1T343 on older firmware) it falls back to Record, then Modify
+   * when the person already exists.
+   */
   async setUpUser(user: UserInfo): Promise<void> {
-    await this.json("PUT", "/ISAPI/AccessControl/UserInfo/SetUp?format=json", {
+    const body = {
       UserInfo: {
         employeeNo: user.employeeNo,
         name: user.name.slice(0, 32),
@@ -181,7 +195,19 @@ export class IsapiClient {
         doorRight: "1",
         RightPlan: [{ doorNo: 1, planTemplateNo: "1" }],
       },
-    });
+    };
+    try {
+      await this.json("PUT", "/ISAPI/AccessControl/UserInfo/SetUp?format=json", body);
+      return;
+    } catch (e) {
+      if (!(e instanceof IsapiError && e.notSupported)) throw e;
+    }
+    try {
+      await this.json("POST", "/ISAPI/AccessControl/UserInfo/Record?format=json", body);
+    } catch (e) {
+      if (!(e instanceof IsapiError && e.alreadyExists)) throw e;
+      await this.json("PUT", "/ISAPI/AccessControl/UserInfo/Modify?format=json", body);
+    }
   }
 
   /** Deletes the person and, with it, their face. "Not there" counts as done. */

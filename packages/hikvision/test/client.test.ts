@@ -127,3 +127,22 @@ describe("simulator pushes", () => {
     sim.webhookUrl = null;
   });
 });
+
+describe("older firmware (no UserInfo/SetUp)", () => {
+  it("creates with Record, updates with Modify, and the face job still works", async () => {
+    const legacy = new HikvisionSimulator({ password: "pw-2", model: "DS-K1T343MWX", legacyUserApi: true });
+    const addr = await legacy.start();
+    try {
+      const c = new IsapiClient({ ...addr, username: "admin", password: "pw-2" });
+      const job = { id: "1", type: "FACE_UPSERT" as const, payload: { employeeNo: "STD-0009", name: "Bir" } };
+      expect(await runDeviceJob(c, job, async () => JPEG)).toEqual({ ok: true, result: { hasFace: true } });
+      await c.setUpUser({ employeeNo: "STD-0009", name: "Ikki" });
+      expect(legacy.users.get("STD-0009")?.name).toBe("Ikki");
+      expect(legacy.requests).toContain("POST /ISAPI/AccessControl/UserInfo/Record");
+      expect(legacy.requests).toContain("PUT /ISAPI/AccessControl/UserInfo/Modify");
+      expect(legacy.faces.has("STD-0009")).toBe(true);
+    } finally {
+      await legacy.stop();
+    }
+  });
+});
