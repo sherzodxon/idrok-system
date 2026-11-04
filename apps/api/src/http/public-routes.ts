@@ -10,6 +10,9 @@ export const PUBLIC_ROUTES = [
   "POST /auth/refresh",
   // School name and colours for the login page; no personal data.
   "GET /branding",
+  // M6: Face ID terminal push. No user token: the device is identified by the key in the path (only its hash is
+  // stored), the tenant comes from that device; unknown keys are rate limited (attendance/webhook.routes.ts).
+  "POST /attendance/hikvision-event/:key",
 ] as const;
 
 /** Any logged-in user, no permission: the user's own account and session only. */

@@ -3,6 +3,7 @@ import cors from "cors";
 import express from "express";
 import helmet from "helmet";
 import { pinoHttp } from "pino-http";
+import { maskUrlSecrets } from "./logger";
 import type { AppDeps } from "./deps";
 import { authenticate, csrfProtection, passwordChangeGate } from "./http/auth";
 import { errorHandler, notFoundHandler } from "./http/errors";
@@ -20,6 +21,8 @@ import { attemptRoutes } from "./modules/tests/attempts.routes";
 import { statsRoutes } from "./modules/tests/stats.routes";
 import { coinRoutes } from "./modules/coins/coins.routes";
 import { shopRoutes } from "./modules/coins/shop.routes";
+import { attendanceRoutes } from "./modules/attendance/attendance.routes";
+import { webhookRoutes } from "./modules/attendance/webhook.routes";
 import { testRoutes } from "./modules/tests/tests.routes";
 import { scoreRoutes } from "./modules/scores/scores.routes";
 import { curriculumRoutes } from "./modules/curriculum/curriculum.routes";
@@ -41,6 +44,8 @@ export function createApp(deps: AppDeps): express.Express {
   app.use(
     pinoHttp({
       logger: deps.logger,
+      // Terminal webhook keys travel in the URL path (Hikvision cannot send headers): never log them.
+      serializers: { req: (req: { url?: string }) => ({ ...req, url: maskUrlSecrets(req.url) }) },
       genReqId: (req, res) => {
         const id = requestId(req);
         res.setHeader("X-Request-Id", id);
@@ -99,6 +104,8 @@ export function createApp(deps: AppDeps): express.Express {
   statsRoutes(v1, registry, deps);
   coinRoutes(v1, registry, deps);
   shopRoutes(v1, registry, deps);
+  attendanceRoutes(v1, registry, deps);
+  webhookRoutes(v1, registry, deps);
   peopleRoutes(v1, registry, deps);
   usersRoutes(v1, registry, deps);
   importsRoutes(v1, registry, deps);

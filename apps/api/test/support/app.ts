@@ -23,6 +23,8 @@ export async function createTestApp(
     COOKIE_SECURE: "false",
     LOG_LEVEL: "silent",
     DEFAULT_TENANT_SLUG: `t-${randomUUID()}`,
+    // Not a secret: a fixed key for tests only.
+    DATA_ENCRYPTION_KEY: "dGVzdC1vbmx5LWtleS10ZXN0LW9ubHkta2V5LTEyMzQ=",
     ...envOverrides,
   });
   const deps = buildDeps(env, logger);

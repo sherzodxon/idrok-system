@@ -194,6 +194,8 @@ export async function startStack() {
     STORAGE_LOCAL_DIR: storageDir,
     // Imports hash hundreds of temporary passwords; production keeps the default cost.
     ARGON2_MEMORY_KIB: "4096",
+    // Not a secret: a fixed key for the local stack only.
+    DATA_ENCRYPTION_KEY: "dGVzdC1vbmx5LWtleS10ZXN0LW9ubHkta2V5LTEyMzQ=",
   };
   const api = start(
     "api",
