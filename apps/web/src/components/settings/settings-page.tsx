@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
-import { useFormatter, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
@@ -24,15 +24,16 @@ import { DataTable, Pagination } from "@/components/ui/data-table";
 import { Field, Input, Select } from "@/components/ui/field";
 import { FormDrawer } from "@/components/ui/form-drawer";
 import { ConfirmDialog, Modal } from "@/components/ui/modal";
-import { OneTimeSecret } from "@/components/ui/secret";
 import { EmptyState, QueryBoundary } from "@/components/ui/states";
 import { useToast } from "@/components/ui/toast";
 import { FilterSelect, PageHeader, SearchInput, Tabs, Toolbar } from "@/components/ui/toolbar";
+import { formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import { useRoles } from "@/lib/queries";
 import { useErrorText } from "@/lib/use-error-text";
 import { useListState } from "@/lib/use-list-state";
 import { can, useMe } from "@/lib/use-me";
+import { NewUserDrawer } from "./user-page";
 
 type Tab = "school" | "branding" | "users" | "roles" | "audit";
 
@@ -351,20 +352,20 @@ function UsersTab() {
   const t = useTranslations();
   const api = useApi();
   const me = useMe();
-  const format = useFormatter();
   const list = useListState(["roleCode", "status"] as const);
   const roles = useRoles();
   const users = useQuery({
     queryKey: ["users", list.apiQuery],
     queryFn: () => api.get<Page<UserListItem>>(`/users?${list.apiQuery}`),
   });
-  const [selected, setSelected] = useState<UserListItem | null>(null);
+  const router = useRouter();
+  const [creating, setCreating] = useState(false);
   const roleLabel = (code: string) =>
     t.has(`roles.${code}`) ? t(`roles.${code}`) : (roles.data?.find((r) => r.code === code)?.name ?? code);
   return (
     <Card>
       <Toolbar>
-        <SearchInput label={t("users.search")} value={list.q} onChange={(q) => list.update({ q })} />
+        <SearchInput label={t("users.searchName")} value={list.q} onChange={(q) => list.update({ q })} />
         <FilterSelect
           label={t("users.role")}
           allLabel={t("users.allRoles")}
@@ -379,6 +380,12 @@ function UsersTab() {
           onChange={(v) => list.update({ status: v })}
           options={(["ACTIVE", "DISABLED"] as const).map((s) => ({ value: s, label: t(`users.status.${s}`) }))}
         />
+        {can(me.data, "users.manage") && (
+          <Button className="sm:ml-auto" onClick={() => setCreating(true)} data-testid="new-user">
+            <Plus className="size-4" aria-hidden />
+            {t("userPage.newUser")}
+          </Button>
+        )}
       </Toolbar>
       <QueryBoundary query={users} isEmpty={(p) => p.total === 0} empty={<EmptyState text={t("list.noMatches")} />}>
         {(p) => (
@@ -386,13 +393,18 @@ function UsersTab() {
             <DataTable
               testId="users-table"
               rows={p.items}
-              onRowClick={can(me.data, "users.manage") || can(me.data, "roles.assign") ? setSelected : undefined}
+              onRowClick={(u) => router.push(`/admin/settings/users/${u.id}`)}
               columns={[
                 {
                   key: "username",
                   header: t("accounts.username"),
                   primary: true,
                   cell: (u) => <span className="font-mono text-sm">{u.username}</span>,
+                },
+                {
+                  key: "name",
+                  header: t("userPage.name"),
+                  cell: (u) => u.name ?? <span className="text-muted">—</span>,
                 },
                 { key: "roles", header: t("users.role"), cell: (u) => u.roles.map(roleLabel).join(", ") || "—" },
                 {
@@ -405,10 +417,7 @@ function UsersTab() {
                 {
                   key: "last",
                   header: t("users.lastLogin"),
-                  cell: (u) =>
-                    u.lastLoginAt
-                      ? format.dateTime(new Date(u.lastLoginAt), { dateStyle: "short", timeStyle: "short" })
-                      : "—",
+                  cell: (u) => (u.lastLoginAt ? formatDateTime(u.lastLoginAt) : "—"),
                 },
               ]}
             />
@@ -421,90 +430,8 @@ function UsersTab() {
           </>
         )}
       </QueryBoundary>
-      {selected && <UserDrawer user={selected} onClose={() => setSelected(null)} />}
+      {creating && <NewUserDrawer onClose={() => setCreating(false)} />}
     </Card>
-  );
-}
-
-function UserDrawer({ user, onClose }: { user: UserListItem; onClose: () => void }) {
-  const t = useTranslations();
-  const api = useApi();
-  const me = useMe();
-  const roles = useRoles();
-  const [roleIds, setRoleIds] = useState<string[] | null>(null);
-  const [secret, setSecret] = useState<{ username: string; temporaryPassword: string } | null>(null);
-  const [confirm, setConfirm] = useState<"reset" | "toggle" | null>(null);
-  const current = roleIds ?? (roles.data ?? []).filter((r) => user.roles.includes(r.code)).map((r) => r.id);
-  const saveRoles = useSave(() => api.put(`/users/${user.id}/roles`, { roleIds: current }), ["users"], onClose);
-  const reset = useSave(
-    () => api.post<{ username: string; temporaryPassword: string }>(`/users/${user.id}/reset-password`),
-    ["users"],
-    (r) => (setConfirm(null), setSecret(r)),
-  );
-  const toggle = useSave(
-    () => api.post(`/users/${user.id}/${user.status === "ACTIVE" ? "disable" : "enable"}`),
-    ["users"],
-    onClose,
-  );
-  if (secret) {
-    return (
-      <Modal open onClose={onClose} title={t("users.passwordReset")}>
-        <OneTimeSecret username={secret.username} password={secret.temporaryPassword} />
-      </Modal>
-    );
-  }
-  return (
-    <FormDrawer title={user.username} formId="user-roles" busy={saveRoles.isPending} onClose={onClose}>
-      <form
-        id="user-roles"
-        className="flex flex-col gap-2"
-        onSubmit={(e: FormEvent) => (e.preventDefault(), saveRoles.mutate(undefined))}
-      >
-        <p className="text-sm font-medium">{t("users.role")}</p>
-        {(roles.data ?? []).map((r) => (
-          <label key={r.id} className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              disabled={!can(me.data, "roles.assign")}
-              checked={current.includes(r.id)}
-              onChange={(e) => setRoleIds(e.target.checked ? [...current, r.id] : current.filter((x) => x !== r.id))}
-            />
-            {t.has(`roles.${r.code}`) ? t(`roles.${r.code}`) : r.name}
-          </label>
-        ))}
-      </form>
-      {can(me.data, "users.manage") && (
-        <div className="mt-6 flex flex-col gap-2 border-t border-border pt-4">
-          <Button variant="secondary" onClick={() => setConfirm("reset")}>
-            {t("users.resetPassword")}
-          </Button>
-          <Button
-            variant={user.status === "ACTIVE" ? "danger" : "secondary"}
-            onClick={() => setConfirm("toggle")}
-            disabled={user.id === me.data?.id}
-          >
-            {t(user.status === "ACTIVE" ? "users.disable" : "users.enable")}
-          </Button>
-        </div>
-      )}
-      <ConfirmDialog
-        open={confirm === "reset"}
-        title={t("users.resetPassword")}
-        text={t("users.resetConfirm")}
-        loading={reset.isPending}
-        onCancel={() => setConfirm(null)}
-        onConfirm={() => reset.mutate(undefined)}
-      />
-      <ConfirmDialog
-        open={confirm === "toggle"}
-        danger={user.status === "ACTIVE"}
-        title={t(user.status === "ACTIVE" ? "users.disable" : "users.enable")}
-        text={t(user.status === "ACTIVE" ? "users.disableConfirm" : "users.enableConfirm")}
-        loading={toggle.isPending}
-        onCancel={() => setConfirm(null)}
-        onConfirm={() => toggle.mutate(undefined)}
-      />
-    </FormDrawer>
   );
 }
 
@@ -671,7 +598,6 @@ function CreateRoleDrawer({ onClose }: { onClose: () => void }) {
 function AuditTab() {
   const t = useTranslations();
   const api = useApi();
-  const format = useFormatter();
   const list = useListState(["entityType", "from", "to"] as const);
   const audit = useQuery({
     queryKey: ["audit", list.apiQuery],
@@ -731,11 +657,7 @@ function AuditTab() {
                 {
                   key: "time",
                   header: t("common.date"),
-                  cell: (e) => (
-                    <span className="tabular">
-                      {format.dateTime(new Date(e.createdAt), { dateStyle: "short", timeStyle: "medium" })}
-                    </span>
-                  ),
+                  cell: (e) => <span className="tabular">{formatDateTime(e.createdAt, true)}</span>,
                 },
                 {
                   key: "action",

@@ -9,7 +9,7 @@ import type {
   StudentSummary,
   UpdateStudentSchema,
 } from "@idrok/shared";
-import { cleanName, normalizeUzPhone } from "@idrok/shared";
+import { accountWhere, cleanName, normalizeUzPhone } from "@idrok/shared";
 import { schoolDateFromDb, schoolDateToDb, type SchoolDate } from "@idrok/shared/time";
 import type { z } from "zod";
 import type { RequestAuth } from "../../http/auth";
@@ -72,6 +72,7 @@ export class StudentsService {
       AND: [
         studentWhere(scope, today),
         q.status ? { status: q.status } : {},
+        accountWhere(q.account),
         q.classGroupId ? { enrollments: { some: { classGroupId: q.classGroupId, status: "ACTIVE" } } } : {},
         search
           ? {

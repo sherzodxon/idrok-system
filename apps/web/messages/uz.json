@@ -158,7 +158,9 @@
       "ENCRYPTION_NOT_CONFIGURED": "Serverda shifrlash kaliti sozlanmagan (DATA_ENCRYPTION_KEY)",
       "BAND_IN_USE": "Bu oraliq ishlatilgan: faqat nomini o'zgartirish mumkin",
       "ARCHIVED": "Arxivlangan yozuvni o'zgartirib bo'lmaydi",
-      "DUPLICATE": "Bunday yozuv allaqachon bor"
+      "DUPLICATE": "Bunday yozuv allaqachon bor",
+      "GUARDIAN_LOGIN_IS_PHONE": "Vasiy logini — telefon raqami; uni vasiy kartasida o'zgartiring",
+      "ACCOUNT_HAS_PERSON": "Bu hisob allaqachon kartaga bog'langan"
     },
     "SCORE_LIMIT_EXCEEDED": "Ball limiti oshib ketadi",
     "COIN_LIMIT_EXCEEDED": "Coin limiti oshib ketadi",
@@ -190,7 +192,8 @@
       "future": "Kelajakdagi kunni belgilab bo'lmaydi",
       "bridge_required": "Bridge'ni tanlang",
       "invalid_host": "IP manzil noto'g'ri",
-      "range": "Oraliq 8 kundan oshmasin"
+      "range": "Oraliq 8 kundan oshmasin",
+      "invalid_username": "Login noto'g'ri: kichik lotin harflari, raqam, nuqta, chiziqcha; 3–50 belgi"
     }
   },
   "states": {
@@ -648,7 +651,8 @@
     "status": {
       "ACTIVE": "Faol",
       "DISABLED": "Bloklangan"
-    }
+    },
+    "searchName": "Login yoki ism"
   },
   "roleEditor": {
     "add": "Yangi rol",
@@ -2174,5 +2178,99 @@
       "noToday": "Bugun dars kuni emas"
     },
     "cancel": "Bekor qilish"
+  },
+  "userPage": {
+    "back": "Foydalanuvchilar",
+    "account": "Hisob",
+    "person": "Karta",
+    "kinds": {
+      "EMPLOYEE": "Xodim",
+      "STUDENT": "O'quvchi",
+      "GUARDIAN": "Vasiy"
+    },
+    "noPerson": "Kartaga bog'lanmagan tizim hisobi",
+    "linkEmployee": "Xodim kartasiga bog'lash",
+    "username": "Login",
+    "changeUsername": "Loginni o'zgartirish",
+    "guardianLogin": "Vasiy logini — telefon raqami (vasiy kartasida o'zgartiriladi)",
+    "status": "Holat",
+    "statuses": {
+      "ACTIVE": "Faol",
+      "DISABLED": "Bloklangan"
+    },
+    "mustChangePassword": "Vaqtinchalik parol",
+    "lastLogin": "Oxirgi kirish",
+    "passwordChanged": "Parol o'zgartirilgan",
+    "created": "Yaratilgan",
+    "cancel": "Bekor qilish",
+    "save": "Saqlash",
+    "newUsername": "Yangi login",
+    "usernameHint": "Kichik lotin harflari, raqam, nuqta, chiziqcha; 3–50 belgi",
+    "renameWarning": "Foydalanuvchining barcha sessiyalari yopiladi, u yangi login bilan qayta kiradi.",
+    "selfRenameWarning": "Bu sizning hisobingiz: saqlangach tizimdan chiqasiz va yangi login bilan qayta kirasiz.",
+    "linkHint": "Ism-familiya xodim kartasidan olinadi va keyin o'sha yerda tahrirlanadi.",
+    "lastName": "Familiya",
+    "firstName": "Ism",
+    "mode": "Karta",
+    "modes": {
+      "new": "Yangi karta",
+      "existing": "Mavjud karta"
+    },
+    "searchCard": "Ism, familiya yoki kod",
+    "noCards": "Logini yo'q karta topilmadi",
+    "roles": "Rollar",
+    "security": "Xavfsizlik",
+    "resetPassword": "Parolni tiklash",
+    "logoutAll": "Barcha qurilmalardan chiqarish",
+    "disable": "Bloklash",
+    "enable": "Blokdan chiqarish",
+    "sessions": "Ochiq sessiyalar: {n}",
+    "noSessions": "Ochiq sessiya yo'q",
+    "clients": {
+      "WEB": "Brauzer",
+      "MOBILE": "Mobil ilova",
+      "TELEGRAM": "Telegram"
+    },
+    "sessionUsed": "Oxirgi faollik: {at}",
+    "resetConfirm": "Yangi vaqtinchalik parol yaratiladi, barcha sessiyalar yopiladi",
+    "logoutConfirm": "Foydalanuvchi barcha qurilmalardan chiqariladi va qayta kirishi kerak bo'ladi",
+    "disableConfirm": "Foydalanuvchi tizimga kira olmaydi, sessiyalari yopiladi",
+    "enableConfirm": "Foydalanuvchi yana kira oladi",
+    "activity": "Faollik (oxirgi 30 kun)",
+    "stats": {
+      "auditActions": "Amallar",
+      "scoresGiven": "Qo'yilgan ballar",
+      "coinEvaluations": "Coin baholari",
+      "teachingGroups": "Guruhlar",
+      "testsTotal": "Testlar (jami)",
+      "questionsTotal": "Savollar (jami)",
+      "testsFinished": "Topshirilgan testlar",
+      "averagePercent": "O'rtacha natija",
+      "coinBalance": "Coin balansi",
+      "arrived": "Maktabga kelgan kunlar",
+      "late": "Kechikkan kunlar",
+      "children": "Farzandlar"
+    },
+    "history": "Amallar tarixi",
+    "noHistory": "Hali amal yo'q",
+    "when": "Vaqt",
+    "action": "Amal",
+    "entity": "Obyekt",
+    "newUser": "Yangi foydalanuvchi",
+    "createLogin": "Login yaratish",
+    "createdTitle": "Login yaratildi",
+    "kind": "Kim uchun",
+    "phone": "Telefon",
+    "guardianPhoneHint": "Vasiy shu raqam bilan kiradi",
+    "classGroup": "Sinf",
+    "defaultRole": "Rol tanlanmasa — O'qituvchi",
+    "belowMinGrade": "O'quvchi login olish sinfidan pastda. Baribir yaratilsinmi?",
+    "pickCard": "Ro'yxatdan kartani tanlang",
+    "loginRule": {
+      "EMPLOYEE": "Login ism.familiya ko'rinishida yaratiladi, keyin o'zgartirish mumkin.",
+      "STUDENT": "Login — o'quvchi kodi (masalan std-0001).",
+      "GUARDIAN": "Login — vasiyning telefon raqami."
+    },
+    "name": "Ism"
   }
 }

@@ -7,9 +7,15 @@ export const GuardianRelationSchema = z.enum(["MOTHER", "FATHER", "GRANDPARENT",
 
 const Phone = z.string().trim().min(5).max(30);
 
+/** Cards with or without a login (the "new user" form lists cards without one). */
+export const AccountFilterSchema = z.enum(["with", "without"]);
+export const accountWhere = (account?: "with" | "without") =>
+  account === "with" ? { userId: { not: null } } : account === "without" ? { userId: null } : {};
+
 export const StudentListQuerySchema = ListQuerySchema.extend({
   classGroupId: z.uuid().optional(),
   status: StudentStatusSchema.optional(),
+  account: AccountFilterSchema.optional(),
 });
 
 export const StudentSummarySchema = z.object({
@@ -156,6 +162,7 @@ export const CreateAccountSchema = z
   })
   .strict();
 export const AccountCreatedSchema = z.object({ userId: z.uuid(), username: z.string(), temporaryPassword: z.string() });
+export type AccountCreated = z.infer<typeof AccountCreatedSchema>;
 
 export const ImportKindSchema = z.enum(["STUDENTS_GUARDIANS", "EMPLOYEES_ASSIGNMENTS", "CLASS_GROUPS", "SUBJECTS"]);
 export const ImportOptionsSchema = z
