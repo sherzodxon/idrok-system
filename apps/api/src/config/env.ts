@@ -36,6 +36,13 @@ const EnvSchema = z.object({
   SUPABASE_STORAGE_BUCKET: z.string().default("idrok-files"),
   /** argon2id memory cost in KiB (OWASP minimum 19456). Lower values only in tests. */
   ARGON2_MEMORY_KIB: z.coerce.number().int().min(1024).default(19_456),
+  /** AES-256-GCM key for device passwords and face photos (M6): 32 bytes, base64. Face ID secrets need it. */
+  DATA_ENCRYPTION_KEY: z
+    .string()
+    .refine((v) => Buffer.from(v, "base64").length === 32, { message: "must be 32 bytes, base64" })
+    .optional(),
+  /** Public base URL of the API as terminals and bridges reach it (webhook URLs shown to the admin). */
+  DEVICE_PUBLIC_API_URL: z.string().url().optional(),
 });
 
 export type Env = z.infer<typeof EnvSchema>;
