@@ -1,6 +1,6 @@
 // M2 step 1: the admin marks calendar days, sets the working week and adds a shift with bell times.
 import { expect, test } from "@playwright/test";
-import { loginToDashboard } from "../support/login";
+import { loginToDashboard, choose } from "../support/login";
 import { USERS } from "../support/users";
 
 test.beforeEach(async ({ page }) => {
@@ -17,7 +17,7 @@ test("mark a vacation range and a working Saturday on the month view", async ({ 
     await expect(page.getByTestId("calendar-month")).not.toHaveText(month ?? "");
   }
   await page.locator('[data-date="2026-12-28"]').click();
-  await page.getByTestId("day-kind").selectOption("VACATION");
+  await choose(page.getByTestId("day-kind"), { value: "VACATION" });
   await page.getByTestId("day-title").fill("Qishki ta'til");
   await page.getByLabel("Qaysi sanagacha").fill("2026-12-31");
   await page.getByTestId("drawer-save").click();
@@ -25,9 +25,9 @@ test("mark a vacation range and a working Saturday on the month view", async ({ 
     await expect(page.locator(`[data-date="${d}"]`)).toHaveAttribute("data-kind", "VACATION");
 
   await page.locator('[data-date="2026-12-26"]').click();
-  await page.getByTestId("day-kind").selectOption("WORKING_OVERRIDE");
+  await choose(page.getByTestId("day-kind"), { value: "WORKING_OVERRIDE" });
   await page.getByTestId("day-title").fill("Juma jadvali");
-  await page.getByLabel("Qaysi kun jadvali bo'yicha").selectOption("5");
+  await choose(page.getByLabel("Qaysi kun jadvali bo'yicha"), { value: "5" });
   await page.getByTestId("drawer-save").click();
   await expect(page.locator('[data-date="2026-12-26"]')).toHaveAttribute("data-kind", "WORKING_OVERRIDE");
 
@@ -54,7 +54,7 @@ test("working week, a shift and its bell schedule", async ({ page }) => {
 
   await page.getByTestId("bells-add").click();
   await page.getByLabel("Nomi").fill("1-smena qo'ng'iroqlari");
-  await page.getByLabel("Smena").selectOption({ label: "1-smena" });
+  await choose(page.getByLabel("Smena"), "1-smena");
   await page.getByLabel("Amal qilish sanasi").fill("2026-09-01");
   await page.getByRole("button", { name: "Dars qo'shish" }).click();
   await page.getByTestId("drawer-save").click();

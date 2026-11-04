@@ -15,7 +15,9 @@
     "date": "Sana",
     "edit": "Tahrirlash",
     "reason": "Sabab",
-    "saved": "Saqlandi"
+    "saved": "Saqlandi",
+    "selectSearch": "Qidirish…",
+    "selectNoMatches": "Hech narsa topilmadi"
   },
   "auth": {
     "loginTitle": "Tizimga kirish",

@@ -1,7 +1,7 @@
 // M2 step 4: a teacher writes a curriculum plan and submits it; the administrator approves; changes need a new version.
 import { expect, test, type Page } from "@playwright/test";
 import ExcelJS from "exceljs";
-import { loginToDashboard } from "../support/login";
+import { loginToDashboard, choose } from "../support/login";
 import { USERS } from "../support/users";
 
 async function asTeacher(page: Page) {
@@ -13,8 +13,8 @@ async function asTeacher(page: Page) {
 test("write, submit, approve, then start a new version", async ({ page, browser }) => {
   await asTeacher(page);
   await page.getByTestId("plan-create").click();
-  await page.getByTestId("plan-subject").selectOption({ label: "E2E reja fani" });
-  await page.getByTestId("plan-grade").selectOption({ label: "7" });
+  await choose(page.getByTestId("plan-subject"), "E2E reja fani");
+  await choose(page.getByTestId("plan-grade"), "7");
   await page.getByTestId("plan-title").fill("E2E reja 7-sinf");
   await page.getByTestId("drawer-save").click();
   await expect(page).toHaveURL(/\/teacher\/plans\/[0-9a-f-]{36}$/);
@@ -56,8 +56,8 @@ test("write, submit, approve, then start a new version", async ({ page, browser 
 test("import a plan from the Excel template, approve it and apply it to a class", async ({ page, browser }) => {
   await asTeacher(page);
   await page.getByTestId("plan-import").click();
-  await page.getByTestId("import-subject").selectOption({ label: "E2E reja fani" });
-  await page.getByTestId("import-grade").selectOption({ label: "7" });
+  await choose(page.getByTestId("import-subject"), "E2E reja fani");
+  await choose(page.getByTestId("import-grade"), "7");
   await page.getByLabel("Reja nomi").fill("E2E import rejasi");
   const download = page.waitForEvent("download");
   await page.getByTestId("template-download").click();

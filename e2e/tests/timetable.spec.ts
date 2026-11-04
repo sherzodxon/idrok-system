@@ -1,6 +1,6 @@
 // M2 step 2: the admin builds a timetable draft in the grid, sees a conflict, fixes it and publishes.
 import { expect, test } from "@playwright/test";
-import { apiPost, loginToDashboard } from "../support/login";
+import { apiPost, loginToDashboard, choose } from "../support/login";
 import { API_URL, USERS } from "../support/users";
 
 test("build, fix a conflict and publish a timetable", async ({ page }) => {
@@ -31,12 +31,12 @@ test("build, fix a conflict and publish a timetable", async ({ page }) => {
   await page.getByTestId("timetable-new").click();
   await page.getByRole("dialog").getByRole("button", { name: "Tasdiqlash" }).click();
   await expect(page.getByTestId("timetable-version")).toContainText("Qoralama");
-  await page.getByTestId("timetable-target").selectOption({ label: "7-A" });
+  await choose(page.getByTestId("timetable-target"), "7-A");
 
   const addLesson = async (cell: string) => {
     await page.locator(`[data-cell="${cell}"]`).click();
-    await page.getByTestId("cell-subject").selectOption({ label: "E2E jadval fani" });
-    await page.getByTestId("cell-teacher").selectOption({ label: "Jadvalchi E2E" });
+    await choose(page.getByTestId("cell-subject"), "E2E jadval fani");
+    await choose(page.getByTestId("cell-teacher"), "Jadvalchi E2E");
     await page.getByTestId("drawer-save").click();
     await expect(page.locator(`[data-cell="${cell}"]`)).toContainText("E2E jadval fani");
   };

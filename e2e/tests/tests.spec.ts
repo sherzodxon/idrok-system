@@ -1,7 +1,7 @@
 // M4: the planner teacher (E2E reja fani in 7-A) adds a question to the bank, builds and publishes a test; the
 // student takes it on a phone and sees the result; the teacher sees the participant.
 import { expect, test } from "@playwright/test";
-import { expectNoHorizontalScroll, login, loginToDashboard } from "../support/login";
+import { expectNoHorizontalScroll, login, loginToDashboard, choose } from "../support/login";
 import { USERS } from "../support/users";
 
 test.describe.configure({ mode: "serial" });
@@ -11,8 +11,8 @@ test("the teacher builds and publishes a test", async ({ page }) => {
   await page.getByTestId("sidebar").getByRole("link", { name: "Savollar banki" }).click();
   await page.getByRole("button", { name: "Savol qo'shish" }).click();
   const drawer = page.getByRole("dialog");
-  await drawer.getByLabel("Fan", { exact: true }).selectOption({ label: "E2E reja fani" });
-  await drawer.getByLabel("Sinf (parallel)").selectOption({ label: "7" });
+  await choose(drawer.getByLabel("Fan", { exact: true }), "E2E reja fani");
+  await choose(drawer.getByLabel("Sinf (parallel)"), "7");
   await drawer.getByLabel("Savol", { exact: true }).fill("12 × 12 = ?");
   for (const [letter, text] of [
     ["A", "124"],
@@ -28,15 +28,15 @@ test("the teacher builds and publishes a test", async ({ page }) => {
   await page.getByTestId("sidebar").getByRole("link", { name: "Testlar" }).click();
   await page.getByRole("button", { name: "Yangi test" }).click();
   await drawer.getByLabel("Test nomi").fill("E2E ko'paytirish");
-  await drawer.getByLabel("Fan", { exact: true }).selectOption({ label: "E2E reja fani" });
-  await drawer.getByLabel("Sinf (parallel)").selectOption({ label: "7" });
-  await drawer.getByLabel("Turi").selectOption({ label: "Oddiy test" });
+  await choose(drawer.getByLabel("Fan", { exact: true }), "E2E reja fani");
+  await choose(drawer.getByLabel("Sinf (parallel)"), "7");
+  await choose(drawer.getByLabel("Turi"), "Oddiy test");
   await drawer.getByLabel("7-A").check();
   await page.getByTestId("drawer-save").click();
   await expect(page.getByRole("heading", { name: "E2E ko'paytirish" })).toBeVisible();
   await expect(page.getByTestId("test-problems")).toContainText("savollar tanlanmagan");
 
-  await page.getByLabel("Natijani ko'rsatish").selectOption("IMMEDIATE");
+  await choose(page.getByLabel("Natijani ko'rsatish"), { value: "IMMEDIATE" });
   await page.getByRole("button", { name: "Sozlamalarni saqlash" }).click();
   await page.getByRole("tab", { name: "Savollar" }).click();
   await page.getByTestId("bank-picker").getByRole("button", { name: "Qo'shish" }).first().click();
