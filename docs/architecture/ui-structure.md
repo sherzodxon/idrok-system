@@ -185,7 +185,7 @@ Tepada farzand tanlagich (bitta bo'lsa yashirin). Tablar: Bosh (bugungi darslar,
 6. **Kartalar ichida ro'yxat:** sarlavha + "Hammasi" havolasi; qator: rangli ikonka-badge (fan rangi `colorKey`dan), nom, ikkinchi qator `muted`, o'ngda qiymat/badge.
 7. **Mobil:** pastki tab-bar (5 ta), 4×2 tez havolalar grid'i (ikonka plitkalari), "Bugungi jadval" kartasi vaqt va xona bilan, katta asosiy tugma pastda.
 8. **Progress:** doira (ring) diagramma foiz uchun (davomat/progress), sparkline KPI'da.
-9. **Tipografiya:** Inter (yoki shunga o'xshash grotesk), sarlavha 600–700, matn 400; raqamlar `tabular-nums`.
+9. **Tipografiya:** Manrope (lotin + kirill, `next/font` orqali o'zimizda; egasi 2026-11-04), sarlavha 600–700, matn 400; raqamlar `tabular-nums`.
 10. Namunadagi rasmli yangiliklar/kampus bo'limlari M1–M5 ga kirmaydi.
 
 ## 5. Design tokenlar
@@ -219,7 +219,7 @@ Tepada farzand tanlagich (bitta bo'lsa yashirin). Tablar: Bosh (bugungi darslar,
 | `--shadow-card` | `0 1px 2px rgb(23 43 58 / 0.04), 0 4px 12px rgb(23 43 58 / 0.04)` | `none` (chegara bilan) | |
 | `--space-page` | `24px` (mobil `16px`) | ″ | |
 | `--sidebar-width` / `--sidebar-collapsed` | `248px` / `72px` | ″ | |
-| `--font-sans` | `Inter, system-ui, sans-serif` | ″ | |
+| `--font-sans` | `Manrope, system-ui, sans-serif` | ″ | |
 
 Kontrast: brending rangi saqlanayotganda server WCAG AA (`on-primary` bilan ≥ 4.5:1) ni tekshiradi va ogohlantiradi; `primary-hover/strong/soft` berilmasa avtomatik hosil qilinadi (OKLCH'da yorug'likni o'zgartirib).
 

@@ -1050,7 +1050,7 @@ function NewScaleForm() {
               onChange={(e) => setBand(i, { label: e.target.value })}
             />
             <Button
-              size="sm"
+              size="icon"
               variant="ghost"
               aria-label={t("remove")}
               onClick={() => setBands(bands.filter((_, j) => j !== i))}
@@ -1061,8 +1061,7 @@ function NewScaleForm() {
         ))}
         <div className="flex gap-2">
           <Button
-            size="sm"
-            variant="ghost"
+            variant="secondary"
             onClick={() => setBands([...bands, { minPercent: "", maxPercent: "", label: "" }])}
           >
             <Plus className="size-4" aria-hidden />

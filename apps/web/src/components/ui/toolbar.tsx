@@ -89,23 +89,30 @@ export function FilterSelect({
 
 export function Toolbar({ children }: { children: ReactNode }) {
   return (
-    <div className="flex flex-col gap-2 border-b border-border p-4 sm:flex-row sm:flex-wrap sm:items-center">
+    // Bottom-aligned: a control with a visible label (date) lines up with the label-less controls beside it.
+    <div className="flex flex-col gap-2 border-b border-border p-4 sm:flex-row sm:flex-wrap sm:items-end">
       {children}
     </div>
   );
 }
 
+/** `inline`: inside a toolbar row (no own margin and border; aligned with the controls next to it). */
 export function Tabs<T extends string>({
   tabs,
   value,
   onChange,
+  inline,
 }: {
   tabs: { value: T; label: string }[];
   value: T;
   onChange: (v: T) => void;
+  inline?: boolean;
 }) {
   return (
-    <div role="tablist" className="mb-5 flex gap-1 overflow-x-auto border-b border-border">
+    <div
+      role="tablist"
+      className={cn("flex gap-1 overflow-x-auto", inline ? "h-10 items-stretch" : "mb-5 border-b border-border")}
+    >
       {tabs.map((tab) => (
         <button
           key={tab.value}

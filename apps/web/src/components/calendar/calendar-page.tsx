@@ -909,7 +909,7 @@ function BellDrawer({
               />
               <Button
                 type="button"
-                size="sm"
+                size="icon"
                 variant="ghost"
                 aria-label={t("calendar.removeSlot")}
                 disabled={slots.length === 1}

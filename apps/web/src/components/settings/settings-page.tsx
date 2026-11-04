@@ -590,7 +590,7 @@ function RolesTab() {
               />
               <div className="grid gap-5 p-5 sm:grid-cols-2">
                 {modules.map((m) => (
-                  <fieldset key={m} className="flex flex-col gap-1.5">
+                  <fieldset key={m} className="flex min-w-0 flex-col gap-1.5">
                     <legend className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted">
                       {t(`permissions.modules.${m}`)}
                     </legend>
@@ -605,9 +605,9 @@ function RolesTab() {
                             setDraft(e.target.checked ? [...checked, p.code] : checked.filter((c) => c !== p.code))
                           }
                         />
-                        <span>
+                        <span className="min-w-0 break-words">
                           {t(`permissions.codes.${p.code.replaceAll(".", "_")}`)}
-                          <span className="block font-mono text-xs text-disabled">{p.code}</span>
+                          <span className="block break-all font-mono text-xs text-disabled">{p.code}</span>
                         </span>
                       </label>
                     ))}

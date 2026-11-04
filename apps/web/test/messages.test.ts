@@ -2,7 +2,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { ERROR_CODES, SYSTEM_ROLES } from "@idrok/shared";
+import { ERROR_CODES, PERMISSIONS, SYSTEM_ROLES } from "@idrok/shared";
 import { NAV } from "../src/components/shell/nav-config";
 
 type Tree = { [k: string]: string | Tree };
@@ -35,5 +35,13 @@ describe("translations", () => {
     for (const code of ERROR_CODES) expect(all.has(`errors.${code}`), code).toBe(true);
     for (const role of SYSTEM_ROLES) expect(all.has(`roles.${role}`), role).toBe(true);
     for (const item of [...NAV.school, ...NAV.teacher]) expect(all.has(`nav.${item.key}`), item.key).toBe(true);
+  });
+
+  it("covers every permission and its module (the role editor shows them)", () => {
+    const all = new Set(keys(uz));
+    for (const p of PERMISSIONS) {
+      expect(all.has(`permissions.codes.${p.code.replaceAll(".", "_")}`), p.code).toBe(true);
+      expect(all.has(`permissions.modules.${p.module}`), p.module).toBe(true);
+    }
   });
 });

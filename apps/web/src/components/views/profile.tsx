@@ -89,7 +89,6 @@ export function ProfileView() {
             <Select
               value={user.preferences.density}
               onChange={(e) => density.mutate(e.target.value as "COMFORTABLE" | "COMPACT")}
-              compact
             >
               <option value="COMFORTABLE">{t("profile.densityComfortable")}</option>
               <option value="COMPACT">{t("profile.densityCompact")}</option>

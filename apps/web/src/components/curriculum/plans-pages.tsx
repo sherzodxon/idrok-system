@@ -525,7 +525,7 @@ function PlanEditorBody({ plan, backHref }: { plan: CurriculumPlanDetailDto; bac
                     </Select>
                     <span className="flex gap-1">
                       <Button
-                        size="sm"
+                        size="icon"
                         variant="ghost"
                         aria-label={t("plans.moveUp")}
                         disabled={i === 0}
@@ -534,7 +534,7 @@ function PlanEditorBody({ plan, backHref }: { plan: CurriculumPlanDetailDto; bac
                         <ArrowUp className="size-4" aria-hidden />
                       </Button>
                       <Button
-                        size="sm"
+                        size="icon"
                         variant="ghost"
                         aria-label={t("plans.moveDown")}
                         disabled={i === rows.length - 1}
@@ -543,7 +543,7 @@ function PlanEditorBody({ plan, backHref }: { plan: CurriculumPlanDetailDto; bac
                         <ArrowDown className="size-4" aria-hidden />
                       </Button>
                       <Button
-                        size="sm"
+                        size="icon"
                         variant="ghost"
                         aria-label={t("plans.removeItem")}
                         onClick={() => (setRows((rs) => rs.filter((x) => x.key !== r.key)), setDirty(true))}

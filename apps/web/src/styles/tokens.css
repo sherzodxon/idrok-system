@@ -60,7 +60,7 @@
   --space-page: 24px;
   --sidebar-width: 248px;
   --sidebar-collapsed: 72px;
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-sans: var(--font-manrope), "Manrope", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   color-scheme: light;
 }
 
