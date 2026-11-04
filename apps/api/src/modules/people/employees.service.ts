@@ -1,5 +1,6 @@
 import { requireTenantId, type Db, type Prisma } from "@idrok/db";
 import {
+  accountWhere,
   cleanName,
   type CreateEmployeeSchema,
   type EmployeeDto,
@@ -27,11 +28,12 @@ const toDto = (e: Prisma.EmployeeGetPayload<object>): EmployeeDto => ({
 export class EmployeesService {
   constructor(private readonly db: Db) {}
 
-  async list(q: ListQuery & { status?: "ACTIVE" | "ON_LEAVE" | "LEFT" }) {
+  async list(q: ListQuery & { status?: "ACTIVE" | "ON_LEAVE" | "LEFT"; account?: "with" | "without" }) {
     const search = q.q?.trim();
     const where: Prisma.EmployeeWhereInput = {
       AND: [
         q.status ? { status: q.status } : {},
+        accountWhere(q.account),
         search
           ? {
               OR: [

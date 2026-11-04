@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Laptop, Smartphone } from "lucide-react";
-import { useFormatter, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import type { Session } from "@idrok/shared";
 import { useApi } from "@/components/providers/app-providers";
@@ -16,13 +16,13 @@ import { Select } from "@/components/ui/field";
 import { ConfirmDialog, Modal } from "@/components/ui/modal";
 import { LoadingState, QueryBoundary, ErrorState } from "@/components/ui/states";
 import { useToast } from "@/components/ui/toast";
+import { formatDateTime } from "@/lib/format";
 import { useErrorText } from "@/lib/use-error-text";
 import { ME_KEY, useMe } from "@/lib/use-me";
 import { ChangePasswordForm } from "./change-password-form";
 
 export function ProfileView() {
   const t = useTranslations();
-  const format = useFormatter();
   const api = useApi();
   const qc = useQueryClient();
   const toast = useToast();
@@ -123,7 +123,7 @@ export function ProfileView() {
                     </p>
                     <p className="truncate text-xs text-muted">
                       {t("profile.sessionStarted", {
-                        date: format.dateTime(new Date(s.createdAt), { dateStyle: "medium", timeStyle: "short" }),
+                        date: formatDateTime(s.createdAt),
                       })}
                     </p>
                   </div>

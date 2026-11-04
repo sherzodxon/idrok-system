@@ -1,5 +1,6 @@
 import { requireTenantId, type Db, type Prisma } from "@idrok/db";
 import {
+  accountWhere,
   cleanName,
   type CreateGuardianSchema,
   type GuardianDto,
@@ -53,12 +54,13 @@ export class GuardiansService {
     return guardianWhere(await resolveScope(this.db, auth, timezone));
   }
 
-  async list(auth: RequestAuth, q: ListQuery) {
+  async list(auth: RequestAuth, q: ListQuery & { account?: "with" | "without" }) {
     const search = q.q?.trim();
     const digits = search?.replace(/\D/g, "");
     const where: Prisma.GuardianWhereInput = {
       AND: [
         await this.scopeWhere(auth),
+        accountWhere(q.account),
         search
           ? {
               OR: [

@@ -1,6 +1,7 @@
 import type { Router } from "express";
 import { z } from "zod";
 import {
+  AccountFilterSchema,
   AccountCreatedSchema,
   ArchiveStudentSchema,
   CreateAccountSchema,
@@ -182,7 +183,7 @@ export function peopleRoutes(router: Router, registry: OpenApiRegistry, deps: Ap
       summary: "Guardians (class teachers: of their class)",
       tags,
       access: "guardians.view",
-      query: ListQuerySchema,
+      query: ListQuerySchema.extend({ account: AccountFilterSchema.optional() }),
       responses: { 200: { description: "Guardians", schema: pageOf(GuardianSchema) } },
     },
     async ({ res, auth, query }) => res.json(await guardians.list(auth, query)),
@@ -245,7 +246,10 @@ export function peopleRoutes(router: Router, registry: OpenApiRegistry, deps: Ap
       summary: "Employees",
       tags,
       access: "employees.view",
-      query: ListQuerySchema.extend({ status: EmployeeStatusSchema.optional() }),
+      query: ListQuerySchema.extend({
+        status: EmployeeStatusSchema.optional(),
+        account: AccountFilterSchema.optional(),
+      }),
       responses: { 200: { description: "Employees", schema: pageOf(EmployeeSchema) } },
     },
     async ({ res, query }) => res.json(await employees.list(query)),

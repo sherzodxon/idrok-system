@@ -177,7 +177,11 @@ describe("generation", () => {
 });
 
 describe("lesson lists and substitutes", () => {
-  const week = () => ({ from: nextWeekday(1), to: addSchoolDays(nextWeekday(1), 6) });
+  // A week no earlier step touches (they put holidays on the next Monday and Thursday): three weeks ahead.
+  const week = () => {
+    const from = nextWeekday(1, addSchoolDays(today, 21));
+    return { from, to: addSchoolDays(from, 6) };
+  };
 
   it("teachers see only their own lessons; admins see all", async () => {
     const { from, to } = week();

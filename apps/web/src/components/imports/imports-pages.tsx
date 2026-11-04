@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Download, FileSpreadsheet, Plus, Upload } from "lucide-react";
 import Link from "next/link";
-import { useFormatter, useLocale, useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { importLabelsRu, importLabelsUz, type ImportJobDto, type Page } from "@idrok/shared";
@@ -16,6 +16,7 @@ import { Field, Select } from "@/components/ui/field";
 import { EmptyState, ErrorState, LoadingState, QueryBoundary } from "@/components/ui/states";
 import { useToast } from "@/components/ui/toast";
 import { PageHeader, Tabs } from "@/components/ui/toolbar";
+import { formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import { useYears } from "@/lib/queries";
 import { useErrorText } from "@/lib/use-error-text";
@@ -57,7 +58,6 @@ export function ImportsHistory() {
   const t = useTranslations();
   const api = useApi();
   const router = useRouter();
-  const format = useFormatter();
   const list = useListState();
   const imports = useQuery({
     queryKey: ["imports", list.apiQuery],
@@ -97,7 +97,7 @@ export function ImportsHistory() {
                   {
                     key: "date",
                     header: t("common.date"),
-                    cell: (j) => format.dateTime(new Date(j.createdAt), { dateStyle: "medium", timeStyle: "short" }),
+                    cell: (j) => formatDateTime(j.createdAt),
                   },
                 ]}
               />
