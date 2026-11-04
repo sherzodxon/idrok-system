@@ -7,7 +7,16 @@ import { buildDeps, closeDeps } from "../bootstrap";
 import type { Env } from "../config/env";
 import type { AppDeps } from "../deps";
 import { relayOutbox } from "../infra/outbox";
-import { QUEUES, bullConnection, type ImportJobPayload, type TestJobPayload } from "../infra/queue";
+import { DataCipher, parseEncryptionKey } from "../infra/crypto";
+import {
+  QUEUES,
+  bullConnection,
+  type DeviceJobPayload,
+  type ImportJobPayload,
+  type TestJobPayload,
+} from "../infra/queue";
+import { processDirectDevice } from "../modules/attendance/direct-devices";
+import { FaceService } from "../modules/attendance/face.service";
 import { awardTestCoins } from "../modules/coins/auto-coins";
 import { reconcileCoins } from "../modules/coins/ledger";
 import { commitImport, parseImport } from "../modules/imports/imports.processor";
@@ -40,6 +49,14 @@ async function processTests(deps: AppDeps, job: Job<TestJobPayload>) {
   });
 }
 
+/** Jobs of a terminal the server reaches directly; the job id is the outbox event, the work is all queued jobs. */
+async function processDevices(deps: AppDeps, cipher: DataCipher, job: Job<DeviceJobPayload>) {
+  const { tenantId, deviceId } = job.data;
+  await runWithTenant({ tenantId, requestId: `job:${job.id}` }, () =>
+    processDirectDevice({ db: deps.db, storage: deps.storage, cipher }, deviceId),
+  );
+}
+
 /**
  * Technical records with a built-in expiry only (idempotency keys, relayed outbox events). Business and academic
  * data is never deleted here (security-baseline.md S3).
@@ -59,6 +76,14 @@ export async function maintenance(deps: AppDeps) {
       { accounts: mismatched.map((m) => ({ tenantId: m.tenantId, studentId: m.studentId })) },
       "coin balance mismatch",
     );
+  // Students who left lose their face on the terminals and on the server (biometric data is not kept).
+  const cipher = new DataCipher(parseEncryptionKey(deps.env.DATA_ENCRYPTION_KEY));
+  for (const tenant of await deps.root.tenant.findMany({ select: { id: true } })) {
+    const cleared = await runWithTenant({ tenantId: tenant.id, requestId: "maintenance" }, () =>
+      new FaceService(deps.db, deps.storage, cipher).removeInactive(),
+    );
+    if (cleared) deps.logger.info({ tenantId: tenant.id, cleared }, "faces of inactive students removed");
+  }
 }
 
 export async function startWorker(env: Env, logger?: Logger) {
@@ -74,13 +99,18 @@ export async function startWorker(env: Env, logger?: Logger) {
     connection,
     concurrency: 4,
   });
+  const cipher = new DataCipher(parseEncryptionKey(env.DATA_ENCRYPTION_KEY));
+  const devices = new Worker<DeviceJobPayload>(QUEUES.devices, (job) => processDevices(deps, cipher, job), {
+    connection,
+    concurrency: 2,
+  });
   await deps.queues.maintenance.upsertJobScheduler(
     "daily-cleanup",
     { pattern: "0 3 * * *", tz: "Asia/Tashkent" },
     { name: "cleanup" },
   );
 
-  for (const w of [imports, housekeeping, tests]) {
+  for (const w of [imports, housekeeping, tests, devices]) {
     w.on("failed", (job, err) =>
       deps.logger.error({ err, jobId: job?.id, queue: w.name, attempts: job?.attemptsMade }, "job failed"),
     );
@@ -102,7 +132,7 @@ export async function startWorker(env: Env, logger?: Logger) {
     deps,
     async stop() {
       clearInterval(relayTimer);
-      await Promise.all([imports.close(), housekeeping.close(), tests.close()]);
+      await Promise.all([imports.close(), housekeeping.close(), tests.close(), devices.close()]);
       await closeDeps(deps);
     },
   };

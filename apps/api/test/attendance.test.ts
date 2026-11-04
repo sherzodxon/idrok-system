@@ -93,7 +93,9 @@ describe("devices", () => {
     expect(d).toMatchObject({ hasPassword: true, connection: "UNKNOWN", direction: "IN" });
     expect(JSON.stringify(list)).not.toContain("device-secret-1");
     expect(JSON.stringify(list)).not.toContain(inKey);
-    const audit = await t.deps.root.auditLog.findMany({ where: { entityType: "Device" } });
+    const audit = await t.deps.root.auditLog.findMany({
+      where: { entityType: "Device", tenantId: t.defaultTenant.tenant.id },
+    });
     expect(audit.length).toBeGreaterThan(0);
     expect(JSON.stringify(audit)).not.toContain("device-secret-1");
     const row = await t.deps.root.device.findUniqueOrThrow({ where: { id: inDevice.id } });
@@ -162,7 +164,9 @@ describe("webhook", () => {
       .attach("Picture", Buffer.from([0xff, 0xd8, 0xff, 0x00]), { filename: "pic.jpg", contentType: "image/jpeg" });
     expect(res.status).toBe(200);
     expect(res.body.accepted).toBe(1);
-    expect(await t.deps.root.fileAsset.count({ where: { kind: "FACE_PHOTO" } })).toBe(0);
+    expect(
+      await t.deps.root.fileAsset.count({ where: { kind: "FACE_PHOTO", tenantId: t.defaultTenant.tenant.id } }),
+    ).toBe(0);
   });
 
   it("concurrent pushes of the same event store it once", async () => {
@@ -240,7 +244,7 @@ describe("school attendance", () => {
     ).toBe(400);
     expect((await api(t, s.teacher2).raw("put", path, { status: "ABSENT", reason: "x" })).status).toBe(403);
     const audit = await t.deps.root.auditLog.findMany({
-      where: { action: { in: ["attendance.mark", "attendance.clear_mark"] } },
+      where: { tenantId: t.defaultTenant.tenant.id, action: { in: ["attendance.mark", "attendance.clear_mark"] } },
     });
     expect(audit).toHaveLength(3);
   });

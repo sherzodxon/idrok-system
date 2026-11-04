@@ -1,0 +1,24 @@
+{
+  "name": "@idrok/hikvision",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./simulator": "./src/simulator.ts"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "simulator": "tsx src/simulator-cli.ts"
+  },
+  "devDependencies": {
+    "@idrok/config": "workspace:*",
+    "@types/node": "26.6.6",
+    "eslint": "10.14.0",
+    "typescript": "6.0.3",
+    "vitest": "5.0.5",
+    "tsx": "4.23.15"
+  }
+}

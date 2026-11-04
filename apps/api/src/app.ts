@@ -23,6 +23,8 @@ import { coinRoutes } from "./modules/coins/coins.routes";
 import { shopRoutes } from "./modules/coins/shop.routes";
 import { attendanceRoutes } from "./modules/attendance/attendance.routes";
 import { webhookRoutes } from "./modules/attendance/webhook.routes";
+import { bridgeRoutes } from "./modules/attendance/bridge.routes";
+import { faceRoutes } from "./modules/attendance/face.routes";
 import { testRoutes } from "./modules/tests/tests.routes";
 import { scoreRoutes } from "./modules/scores/scores.routes";
 import { curriculumRoutes } from "./modules/curriculum/curriculum.routes";
@@ -106,6 +108,8 @@ export function createApp(deps: AppDeps): express.Express {
   shopRoutes(v1, registry, deps);
   attendanceRoutes(v1, registry, deps);
   webhookRoutes(v1, registry, deps);
+  bridgeRoutes(v1, registry, deps);
+  faceRoutes(v1, registry, deps);
   peopleRoutes(v1, registry, deps);
   usersRoutes(v1, registry, deps);
   importsRoutes(v1, registry, deps);

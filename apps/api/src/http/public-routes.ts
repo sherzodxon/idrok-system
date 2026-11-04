@@ -13,6 +13,14 @@ export const PUBLIC_ROUTES = [
   // M6: Face ID terminal push. No user token: the device is identified by the key in the path (only its hash is
   // stored), the tenant comes from that device; unknown keys are rate limited (attendance/webhook.routes.ts).
   "POST /attendance/hikvision-event/:key",
+  // M6: the bridge agent's protocol. No user token: the bridge's bearer token (hash lookup) identifies it and its
+  // tenant; bad tokens are rate limited (attendance/bridge.routes.ts).
+  "POST /bridge/heartbeat",
+  "POST /bridge/jobs/lease",
+  "GET /bridge/jobs/:id/photo",
+  "POST /bridge/jobs/:id/result",
+  "POST /bridge/events",
+  "POST /bridge/token/rotate",
 ] as const;
 
 /** Any logged-in user, no permission: the user's own account and session only. */
