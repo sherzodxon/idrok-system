@@ -8,6 +8,7 @@ import { useApi } from "@/components/providers/app-providers";
 import { Avatar } from "@/components/ui/avatar";
 import { Card, CardHeader } from "@/components/ui/card";
 import { EmptyState, ErrorState, LoadingState, QueryBoundary } from "@/components/ui/states";
+import { HomeAttendanceCard } from "@/components/attendance/pages";
 import { can, useMe } from "@/lib/use-me";
 
 export function PortalHome() {
@@ -60,6 +61,7 @@ export function PortalHome() {
           <EmptyState icon={<GraduationCap className="size-6" aria-hidden />} text={t("studentHome")} />
         </Card>
       )}
+      <HomeAttendanceCard />
     </div>
   );
 }

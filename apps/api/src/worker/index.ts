@@ -15,7 +15,11 @@ import {
   type ImportJobPayload,
   type TestJobPayload,
 } from "../infra/queue";
+import { awardAttendanceCoins } from "../modules/attendance/attendance-coins";
+import { attendanceSettings } from "../modules/attendance/attendance-config.service";
 import { processDirectDevice } from "../modules/attendance/direct-devices";
+import { schoolClock } from "../modules/access/school-clock";
+import { addSchoolDays } from "@idrok/shared/time";
 import { FaceService } from "../modules/attendance/face.service";
 import { awardTestCoins } from "../modules/coins/auto-coins";
 import { reconcileCoins } from "../modules/coins/ledger";
@@ -58,6 +62,22 @@ async function processDevices(deps: AppDeps, cipher: DataCipher, job: Job<Device
 }
 
 /**
+ * Attendance coins of the last three school days of every school with attendance on (idempotent; a day is awarded
+ * once its shift is over, so late bridge deliveries are in).
+ */
+export async function attendanceCoins(deps: AppDeps, now: Date = new Date()) {
+  for (const tenant of await deps.root.tenant.findMany({ select: { id: true } })) {
+    await runWithTenant({ tenantId: tenant.id, requestId: "attendance-coins" }, async () => {
+      if (!(await attendanceSettings(deps.db)).isEnabled) return;
+      const { today } = await schoolClock(deps.db);
+      let awarded = 0;
+      for (const back of [2, 1, 0]) awarded += await awardAttendanceCoins(deps.db, addSchoolDays(today, -back), now);
+      if (awarded) deps.logger.info({ tenantId: tenant.id, awarded }, "attendance coins awarded");
+    });
+  }
+}
+
+/**
  * Technical records with a built-in expiry only (idempotency keys, relayed outbox events). Business and academic
  * data is never deleted here (security-baseline.md S3).
  */
@@ -94,7 +114,11 @@ export async function startWorker(env: Env, logger?: Logger) {
     connection,
     concurrency: 2,
   });
-  const housekeeping = new Worker(QUEUES.maintenance, () => maintenance(deps), { connection, concurrency: 1 });
+  const housekeeping = new Worker(
+    QUEUES.maintenance,
+    (job) => (job.name === "attendance-coins" ? attendanceCoins(deps) : maintenance(deps)),
+    { connection, concurrency: 1 },
+  );
   const tests = new Worker<TestJobPayload>(QUEUES.tests, (job) => processTests(deps, job), {
     connection,
     concurrency: 4,
@@ -104,6 +128,11 @@ export async function startWorker(env: Env, logger?: Logger) {
     connection,
     concurrency: 2,
   });
+  await deps.queues.maintenance.upsertJobScheduler(
+    "attendance-coins",
+    { pattern: "*/30 * * * *", tz: "Asia/Tashkent" },
+    { name: "attendance-coins" },
+  );
   await deps.queues.maintenance.upsertJobScheduler(
     "daily-cleanup",
     { pattern: "0 3 * * *", tz: "Asia/Tashkent" },

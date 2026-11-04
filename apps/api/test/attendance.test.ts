@@ -208,6 +208,16 @@ describe("school attendance", () => {
     expect((await s.a.get(`/attendance/day?date=${DAY}&status=LATE`)).items).toHaveLength(1);
   });
 
+  it("a day without any terminal event is no data, never an absence", async () => {
+    let quiet = addSchoolDays(DAY, -1);
+    while (isoWeekday(quiet) === 7) quiet = addSchoolDays(quiet, -1);
+    const day = await s.a.get(`/attendance/day?date=${quiet}`);
+    expect(day.items.length).toBeGreaterThan(0);
+    expect(day.counts).toMatchObject({ NO_DATA: day.items.length, ABSENT: 0 });
+    const history = await s.a.get(`/attendance/students/${s.s4a.id}?from=${quiet}&to=${DAY}`);
+    expect(history.days.map((d: { date: string }) => d.date)).toEqual([DAY]);
+  });
+
   it("class teachers see their class only; subject teachers have no access", async () => {
     const day = await api(t, s.teacher2).get(`/attendance/day?date=${DAY}`);
     expect(day.items.map((r: { studentId: string }) => r.studentId)).toEqual([s.s7b.id]);

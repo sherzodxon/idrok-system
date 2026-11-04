@@ -405,24 +405,57 @@ export const TestResultRuleConfigSchema = z
   .strict();
 export type TestResultRuleConfig = z.infer<typeof TestResultRuleConfigSchema>;
 
-export const CoinAutoRuleSchema = z.object({
-  id: z.uuid(),
-  source: z.enum(["TEST_RESULT", "ATTENDANCE"]),
-  criterionId: z.uuid(),
-  criterionName: z.string(),
-  config: TestResultRuleConfigSchema,
-  isActive: z.boolean(),
-});
-export type CoinAutoRuleDto = z.infer<typeof CoinAutoRuleSchema>;
-
-export const UpsertCoinAutoRuleSchema = z
+/**
+ * School attendance (M6): coming on time, or a lateness band. The criterion's type gives the direction: a REWARD
+ * criterion rewards, a PENALTY criterion takes; a BOTH criterion rewards on time and takes for lateness.
+ */
+export const AttendanceRuleConfigSchema = z
   .object({
-    source: z.literal("TEST_RESULT"),
-    criterionId: z.uuid(),
-    config: TestResultRuleConfigSchema,
-    isActive: z.boolean().optional(),
+    /** null = on time; otherwise the lateness band. */
+    latenessBandId: z.uuid().nullable(),
+    amount: CoinAmountSchema,
   })
   .strict();
+export type AttendanceRuleConfig = z.infer<typeof AttendanceRuleConfigSchema>;
+
+export const CoinAutoRuleSchema = z.discriminatedUnion("source", [
+  z.object({
+    id: z.uuid(),
+    source: z.literal("TEST_RESULT"),
+    criterionId: z.uuid(),
+    criterionName: z.string(),
+    config: TestResultRuleConfigSchema,
+    isActive: z.boolean(),
+  }),
+  z.object({
+    id: z.uuid(),
+    source: z.literal("ATTENDANCE"),
+    criterionId: z.uuid(),
+    criterionName: z.string(),
+    config: AttendanceRuleConfigSchema,
+    isActive: z.boolean(),
+  }),
+]);
+export type CoinAutoRuleDto = z.infer<typeof CoinAutoRuleSchema>;
+
+export const UpsertCoinAutoRuleSchema = z.discriminatedUnion("source", [
+  z
+    .object({
+      source: z.literal("TEST_RESULT"),
+      criterionId: z.uuid(),
+      config: TestResultRuleConfigSchema,
+      isActive: z.boolean().optional(),
+    })
+    .strict(),
+  z
+    .object({
+      source: z.literal("ATTENDANCE"),
+      criterionId: z.uuid(),
+      config: AttendanceRuleConfigSchema,
+      isActive: z.boolean().optional(),
+    })
+    .strict(),
+]);
 
 // ---- overview (admin dashboard)
 

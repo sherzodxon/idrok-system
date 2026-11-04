@@ -163,6 +163,7 @@ migratsiya. Ustun o'chirish ikki bosqichda: avval kod ustunni ishlatmay qo'yadi,
 | `JWT_SECRET` | Render (`generateValue`) | Yangi qiymat → API va worker qayta deploy. Barcha access token'lar bekor bo'ladi (refresh orqali qayta olinadi) |
 | DB parol | Supabase | Supabase'da reset → `DATABASE_URL`, `DIRECT_URL` yangilanadi |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase | Supabase'da rotate → Render'da yangilash |
+| `DATA_ENCRYPTION_KEY` (M6) | Render (API va worker'da bir xil; `openssl rand -base64 32`) | Almashtirilmaydi: eski kalit bilan shifrlangan yuz rasmlari va qurilma parollari o'qilmay qoladi (qayta yuklash / qayta kiritish kerak). Yo'qolsa ham shunday. Kalit bo'lmasa Face ID yuz va parol saqlamaydi (`ENCRYPTION_NOT_CONFIGURED`) |
 
 Secret'lar faqat Render/Supabase dashboard'ida. `.env` fayllar repo'ga tushmaydi (CI'da `gitleaks`).
 
@@ -197,3 +198,14 @@ worker qaytguncha "o'qilgunga qadar" kutadi.
 M5 dan: `tests` navbati test natijasi uchun avtomatik coinlarni ham beradi (`coins.test_results_due`, idempotent).
 `maintenance` har kecha coin balanslarini ledger bilan solishtiradi; farq bo'lsa `coin balance mismatch` xatosi logga
 yoziladi (alert shu xabarga qo'yiladi).
+M6 dan: `devices` navbati — server o'zi ulana oladigan terminallar (`useBridge = false`) topshiriqlari (`devices.jobs_due`).
+Bridge orqali ulangan terminallar topshiriqlarini Bridge o'zi oladi (har 10 soniyada so'rov). `maintenance` har 30 daqiqada
+(`attendance-coins`) davomat coinlarini beradi va har kecha maktabdan ketgan o'quvchilar yuzini qurilmalardan o'chiradi.
+
+## Face ID (M6)
+
+- Terminal webhook manzili: `POST /api/v1/attendance/hikvision-event/<kalit>`. Kalit qurilma qo'shilganda bir marta
+  ko'rsatiladi, logga yozilmaydi (URL niqoblanadi). `DEVICE_PUBLIC_API_URL` bo'lsa, to'liq manzil ko'rsatiladi.
+- Bridge protokoli: `/api/v1/bridge/*` (bearer token, faqat chiquvchi HTTPS). O'rnatish: `apps/bridge/README.md`.
+- Haqiqiy yuz rasmlari (biometrika) faqat VPS'ga ko'chgandan keyin (Q-30, Q-47). Render/Supabase'da faqat sinov rasmlari.
+

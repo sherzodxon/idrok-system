@@ -38,6 +38,9 @@ export function useErrorText() {
     }
     if (error.code === "COIN_INSUFFICIENT_BALANCE" && typeof error.details?.available === "number")
       return t("coinBalance", { available: String(error.details.available) });
+    // A refused field with a sentence of its own (e.g. a face photo that is too small).
+    const field = (error.details?.fields as { code?: string }[] | undefined)?.[0]?.code;
+    if (error.code === "VALIDATION_ERROR" && field && t.has(`fieldCodes.${field}`)) return t(`fieldCodes.${field}`);
     // Business conflicts carry a reason code (e.g. STUDENT_BELOW_MIN_GRADE) with its own sentence.
     const reason = typeof error.details?.reason === "string" ? error.details.reason : undefined;
     if (reason && t.has(`reasons.${reason}`)) return t(`reasons.${reason}`, error.details as Record<string, string>);

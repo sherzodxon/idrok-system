@@ -23,7 +23,9 @@ pnpm workspaces + Turborepo. Paket nomlari `@idrok/*`.
 | `packages/shared` | Zod sxemalar, DTO tiplar, enum'lar, permission ro'yxati, xato kodlari, `time` (sana util), `decimal` (yaxlitlash), `text` (normalizatsiya) | — (izomorf: Node + brauzer) |
 | `packages/db` | Prisma schema, migratsiyalar, SQL-only invariantlar, seed, Prisma client fabrikasi + tenant extension | `shared` |
 | `packages/config` | ESLint (boundary qoidalari bilan), tsconfig bazalari, Prettier | — |
-| `apps/bridge`, `apps/mobile` | M6 / M8 — hozir yaratilmaydi | — |
+| `apps/bridge` | (M6) Maktab tarmog'idagi Windows agent: terminal hodisalarini diskka yozib serverga yuboradi, yuz topshiriqlarini ISAPI orqali bajaradi | `hikvision` |
+| `packages/hikvision` | (M6) Hikvision ISAPI klienti (Digest), topshiriq bajaruvchi va sinov uchun simulyator. API worker va Bridge birga ishlatadi | — |
+| `apps/mobile` | M8 — hozir yaratilmaydi | — |
 
 ```mermaid
 graph LR

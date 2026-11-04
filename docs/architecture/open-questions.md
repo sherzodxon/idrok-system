@@ -82,6 +82,19 @@ A–D bo'limlari ochiq qoladi — tegishli bosqichdan oldin maktab hal qiladi. J
 | Q-25 | Coin mezonidan kim foydalana oladi: har mezon uchun tanlangan o'qituvchilar yoki hamma? | `CoinCriterion.eligibility` | ALL_TEACHERS / SELECTED | SELECTED (EdexTest bilan bir xil) | Maktab |
 | Q-44 | Haftalik ommaviy reyting ekrani (EdexTest'da autentifikatsiyasiz `/public/weekly`) kerakmi? | Voyaga yetmaganlar ism-familiyasi ochiq | yo'q / maxsus token bilan TV ekrani / faqat ichki | Faqat ichki (login bilan); TV uchun keyin alohida token | Maktab + Egasi |
 
+## D2. Face ID va maktab davomati (M6)
+
+> M6 tavsiya etilgan default bilan qilindi (2026-11-04), egasi tasdig'ini kutmoqda. Ko'pchiligi sozlama: `Davomat → Sozlamalar` va `Coin → Avtomatik`.
+
+| # | Savol | Nega muhim | Variantlar | Tavsiya etilgan default | Kim hal qiladi |
+|---|---|---|---|---|---|
+| Q-47 | Haqiqiy o'quvchilar yuz rasmlarini (biometrika) qayerda va qaysi rozilik bilan saqlaymiz? | Voyaga yetmaganlar biometrikasi; Q-30 | VPS'ga ko'chguncha yig'ilmaydi / vasiy yozma roziligi bilan | Render/Supabase'da faqat sinov rasmlari. Haqiqiy rasmlar VPS'dan keyin, vasiyning yozma roziligi bilan. Rasm serverda shifrlangan, o'quvchi ketganda o'chiriladi | Egasi + Yurist |
+| Q-48 | Kechikish nimadan hisoblanadi? | Kechikish va coin | smena boshlanishi / 1-dars boshlanishi | Sinf smenasining boshlanishi (`Shift.startMinute`). Smenasiz sinflar uchun maktab default vaqti (08:30). Imtiyozli daqiqalar default 0 | Maktab |
+| Q-49 | Kechikish oraliqlari | Hisobot va coin | — | Default oraliq yo'q, maktab o'zi qo'shadi (namuna: 1–3, 3–7, 7+). Oraliq `[dan, gacha)` daqiqa, sekundlar tashlanadi | Maktab |
+| Q-50 | Kelmagan o'quvchi qachon "kelmadi" bo'ladi? Vasiyga xabar qachon? | Vasiy xabarlari (M7) | smena tugaganda / ma'lum soatda | Smena tugashi bilan "kelmadi". Hech bir qurilma hodisa yozmagan kun "ma'lumot yo'q" (kelmadi emas). Vasiyga xabar — M7 | Maktab |
+| Q-51 | Davomat uchun coin qancha va qachon? | Coin | — | Default qoida yo'q. Maktab qo'yadi: vaqtida kelish (mukofot) va har oraliq uchun (jarima). Kun smena tugagach, bir marta baholanadi | Maktab |
+| Q-52 | Qarzdor o'quvchini terminal kiritmasligi (`blocksDebtors`, MASTER_SPEC §11) | Moliya | — | Qilinmadi: moliya moduli (M8) bilan birga | Maktab + Egasi |
+
 ## E. Auth, odamlar, import (M1 dan oldin)
 
 | # | Savol | Nega muhim | Variantlar | Tavsiya etilgan default | Kim hal qiladi |
@@ -208,4 +221,18 @@ o'rinbosari); `maxQuestionsPerTest` = 50 (maktab sozlamasi, 1–200), minimal ch
 | T-62 | O'quvchining do'kon va buyurtma amallari `portal.student` ruxsati bilan (`coin_shop.order` alohida kod qo'shilmadi — M4'dagi `tests.take` kabi portal doirasida) | api-plan.md §6 |
 | T-63 | O'qituvchi faolligi faqat coin baholari bo'yicha: so'nggi N maktab kunida o'qituvchi o'z guruhlaridagi o'quvchilarning kamida X foizini baholagan bo'lishi kerak; oxirgi bahodan keyin `staleDays` kundan ko'p o'tsa — kam faol | MASTER_SPEC §14 |
 | T-64 | `cached balance` (`CoinAccount`) har kecha ledger yig'indisi va oxirgi `balanceAfter` bilan solishtiriladi. Farq faqat logga yoziladi, avtomatik tuzatilmaydi | edextest-audit §5 |
+
+## M6 davomida qabul qilingan texnik qarorlar (default, egasi tasdig'iga)
+
+| # | Qaror | Asos |
+|---|---|---|
+| T-65 | Terminal hodisasi qurilma kaliti bilan qabul qilinadi (yo'lda, chunki Hikvision header yubora olmaydi). Kalitning faqat SHA-256 hash'i saqlanadi, URL logda niqoblanadi, noto'g'ri kalitlar IP bo'yicha cheklanadi (10 daqiqada 30 ta). Bu va Bridge protokoli `public-routes.ts`ga qo'shildi (user tokenisiz, o'z kaliti bilan) | MASTER_SPEC §11 webhook; security-baseline S1 |
+| T-66 | Xom hodisalar (`AccessEvent`) o'zgartirilmaydi va o'chirilmaydi. `(qurilma, serialNo)` takror pushni bitta yozuvga aylantiradi. Kunlik yozuv (`AttendanceRecord`) hodisalardan qayta hisoblanadi; qo'lda belgi qurilma natijasi yonida saqlanadi va undan ustun turadi. Soati 5 daqiqadan ko'p oldinda yoki 7 kundan eski hodisa qabul qilinmaydi. Faqat "yuz tasdiqlandi" (minor 75) hodisa hisoblanadi, ro'yxat sozlanadi | CLAUDE.md §4 (ledger), §11 |
+| T-67 | Kelish = kunning birinchi kirishi, ketish = undan keyingi oxirgi chiqish. BOTH terminal checkIn/checkOut statusini ishlatadi, status bo'lmasa birinchi hodisa kelish, qolgani ketish | MASTER_SPEC §11 Direction |
+| T-68 | Yuz rasmi terminal qabul qiladigan JPEG'ga keltiriladi (≤ 640 px, ≤ 200 KB, EXIF burilishi, metama'lumot olib tashlanadi), AES-256-GCM bilan shifrlanadi (`DATA_ENCRYPTION_KEY`). Asl fayl va eski versiyalar saqlanmaydi. Hodisa bilan kelgan snapshot rasmlari saqlanmaydi. Maktabdan ketgan o'quvchi yuzi har kecha qurilmalardan va serverdan o'chiriladi | MASTER_SPEC §11 Xavfsizlik |
+| T-69 | Har qurilma × o'quvchi uchun bitta `FaceSyncJob` (joriy holat) va topshiriq (`BridgeJob`). Yangi rasm navbatdagi eski topshiriqni bekor qiladi. Bridge topshiriqni 2 daqiqaga ijaraga oladi; javob kelmasa qayta beriladi, 5 martadan keyin "xato". Qayta yuborish admin tugmasi bilan | MASTER_SPEC §11 Face ID oqimi |
+| T-70 | Bridge: Node.js, WinSW bilan Windows Service. Hodisalar avval diskka (atomik fayl), keyin serverga. Har 15 daqiqada va har uzilishdan keyin terminal jurnalini o'qib serverga yuboradi (5 daqiqa ustma-ust, takrorlar bir marta saqlanadi). Token 30 kunda o'zi almashadi (eski token 10 daqiqa ishlaydi); admin almashtirsa eski darhol o'ladi. Terminal paroli Bridge'ga heartbeat javobida (TLS) beriladi va faqat xotirada turadi | MASTER_SPEC §11 Bridge |
+| T-71 | Server terminalga o'zi ulana olsa (`useBridge = false`), topshiriqlarni worker (`devices` navbati) bajaradi — Bridge bilan bir xil kod (`packages/hikvision`) | MASTER_SPEC §3 (serverless emas) |
+| T-72 | Davomat coini kun smena tugagach, bir marta (`sourceRef = attendance:<sana>`) beriladi va keyin qayta ko'rilmaydi. Qo'lda belgilangan kun, dam olish kuni va hech bir oraliqqa tushmagan kechikish uchun coin yo'q. Jarima qarz chegarasidan oshmaydi (oshgan qismi olinmaydi). Davomat coinlari limitlarga kirmaydi (T-57) | MASTER_SPEC §11, §14 |
+| T-73 | Ruxsatlar: `attendance.view`, `attendance.mark`, `attendance.settings.manage`, `devices.manage`, `face.manage`. Direktor — ko'rish; o'rinbosar — ko'rish va qo'lda belgilash; sinf rahbari — o'z sinfini ko'rish; qurilma, yuz va sozlamalar — admin | rbac-matrix.md |
 

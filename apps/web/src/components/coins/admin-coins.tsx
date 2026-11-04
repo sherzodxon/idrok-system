@@ -9,6 +9,7 @@ import { useTranslations } from "next-intl";
 import { useState, type FormEvent, type ReactNode } from "react";
 import type {
   CoinAutoRuleDto,
+  LatenessBandDto,
   CoinCriterionDto,
   CoinLimitRuleDto,
   CoinOverviewDto,
@@ -975,6 +976,14 @@ function LimitDrawer({ rule, onClose }: { rule: CoinLimitRuleDto | null; onClose
 
 // ---------------------------------------------------------------- automatic rules
 
+function useBands() {
+  const api = useApi();
+  return useQuery({
+    queryKey: ["lateness-bands"],
+    queryFn: () => api.get<LatenessBandDto[]>("/attendance/lateness-bands"),
+  });
+}
+
 function AutoRules() {
   const t = useTranslations("coins");
   const api = useApi();
@@ -982,7 +991,15 @@ function AutoRules() {
     queryKey: ["coin-auto-rules"],
     queryFn: () => api.get<CoinAutoRuleDto[]>("/coins/auto-rules"),
   });
+  const bands = useBands();
+  const bandName = (id: string) => bands.data?.find((b) => b.id === id)?.name ?? "—";
   const [editing, setEditing] = useState<CoinAutoRuleDto | "new" | null>(null);
+  const ruleText = (r: CoinAutoRuleDto) =>
+    r.source === "TEST_RESULT"
+      ? t("admin.autoRuleText", { percent: r.config.minPercent, n: r.config.amount })
+      : r.config.latenessBandId === null
+        ? t("admin.attendanceOnTimeText", { n: r.config.amount })
+        : t("admin.attendanceLateText", { band: bandName(r.config.latenessBandId), n: r.config.amount });
   return (
     <Card>
       <CardHeader
@@ -1005,19 +1022,18 @@ function AutoRules() {
                 key: "rule",
                 header: t("admin.rule"),
                 primary: true,
-                cell: (r) => (
-                  <span className={r.isActive ? "" : "text-muted line-through"}>
-                    {t("admin.autoRuleText", { percent: r.config.minPercent, n: r.config.amount })}
-                  </span>
-                ),
+                cell: (r) => <span className={r.isActive ? "" : "text-muted line-through"}>{ruleText(r)}</span>,
               },
+              { key: "source", header: t("admin.source"), cell: (r) => t(`admin.sources.${r.source}`) },
               {
                 key: "purposes",
                 header: t("admin.purposes"),
                 cell: (r) =>
-                  r.config.purposes.length
-                    ? r.config.purposes.map((p) => t(`purposes.${p}`)).join(", ")
-                    : t("admin.allTests"),
+                  r.source !== "TEST_RESULT"
+                    ? "—"
+                    : r.config.purposes.length
+                      ? r.config.purposes.map((p) => t(`purposes.${p}`)).join(", ")
+                      : t("admin.allTests"),
               },
               { key: "criterion", header: t("criterion"), cell: (r) => r.criterionName },
               {
@@ -1045,22 +1061,33 @@ function AutoRuleDrawer({ rule, onClose }: { rule: CoinAutoRuleDto | null; onClo
     queryKey: ["coin-criteria"],
     queryFn: () => api.get<CoinCriterionDto[]>("/coins/criteria"),
   });
+  const bands = useBands();
+  const [source, setSource] = useState<CoinAutoRuleDto["source"]>(rule?.source ?? "TEST_RESULT");
+  const test = rule?.source === "TEST_RESULT" ? rule.config : null;
+  const attendance = rule?.source === "ATTENDANCE" ? rule.config : null;
   const [criterionId, setCriterionId] = useState(rule?.criterionId ?? "");
-  const [minPercent, setMinPercent] = useState(String(rule?.config.minPercent ?? 90));
-  const [amount, setAmount] = useState(String(rule?.config.amount ?? 3));
-  const [purposes, setPurposes] = useState<("PRACTICE" | "WEIGHTED")[]>(rule?.config.purposes ?? []);
+  const [minPercent, setMinPercent] = useState(String(test?.minPercent ?? 90));
+  const [amount, setAmount] = useState(String(rule?.config.amount ?? (rule ? 1 : 3)));
+  const [purposes, setPurposes] = useState<("PRACTICE" | "WEIGHTED")[]>(test?.purposes ?? []);
+  /** "" = on time, otherwise a lateness band. */
+  const [outcome, setOutcome] = useState(attendance?.latenessBandId ?? "");
   const [isActive, setIsActive] = useState(rule?.isActive ?? true);
-  const body = () => ({
-    source: "TEST_RESULT",
-    criterionId,
-    config: { minPercent: Number(minPercent), amount: Number(amount), purposes },
-    isActive,
-  });
+  const body = () =>
+    source === "TEST_RESULT"
+      ? {
+          source,
+          criterionId,
+          config: { minPercent: Number(minPercent), amount: Number(amount), purposes },
+          isActive,
+        }
+      : { source, criterionId, config: { latenessBandId: outcome || null, amount: Number(amount) }, isActive };
   const save = useSave(
     () => (rule ? api.put(`/coins/auto-rules/${rule.id}`, body()) : api.post("/coins/auto-rules", body())),
     ["coin-auto-rules"],
     onClose,
   );
+  // Test results and "on time" reward; a lateness band takes.
+  const takes = source === "ATTENDANCE" && outcome !== "";
   return (
     <FormDrawer
       title={rule ? t("admin.editAutoRule") : t("admin.addAutoRule")}
@@ -1073,12 +1100,54 @@ function AutoRuleDrawer({ rule, onClose }: { rule: CoinAutoRuleDto | null; onClo
         className="flex flex-col gap-4"
         onSubmit={(e: FormEvent) => (e.preventDefault(), save.mutate(undefined))}
       >
-        <Field label={t("criterion")} hint={t("admin.autoCriterionHint")}>
+        <Field label={t("admin.source")}>
+          {(id) => (
+            <Select
+              id={id}
+              value={source}
+              disabled={!!rule}
+              onChange={(e) => {
+                setSource(e.target.value as CoinAutoRuleDto["source"]);
+                setCriterionId("");
+              }}
+            >
+              {(["TEST_RESULT", "ATTENDANCE"] as const).map((x) => (
+                <option key={x} value={x}>
+                  {t(`admin.sources.${x}`)}
+                </option>
+              ))}
+            </Select>
+          )}
+        </Field>
+        {source === "ATTENDANCE" && (
+          <Field label={t("admin.outcome")} hint={t("admin.outcomeHint")}>
+            {(id) => (
+              <Select
+                id={id}
+                value={outcome}
+                onChange={(e) => {
+                  setOutcome(e.target.value);
+                  setCriterionId("");
+                }}
+              >
+                <option value="">{t("admin.onTime")}</option>
+                {(bands.data ?? [])
+                  .filter((b) => !b.archived || b.id === outcome)
+                  .map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {t("admin.lateBand", { band: b.name })}
+                    </option>
+                  ))}
+              </Select>
+            )}
+          </Field>
+        )}
+        <Field label={t("criterion")} hint={takes ? t("admin.autoPenaltyHint") : t("admin.autoCriterionHint")}>
           {(id) => (
             <Select id={id} required value={criterionId} onChange={(e) => setCriterionId(e.target.value)}>
               <option value="">—</option>
               {(criteria.data ?? [])
-                .filter((c) => c.isActive && c.type !== "PENALTY")
+                .filter((c) => c.isActive && c.type !== (takes ? "REWARD" : "PENALTY"))
                 .map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
@@ -1088,19 +1157,21 @@ function AutoRuleDrawer({ rule, onClose }: { rule: CoinAutoRuleDto | null; onClo
           )}
         </Field>
         <div className="grid grid-cols-2 gap-3">
-          <Field label={t("admin.minPercent")}>
-            {(id) => (
-              <Input
-                id={id}
-                type="number"
-                min={0}
-                max={100}
-                required
-                value={minPercent}
-                onChange={(e) => setMinPercent(e.target.value)}
-              />
-            )}
-          </Field>
+          {source === "TEST_RESULT" && (
+            <Field label={t("admin.minPercent")}>
+              {(id) => (
+                <Input
+                  id={id}
+                  type="number"
+                  min={0}
+                  max={100}
+                  required
+                  value={minPercent}
+                  onChange={(e) => setMinPercent(e.target.value)}
+                />
+              )}
+            </Field>
+          )}
           <Field label={t("amount")}>
             {(id) => (
               <Input
@@ -1114,18 +1185,20 @@ function AutoRuleDrawer({ rule, onClose }: { rule: CoinAutoRuleDto | null; onClo
             )}
           </Field>
         </div>
-        <fieldset className="flex flex-col gap-2">
-          <legend className="mb-1 text-sm font-medium">{t("admin.purposes")}</legend>
-          {(["PRACTICE", "WEIGHTED"] as const).map((p) => (
-            <Check
-              key={p}
-              label={t(`purposes.${p}`)}
-              checked={purposes.includes(p)}
-              onChange={(v) => setPurposes((x) => (v ? [...x, p] : x.filter((y) => y !== p)))}
-            />
-          ))}
-          <p className="text-xs text-muted">{t("admin.purposesHint")}</p>
-        </fieldset>
+        {source === "TEST_RESULT" && (
+          <fieldset className="flex flex-col gap-2">
+            <legend className="mb-1 text-sm font-medium">{t("admin.purposes")}</legend>
+            {(["PRACTICE", "WEIGHTED"] as const).map((p) => (
+              <Check
+                key={p}
+                label={t(`purposes.${p}`)}
+                checked={purposes.includes(p)}
+                onChange={(v) => setPurposes((x) => (v ? [...x, p] : x.filter((y) => y !== p)))}
+              />
+            ))}
+            <p className="text-xs text-muted">{t("admin.purposesHint")}</p>
+          </fieldset>
+        )}
         <Check label={t("admin.isActive")} checked={isActive} onChange={setIsActive} />
       </form>
     </FormDrawer>

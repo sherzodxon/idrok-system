@@ -171,7 +171,8 @@ export const FaceProfilePageSchema = z.object({
 
 // ---- school attendance
 
-export const SchoolAttendanceStatusSchema = z.enum(["PRESENT", "LATE", "ABSENT", "NOT_ARRIVED", "EXCUSED"]);
+/** NO_DATA: no terminal recorded anything that day (before the launch, or every terminal down) — not an absence. */
+export const SchoolAttendanceStatusSchema = z.enum(["PRESENT", "LATE", "ABSENT", "NOT_ARRIVED", "EXCUSED", "NO_DATA"]);
 export type SchoolAttendanceStatusDto = z.infer<typeof SchoolAttendanceStatusSchema>;
 export const ManualAttendanceStatusSchema = z.enum(["PRESENT", "LATE", "ABSENT", "EXCUSED"]);
 
