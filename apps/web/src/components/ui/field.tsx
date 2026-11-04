@@ -1,10 +1,9 @@
-import { forwardRef, useId, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from "react";
+import { forwardRef, useId, type InputHTMLAttributes, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
 
 const base =
   "rounded-input border border-border bg-surface text-foreground placeholder:text-disabled focus:border-primary focus:outline-none aria-[invalid=true]:border-danger";
 const control = `${base} px-3 text-sm`;
-const compactControl = `${base} h-8 px-2 text-xs`;
 /** The default width and height unless the caller sets its own (cn does not merge Tailwind classes). */
 const sized = (className?: string) =>
   cn(!/(^|\s)w-/.test(className ?? "") && "w-full", !/(^|\s)h-/.test(className ?? "") && "h-10");
@@ -57,11 +56,5 @@ export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputE
   },
 );
 
-/** `compact`: toolbar size, as wide as its content. */
-export function Select({
-  className,
-  compact,
-  ...rest
-}: SelectHTMLAttributes<HTMLSelectElement> & { compact?: boolean }) {
-  return <select className={cn(compact ? compactControl : [control, sized(className)], "pr-8", className)} {...rest} />;
-}
+/** The app's select (styled list with search for long lists): see ./select.tsx. */
+export { Select } from "./select";

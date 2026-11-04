@@ -2,13 +2,13 @@
 // phone, and the admin's policy editor checks the component sum live. Data: the stack's "E2E chorak" and yesterday's
 // lesson of the planner teacher in 7-A.
 import { expect, test } from "@playwright/test";
-import { expectNoHorizontalScroll, login, loginToDashboard } from "../support/login";
+import { expectNoHorizontalScroll, login, loginToDashboard, choose } from "../support/login";
 import { USERS } from "../support/users";
 
 test("journal: attendance, points and a reversal", async ({ page }) => {
   await loginToDashboard(page, USERS.planner);
   await page.getByTestId("sidebar").getByRole("link", { name: "Jurnal" }).click();
-  await page.getByRole("combobox", { name: "Guruh va fan" }).selectOption({ label: "7-A · E2E reja fani" });
+  await choose(page.getByRole("combobox", { name: "Guruh va fan" }), "7-A · E2E reja fani");
   const grid = page.getByTestId("gradebook");
   await expect(grid).toBeVisible();
   await grid.locator("thead a").first().click();

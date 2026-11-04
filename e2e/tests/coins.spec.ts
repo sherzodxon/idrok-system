@@ -1,7 +1,7 @@
 // M5: the admin adds a criterion and a product; the planner teacher (7-A) gives coins; the student buys on a phone;
 // the admin approves and delivers the order.
 import { expect, test } from "@playwright/test";
-import { expectNoHorizontalScroll, login, loginToDashboard } from "../support/login";
+import { expectNoHorizontalScroll, login, loginToDashboard, choose } from "../support/login";
 import { USERS } from "../support/users";
 
 test.describe.configure({ mode: "serial" });
@@ -15,7 +15,7 @@ test("the admin adds a criterion and a product", async ({ page }) => {
   await drawer.getByLabel("Nomi").fill("E2E faollik");
   await drawer.getByLabel("Eng kam").fill("1");
   await drawer.getByLabel("Eng ko'p").fill("5");
-  await drawer.getByLabel("Kim foydalanadi").selectOption("ALL_TEACHERS");
+  await choose(drawer.getByLabel("Kim foydalanadi"), { value: "ALL_TEACHERS" });
   await page.getByTestId("drawer-save").click();
   await expect(page.getByTestId("coin-criteria")).toContainText("E2E faollik");
 
@@ -37,7 +37,7 @@ test("the teacher gives coins from the student card", async ({ page }) => {
     .getByRole("button", { name: /Farzand Demo/ })
     .click();
   const dialog = page.getByRole("dialog");
-  await dialog.getByLabel("Mezon").selectOption({ label: "E2E faollik" });
+  await choose(dialog.getByLabel("Mezon"), "E2E faollik");
   await dialog.getByRole("radio", { name: "5", exact: true }).click();
   await expect(dialog.getByTestId("coin-capacity")).toBeVisible();
   await page.getByTestId("give-coins").click();

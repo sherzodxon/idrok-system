@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { expectNoHorizontalScroll, loginToDashboard } from "../support/login";
+import { expectNoHorizontalScroll, loginToDashboard, choose } from "../support/login";
 import { USERS } from "../support/users";
 
 test("the collapsed sidebar stays collapsed after a reload", async ({ page }) => {
@@ -37,11 +37,11 @@ test.describe("mobile (375 px)", () => {
 test("language switch: every text follows, and the choice is kept", async ({ page }) => {
   await page.goto("/login");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Tizimga kirish");
-  await page.getByTestId("locale-switcher").selectOption("ru");
+  await choose(page.getByTestId("locale-switcher"), { value: "ru" });
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Вход в систему");
   await page.reload();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Вход в систему");
   await expect(page.locator("html")).toHaveAttribute("lang", "ru");
-  await page.getByTestId("locale-switcher").selectOption("uz");
+  await choose(page.getByTestId("locale-switcher"), { value: "uz" });
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Tizimga kirish");
 });

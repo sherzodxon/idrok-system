@@ -1,13 +1,13 @@
 // M2 step 6 (runs after timetable.spec, which publishes 7-A lessons from tomorrow on):
 // the admin cancels a lesson, the guardian sees the child's week, the teacher sees today's lessons and their week.
 import { expect, test } from "@playwright/test";
-import { loginToDashboard } from "../support/login";
+import { loginToDashboard, choose } from "../support/login";
 import { USERS } from "../support/users";
 
 test("cancel a lesson; the guardian's week shows it", async ({ page, browser }) => {
   await loginToDashboard(page, USERS.importer);
   await page.goto("/admin/lessons");
-  await page.getByTestId("lessons-class").selectOption({ label: "7-A" });
+  await choose(page.getByTestId("lessons-class"), "7-A");
   await page.getByRole("button", { name: "Keyingi hafta" }).click();
   const first = page.locator("[data-lesson]").filter({ hasText: "E2E jadval fani" }).first();
   await expect(first).toBeVisible();

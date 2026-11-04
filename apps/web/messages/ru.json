@@ -15,7 +15,9 @@
     "date": "Дата",
     "edit": "Изменить",
     "reason": "Причина",
-    "saved": "Сохранено"
+    "saved": "Сохранено",
+    "selectSearch": "Поиск…",
+    "selectNoMatches": "Ничего не найдено"
   },
   "auth": {
     "loginTitle": "Вход в систему",

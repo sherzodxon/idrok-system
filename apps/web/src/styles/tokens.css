@@ -55,6 +55,8 @@
   --radius-button: 8px;
   --radius-input: 8px;
   --shadow-card: 0 1px 2px rgb(14 32 50 / 0.04), 0 4px 12px rgb(14 32 50 / 0.05);
+  /* Floating lists (select, menus) */
+  --shadow-pop: 0 4px 8px rgb(14 32 50 / 0.06), 0 12px 32px rgb(14 32 50 / 0.14);
   --space-page: 24px;
   --sidebar-width: 248px;
   --sidebar-collapsed: 72px;
@@ -92,6 +94,7 @@
   --color-danger: #ef7b7b;
   --color-danger-soft: #3d1c1e;
   --shadow-card: none;
+  --shadow-pop: 0 12px 32px rgb(0 0 0 / 0.5);
   color-scheme: dark;
 }
 
@@ -119,6 +122,8 @@
     --color-danger: #ef7b7b;
     --color-danger-soft: #3d1c1e;
     --shadow-card: none;
+    --shadow-pop: 0 12px 32px rgb(0 0 0 / 0.5);
+    --shadow-pop: 0 12px 32px rgb(0 0 0 / 0.5);
     color-scheme: dark;
   }
 }
