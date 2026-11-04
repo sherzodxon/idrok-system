@@ -9,7 +9,9 @@ import { newSecret, sha256Hex, type DataCipher } from "../../infra/crypto";
 import type { StorageProvider } from "../../infra/storage";
 import { writeAudit } from "../audit/audit.service";
 import { BRIDGE_TOKEN_OVERLAP_MS } from "./devices.service";
+import { schoolClock } from "../access/school-clock";
 import { ingestEvents } from "./ingest";
+import { offsetOf } from "./school-day";
 
 export const POLL_SECONDS = 10;
 /** The bridge is asked to rotate its token once it is older than this. */
@@ -90,9 +92,11 @@ export class BridgeService {
         data: d.reachable ? { lastSeenAt: now } : { lastError: (d.error ?? "unreachable").slice(0, 300) },
       });
     }
+    const { timezone, today } = await schoolClock(this.db);
     return {
       serverTime: now.toISOString(),
       pollSeconds: POLL_SECONDS,
+      utcOffset: offsetOf(today, timezone),
       rotateToken: now.getTime() - agent.tokenRotatedAt.getTime() > TOKEN_MAX_AGE_MS,
       devices: devices.map(({ passwordEnc, ...d }) => ({
         ...d,

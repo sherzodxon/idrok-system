@@ -1,7 +1,7 @@
 // Who is expected at school on a day and with which times: the student's class on that day (enrollment), the class's
 // shift (else the school default) and the school calendar (working weekdays, holidays per grade).
 import type { Db, DbTransaction, Prisma } from "@idrok/db";
-import { schoolDateFromDb, schoolDateToDb, type SchoolDate } from "@idrok/shared/time";
+import { atSchoolTime, schoolDateFromDb, schoolDateToDb, type SchoolDate } from "@idrok/shared/time";
 import type { DayRules, LatenessBand } from "../../domain/attendance";
 import { lessonWeekday, type CalendarDayInput } from "../../domain/lessons";
 import { activeOn } from "../access/scope";
@@ -106,4 +106,12 @@ export async function studentDays(
     });
   }
   return out;
+}
+
+/** "+05:00": the school time zone's UTC offset on a day (terminals take local times with an offset). */
+export function offsetOf(day: SchoolDate, tz: string): string {
+  const minutes = Math.round((schoolDateToDb(day).getTime() - atSchoolTime(day, 0, tz).getTime()) / 60_000);
+  const abs = Math.abs(minutes);
+  const hh = String(Math.floor(abs / 60)).padStart(2, "0");
+  return `${minutes < 0 ? "-" : "+"}${hh}:${String(abs % 60).padStart(2, "0")}`;
 }

@@ -1,0 +1,20 @@
+<!-- WinSW service definition. Put next to IdrokBridge.exe (WinSW-x64.exe renamed) and main.js; install.ps1 does it. -->
+<service>
+  <id>IdrokBridge</id>
+  <name>Idrok Bridge</name>
+  <description>Idrok System: Face ID terminals and server link (outbound HTTPS only)</description>
+  <executable>node</executable>
+  <arguments>"%BASE%\main.js" run</arguments>
+  <workingdirectory>%BASE%</workingdirectory>
+  <startmode>Automatic</startmode>
+  <delayedAutoStart>true</delayedAutoStart>
+  <onfailure action="restart" delay="10 sec"/>
+  <onfailure action="restart" delay="30 sec"/>
+  <onfailure action="restart" delay="60 sec"/>
+  <resetfailure>1 hour</resetfailure>
+  <stoptimeout>20 sec</stoptimeout>
+  <log mode="roll-by-size">
+    <sizeThreshold>5120</sizeThreshold>
+    <keepFiles>3</keepFiles>
+  </log>
+</service>

@@ -8,7 +8,7 @@ import {
   IdParamsSchema,
   SchoolDateSchema,
 } from "@idrok/shared";
-import { atSchoolTime, diffSchoolDays, schoolDateToDb, type SchoolDate } from "@idrok/shared/time";
+import { diffSchoolDays } from "@idrok/shared/time";
 import type { AppDeps } from "../../deps";
 import { AppError, notFound } from "../../http/errors";
 import { routesFor } from "../../http/route";
@@ -18,6 +18,7 @@ import { writeAudit } from "../audit/audit.service";
 import { cipherFor } from "./attendance.routes";
 import { enqueueDeviceJob } from "./device-jobs";
 import { FaceService } from "./face.service";
+import { offsetOf } from "./school-day";
 
 const tags = ["attendance"];
 
@@ -43,13 +44,6 @@ const HistorySchema = z
     message: "range",
     path: ["to"],
   });
-
-/** "+05:00": the school time zone's offset on a day (terminals take local times with an offset). */
-function offsetOf(day: SchoolDate, tz: string): string {
-  const minutes = Math.round((schoolDateToDb(day).getTime() - atSchoolTime(day, 0, tz).getTime()) / 60_000);
-  const abs = Math.abs(minutes);
-  return `${minutes < 0 ? "-" : "+"}${String(Math.floor(abs / 60)).padStart(2, "0")}:${String(abs % 60).padStart(2, "0")}`;
-}
 
 export function faceRoutes(router: Router, registry: OpenApiRegistry, deps: AppDeps) {
   const faces = new FaceService(deps.db, deps.storage, cipherFor(deps));
