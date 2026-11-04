@@ -3,7 +3,9 @@
 import type { z } from "zod";
 import { requireTenantId, type Db, type DbTransaction, type Prisma } from "@idrok/db";
 import {
+  AttendanceRuleConfigSchema,
   TestResultRuleConfigSchema,
+  type CoinAutoRuleDto,
   type SetCriterionTeachersSchema,
   type UpdateCoinSettingsSchema,
   type UpsertCoinAutoRuleSchema,
@@ -99,14 +101,12 @@ const autoRuleSelect = {
 } satisfies Prisma.CoinAutoRuleSelect;
 type AutoRuleRow = Prisma.CoinAutoRuleGetPayload<{ select: typeof autoRuleSelect }>;
 
-const autoRuleDto = (r: AutoRuleRow) => ({
-  id: r.id,
-  source: r.source,
-  criterionId: r.criterionId,
-  criterionName: r.criterion.name,
-  config: TestResultRuleConfigSchema.parse(r.config),
-  isActive: r.isActive,
-});
+const autoRuleDto = (r: AutoRuleRow): CoinAutoRuleDto => {
+  const base = { id: r.id, criterionId: r.criterionId, criterionName: r.criterion.name, isActive: r.isActive };
+  return r.source === "ATTENDANCE"
+    ? { ...base, source: "ATTENDANCE", config: AttendanceRuleConfigSchema.parse(r.config) }
+    : { ...base, source: "TEST_RESULT", config: TestResultRuleConfigSchema.parse(r.config) };
+};
 
 export class CoinConfigService {
   constructor(private readonly db: Db) {}
@@ -306,14 +306,39 @@ export class CoinConfigService {
   }
 
   /** Automatic coins are credits: the criterion must be an active reward criterion. */
-  private async checkAutoCriterion(tx: DbTransaction, criterionId: string) {
-    const c = await tx.coinCriterion.findFirst({ where: { id: criterionId, isActive: true }, select: { type: true } });
-    if (!c || c.type === "PENALTY") throw invalid("criterionId");
+  /**
+   * Test results only reward. Attendance: on time needs a criterion that rewards, a lateness band one that takes; the
+   * band must be active, and each outcome has at most one active rule.
+   */
+  private async checkAutoRule(tx: DbTransaction, input: z.infer<typeof UpsertCoinAutoRuleSchema>, exceptId?: string) {
+    const c = await tx.coinCriterion.findFirst({
+      where: { id: input.criterionId, isActive: true },
+      select: { type: true },
+    });
+    if (!c) throw invalid("criterionId");
+    if (input.source === "TEST_RESULT") {
+      if (c.type === "PENALTY") throw invalid("criterionId");
+      return;
+    }
+    const band = input.config.latenessBandId;
+    if (band === null ? c.type === "PENALTY" : c.type === "REWARD") throw invalid("criterionId", "direction");
+    // A rule of an archived band can still be switched off.
+    if (input.isActive === false) return;
+    if (band && !(await tx.latenessBand.findFirst({ where: { id: band, archivedAt: null }, select: { id: true } }))) {
+      throw invalid("config.latenessBandId");
+    }
+    const same = await tx.coinAutoRule.findMany({
+      where: { source: "ATTENDANCE", isActive: true, ...(exceptId ? { id: { not: exceptId } } : {}) },
+      select: { config: true },
+    });
+    if (same.some((r) => AttendanceRuleConfigSchema.parse(r.config).latenessBandId === band)) {
+      throw new AppError("CONFLICT", 409, { reason: "DUPLICATE" });
+    }
   }
 
   async createAutoRule(input: z.infer<typeof UpsertCoinAutoRuleSchema>) {
     return this.db.$transaction(async (tx) => {
-      await this.checkAutoCriterion(tx, input.criterionId);
+      await this.checkAutoRule(tx, input);
       const r = await tx.coinAutoRule.create({
         data: { tenantId: requireTenantId(), ...input },
         select: autoRuleSelect,
@@ -332,7 +357,8 @@ export class CoinConfigService {
     return this.db.$transaction(async (tx) => {
       const before = await tx.coinAutoRule.findFirst({ where: { id }, select: autoRuleSelect });
       if (!before) throw notFound();
-      await this.checkAutoCriterion(tx, input.criterionId);
+      if (before.source !== input.source) throw invalid("source");
+      await this.checkAutoRule(tx, input, id);
       const r = await tx.coinAutoRule.update({ where: { id }, data: input, select: autoRuleSelect });
       await writeAudit(tx, {
         action: "coins.auto_rule.update",

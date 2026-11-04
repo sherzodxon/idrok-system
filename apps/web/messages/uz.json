@@ -1849,7 +1849,19 @@
       "autoCriterionHint": "Mukofot mezoni (avtomatik deb belgilash tavsiya etiladi)",
       "minPercent": "Kamida, %",
       "purposesHint": "Hech biri tanlanmasa — barcha testlar",
-      "switches": "Qismlar"
+      "switches": "Qismlar",
+      "source": "Manba",
+      "sources": {
+        "TEST_RESULT": "Test natijasi",
+        "ATTENDANCE": "Davomat (Face ID)"
+      },
+      "outcome": "Holat",
+      "outcomeHint": "Kun o'quvchi smenasi tugagach baholanadi. Qo'lda belgilangan kun uchun coin berilmaydi.",
+      "onTime": "Vaqtida kelish",
+      "lateBand": "Kechikish: {band}",
+      "attendanceOnTimeText": "Vaqtida kelsa → {n} coin",
+      "attendanceLateText": "Kechiksa ({band}) → −{n} coin",
+      "autoPenaltyHint": "Jarima (yoki ikki yo'nalishli) mezon. Qarz chegarasidan oshadigan qismi olinmaydi."
     },
     "shop": {
       "title": "Coin do'koni",
