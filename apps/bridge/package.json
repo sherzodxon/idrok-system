@@ -1,0 +1,30 @@
+{
+  "name": "@idrok/bridge",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "dev": "tsx src/main.ts run",
+    "build": "tsup",
+    "start": "node dist/main.js run",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@idrok/config": "workspace:*",
+    "@idrok/hikvision": "workspace:*",
+    "@types/node": "26.6.6",
+    "eslint": "10.14.0",
+    "tsup": "9.0.0",
+    "tsx": "4.23.15",
+    "typescript": "6.0.3",
+    "vitest": "5.0.5"
+  }
+}

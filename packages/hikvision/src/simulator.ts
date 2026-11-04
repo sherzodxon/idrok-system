@@ -5,6 +5,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
 import { parseChallenge } from "./client";
+import { multipartParts } from "./multipart";
 
 export interface SimulatorOptions {
   username?: string;
@@ -24,28 +25,6 @@ export interface SimEvent {
 }
 
 const md5 = (s: string) => createHash("md5").update(s).digest("hex");
-
-/** Splits a multipart body into named parts (enough for FaceDataRecord). */
-function multipartParts(body: Buffer, contentType: string): Map<string, Buffer> {
-  const boundary = /boundary=(?:"([^"]+)"|([^;]+))/i.exec(contentType);
-  const out = new Map<string, Buffer>();
-  if (!boundary) return out;
-  const sep = Buffer.from(`--${boundary[1] ?? boundary[2]}`);
-  let start = body.indexOf(sep);
-  while (start !== -1) {
-    const next = body.indexOf(sep, start + sep.length);
-    if (next === -1) break;
-    const part = body.subarray(start + sep.length + 2, next - 2);
-    const headerEnd = part.indexOf("\r\n\r\n");
-    if (headerEnd !== -1) {
-      const headers = part.subarray(0, headerEnd).toString("utf8");
-      const name = /name="([^"]+)"/.exec(headers)?.[1];
-      if (name) out.set(name, part.subarray(headerEnd + 4));
-    }
-    start = next;
-  }
-  return out;
-}
 
 export class HikvisionSimulator {
   readonly users = new Map<string, { name: string }>();

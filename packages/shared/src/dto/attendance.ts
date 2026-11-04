@@ -317,6 +317,8 @@ export const BridgeDeviceSchema = z.object({
 export const BridgeHeartbeatResponseSchema = z.object({
   serverTime: z.iso.datetime(),
   pollSeconds: z.number().int(),
+  /** The school's UTC offset today ("+05:00"): terminals take local times with an offset. */
+  utcOffset: z.string().regex(/^[+-]\d{2}:\d{2}$/),
   /** The bridge should rotate its token (older than the rotation period). */
   rotateToken: z.boolean(),
   devices: z.array(BridgeDeviceSchema),
