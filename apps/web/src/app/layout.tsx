@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Manrope } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale } from "next-intl/server";
 import type { ReactNode } from "react";
@@ -15,6 +16,9 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: b ? `${b.schoolName} · ${b.platformName}` : PLATFORM_NAME };
 }
 
+// Self-hosted at build time (no request to Google from the browser; CSP font-src 'self'). Cyrillic for Russian.
+const manrope = Manrope({ subsets: ["latin", "cyrillic"], display: "swap", variable: "--font-manrope" });
+
 export const viewport: Viewport = { width: "device-width", initialScale: 1 };
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
@@ -23,6 +27,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   return (
     <html
       lang={locale}
+      className={manrope.variable}
       data-theme={dataTheme(theme)}
       style={branding ? brandStyle(branding) : undefined}
       suppressHydrationWarning

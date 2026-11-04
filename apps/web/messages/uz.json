@@ -671,7 +671,9 @@
       "calendar": "Kalendar va jadval",
       "curriculum": "Dars rejalari",
       "coins": "Coin",
-      "attendance": "Davomat va Face ID"
+      "attendance": "Davomat va Face ID",
+      "assessment": "Ballar va baholash",
+      "tests": "Testlar"
     },
     "codes": {
       "users_view": "Ko'rish",
@@ -726,7 +728,24 @@
       "attendance_mark": "Davomatni qo'lda belgilash",
       "attendance_settings_manage": "Davomat sozlamalari va kechikish oraliqlari",
       "devices_manage": "Face ID qurilmalari va Bridge",
-      "face_manage": "Yuz rasmlari va sinxronlash"
+      "face_manage": "Yuz rasmlari va sinxronlash",
+      "scores_create": "Ball qo'yish",
+      "scores_correct": "Ballni tuzatish va bekor qilish",
+      "scores_late_entry": "Kechikib ball qo'yish",
+      "gradebook_view": "Jurnalni ko'rish",
+      "assessment_view": "Baholash natijalarini ko'rish",
+      "assessment_manage": "Baholash siyosati, limitlar va shkala",
+      "assessment_manual_entry": "Qo'lda baho kiritish",
+      "assessment_approve": "Davrni yopish va tasdiqlash",
+      "assessment_reopen": "Yopilgan davrni qayta ochish",
+      "questions_manage": "Savollar bazasi",
+      "questions_export": "Savollarni eksport qilish",
+      "tests_create": "Test yaratish",
+      "tests_publish": "Testni e'lon qilish",
+      "tests_reopen": "Qayta topshirish va urinishni qayta ochish",
+      "tests_results_view": "Test natijalarini ko'rish",
+      "tests_results_enter": "Offline natijalarni kiritish",
+      "test_types_manage": "Test turlari"
     }
   },
   "audit": {

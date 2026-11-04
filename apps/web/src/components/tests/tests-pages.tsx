@@ -1065,7 +1065,7 @@ function PoolRules({ test, onSave, busy }: { test: TestDetailDto; onSave: (s: Te
               onChange={(e) => setRule(i, { count: Math.max(1, Number(e.target.value)) })}
             />
             <Button
-              size="sm"
+              size="icon"
               variant="ghost"
               aria-label={t("remove")}
               disabled={rules.length === 1}

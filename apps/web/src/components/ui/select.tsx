@@ -228,7 +228,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
         tabIndex={-1}
         aria-hidden
         disabled={disabled}
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-px w-full opacity-0"
+        className="pointer-events-none absolute bottom-0 left-0 size-px overflow-hidden opacity-0 [clip-path:inset(50%)]"
         {...native}
       >
         {children}
@@ -255,9 +255,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
           open && "border-primary",
         )}
       >
-        <span className={cn("min-w-0 truncate", (!selected || selected.value === "") && "text-muted")}>
-          {selected?.label ?? "—"}
-        </span>
+        <span className={cn("min-w-0 truncate", !selected && "text-muted")}>{selected?.label ?? "—"}</span>
         <ChevronDown
           className={cn("size-4 shrink-0 text-muted transition-transform", open && "rotate-180")}
           aria-hidden
@@ -287,7 +285,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
                   aria-label={t("selectSearch")}
                   aria-controls={listId}
                   aria-activedescendant={shown[active] ? `${listId}-${active}` : undefined}
-                  className="h-10 w-full bg-transparent text-sm outline-none placeholder:text-disabled"
+                  className="h-10 w-full bg-transparent text-sm outline-none placeholder:text-disabled focus-visible:outline-none"
                 />
               </div>
             )}
@@ -309,7 +307,6 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
                       "flex cursor-pointer items-center justify-between gap-2 px-3 py-2",
                       i === active && "bg-surface-muted",
                       o.value === current && "font-medium text-primary-strong",
-                      o.value === "" && o.value !== current && "text-muted",
                       o.disabled && "cursor-not-allowed opacity-50",
                     )}
                   >

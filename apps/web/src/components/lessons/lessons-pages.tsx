@@ -48,11 +48,11 @@ function WeekNav({ week }: { week: ReturnType<typeof useWeek> }) {
   const t = useTranslations("lessons");
   return (
     <div className="flex items-center gap-2">
-      <Button size="sm" variant="ghost" aria-label={t("prevWeek")} onClick={week.prev}>
+      <Button size="icon" variant="ghost" aria-label={t("prevWeek")} onClick={week.prev}>
         <ChevronLeft className="size-4" aria-hidden />
       </Button>
       <span className="tabular text-sm font-medium" data-testid="week-range">{`${week.from} — ${week.to}`}</span>
-      <Button size="sm" variant="ghost" aria-label={t("nextWeek")} onClick={week.next}>
+      <Button size="icon" variant="ghost" aria-label={t("nextWeek")} onClick={week.next}>
         <ChevronRight className="size-4" aria-hidden />
       </Button>
     </div>
@@ -327,7 +327,6 @@ function ClassWeek() {
         <label className="block w-full sm:w-auto">
           <span className="sr-only">{t("students.class")}</span>
           <Select
-            compact
             aria-label={t("students.class")}
             value={selected}
             onChange={(e) => setClassId(e.target.value)}

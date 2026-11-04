@@ -529,7 +529,7 @@ export function QuestionEditor({
                   />
                   {d.options.length > 2 && !readOnly && (
                     <Button
-                      size="sm"
+                      size="icon"
                       variant="ghost"
                       aria-label={t("remove")}
                       onClick={() => set({ options: d.options.filter((_, j) => j !== i) })}
@@ -572,7 +572,7 @@ export function QuestionEditor({
                   />
                   {d.acceptedAnswers.length > 1 && !readOnly && (
                     <Button
-                      size="sm"
+                      size="icon"
                       variant="ghost"
                       aria-label={t("remove")}
                       onClick={() => set({ acceptedAnswers: d.acceptedAnswers.filter((_, j) => j !== i) })}
@@ -621,7 +621,7 @@ export function QuestionEditor({
                   />
                   {d.pairs.length > 2 && !readOnly ? (
                     <Button
-                      size="sm"
+                      size="icon"
                       variant="ghost"
                       aria-label={t("remove")}
                       onClick={() => set({ pairs: d.pairs.filter((_, j) => j !== i) })}

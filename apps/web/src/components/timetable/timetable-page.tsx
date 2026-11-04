@@ -92,7 +92,6 @@ export function TimetablePage() {
           <label className="block w-full sm:w-auto">
             <span className="sr-only">{t("timetable.version")}</span>
             <Select
-              compact
               aria-label={t("timetable.version")}
               value={current?.id ?? ""}
               onChange={(e) => list.update({ version: e.target.value })}
@@ -244,8 +243,9 @@ function Editor({ yearId, summary }: { yearId: string; summary: TimetableSummary
               </span>
             </Card>
             <Card>
-              <div className="flex flex-wrap gap-3 border-b border-border p-4">
+              <div className="flex flex-wrap items-center gap-3 border-b border-border p-4">
                 <Tabs<View>
+                  inline
                   value={view}
                   onChange={(v) => list.update({ view: v, id: "" })}
                   tabs={[
@@ -256,7 +256,6 @@ function Editor({ yearId, summary }: { yearId: string; summary: TimetableSummary
                 <label className="block w-full sm:w-auto">
                   <span className="sr-only">{t(view === "class" ? "students.class" : "structure.teacher")}</span>
                   <Select
-                    compact
                     aria-label={t(view === "class" ? "students.class" : "structure.teacher")}
                     value={selected}
                     onChange={(e) => list.update({ id: e.target.value })}

@@ -638,7 +638,9 @@ function Events() {
             />
           )}
         </Field>
-        <Check label={t("events.unmatched")} checked={unmatched} onChange={(v) => (setUnmatched(v), setPage(1))} />
+        <div className="flex h-10 items-center">
+          <Check label={t("events.unmatched")} checked={unmatched} onChange={(v) => (setUnmatched(v), setPage(1))} />
+        </div>
       </Toolbar>
       <QueryBoundary
         query={events}

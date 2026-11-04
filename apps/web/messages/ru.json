@@ -671,7 +671,9 @@
       "calendar": "Календарь и расписание",
       "curriculum": "Учебные планы",
       "coins": "Коины",
-      "attendance": "Посещаемость и Face ID"
+      "attendance": "Посещаемость и Face ID",
+      "assessment": "Баллы и оценивание",
+      "tests": "Тесты"
     },
     "codes": {
       "users_view": "Просмотр",
@@ -726,7 +728,24 @@
       "attendance_mark": "Ручная отметка посещаемости",
       "attendance_settings_manage": "Настройки посещаемости и интервалы опозданий",
       "devices_manage": "Устройства Face ID и Bridge",
-      "face_manage": "Фото лиц и синхронизация"
+      "face_manage": "Фото лиц и синхронизация",
+      "scores_create": "Выставление баллов",
+      "scores_correct": "Исправление и отмена баллов",
+      "scores_late_entry": "Выставление баллов с опозданием",
+      "gradebook_view": "Просмотр журнала",
+      "assessment_view": "Просмотр результатов оценивания",
+      "assessment_manage": "Политика оценивания, лимиты и шкала",
+      "assessment_manual_entry": "Ручной ввод оценок",
+      "assessment_approve": "Закрытие и утверждение периода",
+      "assessment_reopen": "Повторное открытие закрытого периода",
+      "questions_manage": "База вопросов",
+      "questions_export": "Экспорт вопросов",
+      "tests_create": "Создание тестов",
+      "tests_publish": "Публикация тестов",
+      "tests_reopen": "Пересдача и повторное открытие попытки",
+      "tests_results_view": "Просмотр результатов тестов",
+      "tests_results_enter": "Ввод офлайн-результатов",
+      "test_types_manage": "Типы тестов"
     }
   },
   "audit": {
