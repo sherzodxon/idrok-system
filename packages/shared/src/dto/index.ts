@@ -12,3 +12,4 @@ export * from "./assessment";
 export * from "./scores";
 export * from "./tests";
 export * from "./coins";
+export * from "./attendance";

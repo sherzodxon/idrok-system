@@ -75,6 +75,12 @@ export const PERMISSIONS = [
   { code: "coins.limits.manage", module: "coins" },
   { code: "coin_shop.manage", module: "coins" },
   { code: "coin_orders.process", module: "coins" },
+  // school attendance and Face ID (M6)
+  { code: "attendance.view", module: "attendance" },
+  { code: "attendance.mark", module: "attendance" },
+  { code: "attendance.settings.manage", module: "attendance" },
+  { code: "devices.manage", module: "attendance" },
+  { code: "face.manage", module: "attendance" },
   // self-service portals (data is always limited to the user's own child / own record)
   { code: "portal.student", module: "portal" },
   { code: "portal.guardian", module: "portal" },

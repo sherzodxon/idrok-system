@@ -70,6 +70,11 @@
 | `coins.limits.manage` | coins | ✓ | ✓ |  |  |  |  |  |  |  |
 | `coin_shop.manage` | coins | ✓ | ✓ |  |  |  |  |  |  |  |
 | `coin_orders.process` | coins | ✓ | ✓ |  | ✓ |  |  |  |  |  |
+| `attendance.view` | attendance | ✓ | ✓ | ✓ | ✓ |  |  | ✓ |  |  |
+| `attendance.mark` | attendance | ✓ | ✓ |  | ✓ |  |  |  |  |  |
+| `attendance.settings.manage` | attendance | ✓ | ✓ |  |  |  |  |  |  |  |
+| `devices.manage` | attendance | ✓ | ✓ |  |  |  |  |  |  |  |
+| `face.manage` | attendance | ✓ | ✓ |  |  |  |  |  |  |  |
 | `portal.student` | portal |  |  |  |  |  |  |  | ✓ |  |
 | `portal.guardian` | portal |  |  |  |  |  |  |  |  | ✓ |
 

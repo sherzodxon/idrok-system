@@ -696,3 +696,73 @@ describe("coins (M5)", () => {
     await expect(root.coinSettings.create({ data: { tenantId: other.id, maxDebt: -1 } })).rejects.toThrow();
   });
 });
+
+describe("face id and school attendance (M6)", () => {
+  const device = (data: Partial<Prisma.DeviceUncheckedCreateInput> = {}) =>
+    root.device.create({
+      data: {
+        tenantId,
+        name: `Demo ${crypto.randomUUID()}`,
+        direction: "IN",
+        webhookKeyHash: crypto.randomUUID(),
+        ...data,
+      },
+    });
+
+  it("access events are insert-only and stored once per device event", async () => {
+    const { student } = await yearAndClass();
+    const d = await device();
+    await expect(device({ port: 0 })).rejects.toThrow();
+    const ev = (eventKey: string) =>
+      root.accessEvent.create({
+        data: {
+          tenantId,
+          deviceId: d.id,
+          eventKey,
+          occurredAt: new Date("2026-11-11T03:25:00Z"),
+          schoolDate: day("2026-11-11"),
+          employeeNo: student.studentCode,
+          studentId: student.id,
+          direction: "IN",
+          majorEventType: 5,
+          subEventType: 75,
+        },
+      });
+    const e = await ev("sn:1");
+    await expect(ev("sn:1")).rejects.toThrow();
+    await expect(root.accessEvent.update({ where: { id: e.id }, data: { employeeNo: "x" } })).rejects.toThrow();
+    await expect(root.accessEvent.delete({ where: { id: e.id } })).rejects.toThrow();
+  });
+
+  it("attendance records keep their shape; bands and settings are range-checked", async () => {
+    const { student } = await yearAndClass();
+    const user = { id: crypto.randomUUID() };
+    const band = await root.latenessBand.create({ data: { tenantId, name: "Demo", fromMinute: 1, toMinute: 3 } });
+    await expect(root.latenessBand.create({ data: { tenantId, name: "Demo", fromMinute: 0 } })).rejects.toThrow();
+    await expect(
+      root.latenessBand.create({ data: { tenantId, name: "Demo", fromMinute: 5, toMinute: 5 } }),
+    ).rejects.toThrow();
+    let n = 0;
+    const rec = (data: Partial<Prisma.AttendanceRecordUncheckedCreateInput>) =>
+      root.attendanceRecord.create({
+        data: { tenantId, studentId: student.id, schoolDate: day(`2026-10-${String(++n).padStart(2, "0")}`), ...data },
+      });
+    const arrived = new Date("2026-11-11T03:25:00Z");
+    await expect(rec({})).rejects.toThrow();
+    await expect(rec({ deviceStatus: "PRESENT" })).rejects.toThrow();
+    await expect(rec({ deviceStatus: "PRESENT", firstInAt: arrived, lateMinutes: 2 })).rejects.toThrow();
+    await expect(rec({ deviceStatus: "PRESENT", firstInAt: arrived, latenessBandId: band.id })).rejects.toThrow();
+    await expect(
+      rec({ deviceStatus: "PRESENT", firstInAt: arrived, lastOutAt: new Date("2026-11-11T03:00:00Z") }),
+    ).rejects.toThrow();
+    await rec({ deviceStatus: "LATE", firstInAt: arrived, lateMinutes: 2, latenessBandId: band.id });
+    await expect(rec({ manualStatus: "ABSENT", manualAt: arrived, manualById: user.id })).rejects.toThrow();
+    await expect(rec({ manualStatus: "ABSENT", manualById: user.id, manualReason: "Kasal" })).rejects.toThrow();
+    await rec({ manualStatus: "EXCUSED", manualAt: arrived, manualById: user.id, manualReason: "Kasal" });
+    const other = await root.tenant.create({ data: { slug: `a-${crypto.randomUUID()}`, name: "Demo A2" } });
+    await expect(
+      root.attendanceSettings.create({ data: { tenantId: other.id, defaultStartMinute: 900, defaultEndMinute: 800 } }),
+    ).rejects.toThrow();
+    await expect(root.attendanceSettings.create({ data: { tenantId: other.id, graceMinutes: 500 } })).rejects.toThrow();
+  });
+});

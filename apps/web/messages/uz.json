@@ -651,7 +651,8 @@
       "portal": "Portal",
       "calendar": "Kalendar va jadval",
       "curriculum": "Dars rejalari",
-      "coins": "Coin"
+      "coins": "Coin",
+      "attendance": "Davomat va Face ID"
     },
     "codes": {
       "users_view": "Ko'rish",
@@ -701,7 +702,12 @@
       "coins_criteria_manage": "Mezonlar",
       "coins_limits_manage": "Limitlar",
       "coin_shop_manage": "Do'kon mahsulotlari",
-      "coin_orders_process": "Buyurtmalarni ko'rib chiqish"
+      "coin_orders_process": "Buyurtmalarni ko'rib chiqish",
+      "attendance_view": "Maktab davomatini ko'rish",
+      "attendance_mark": "Davomatni qo'lda belgilash",
+      "attendance_settings_manage": "Davomat sozlamalari va kechikish oraliqlari",
+      "devices_manage": "Face ID qurilmalari va Bridge",
+      "face_manage": "Yuz rasmlari va sinxronlash"
     }
   },
   "audit": {
