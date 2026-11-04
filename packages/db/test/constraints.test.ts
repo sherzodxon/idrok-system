@@ -719,7 +719,7 @@ describe("face id and school attendance (M6)", () => {
           tenantId,
           deviceId: d.id,
           eventKey,
-          occurredAt: new Date("2026-11-11T03:25:00Z"),
+          occurredAt: new Date(Date.UTC(2026, 10, 11, 3, 25)),
           schoolDate: day("2026-11-11"),
           employeeNo: student.studentCode,
           studentId: student.id,
@@ -747,13 +747,13 @@ describe("face id and school attendance (M6)", () => {
       root.attendanceRecord.create({
         data: { tenantId, studentId: student.id, schoolDate: day(`2026-10-${String(++n).padStart(2, "0")}`), ...data },
       });
-    const arrived = new Date("2026-11-11T03:25:00Z");
+    const arrived = new Date(Date.UTC(2026, 10, 11, 3, 25));
     await expect(rec({})).rejects.toThrow();
     await expect(rec({ deviceStatus: "PRESENT" })).rejects.toThrow();
     await expect(rec({ deviceStatus: "PRESENT", firstInAt: arrived, lateMinutes: 2 })).rejects.toThrow();
     await expect(rec({ deviceStatus: "PRESENT", firstInAt: arrived, latenessBandId: band.id })).rejects.toThrow();
     await expect(
-      rec({ deviceStatus: "PRESENT", firstInAt: arrived, lastOutAt: new Date("2026-11-11T03:00:00Z") }),
+      rec({ deviceStatus: "PRESENT", firstInAt: arrived, lastOutAt: new Date(Date.UTC(2026, 10, 11, 3, 0)) }),
     ).rejects.toThrow();
     await rec({ deviceStatus: "LATE", firstInAt: arrived, lateMinutes: 2, latenessBandId: band.id });
     await expect(rec({ manualStatus: "ABSENT", manualAt: arrived, manualById: user.id })).rejects.toThrow();

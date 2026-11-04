@@ -2,7 +2,7 @@
 import { Queue, type ConnectionOptions } from "bullmq";
 import { Redis } from "ioredis";
 
-export const QUEUES = { imports: "imports", maintenance: "maintenance", tests: "tests" } as const;
+export const QUEUES = { imports: "imports", maintenance: "maintenance", tests: "tests", devices: "devices" } as const;
 
 export interface ImportJobPayload {
   tenantId: string;
@@ -17,6 +17,12 @@ export interface TestJobPayload {
   attemptId?: string;
 }
 
+/** Jobs of a terminal the server reaches directly (no bridge). */
+export interface DeviceJobPayload {
+  tenantId: string;
+  deviceId: string;
+}
+
 export type JobRoute = { queue: keyof typeof QUEUES; name: string };
 
 /** Outbox event type → queue job. Events without a route are only recorded (consumers arrive in later stages). */
@@ -26,6 +32,7 @@ export const EVENT_ROUTES: Record<string, JobRoute> = {
   "test.status_due": { queue: "tests", name: "status" },
   "attempt.deadline_due": { queue: "tests", name: "deadline" },
   "coins.test_results_due": { queue: "tests", name: "coins" },
+  "devices.jobs_due": { queue: "devices", name: "run" },
 };
 
 export const DEFAULT_JOB_OPTIONS = {
@@ -45,6 +52,7 @@ export function createQueues(url: string) {
     imports: new Queue(QUEUES.imports, { connection, defaultJobOptions: DEFAULT_JOB_OPTIONS }),
     maintenance: new Queue(QUEUES.maintenance, { connection, defaultJobOptions: DEFAULT_JOB_OPTIONS }),
     tests: new Queue(QUEUES.tests, { connection, defaultJobOptions: DEFAULT_JOB_OPTIONS }),
+    devices: new Queue(QUEUES.devices, { connection, defaultJobOptions: DEFAULT_JOB_OPTIONS }),
   };
   return {
     queues,
