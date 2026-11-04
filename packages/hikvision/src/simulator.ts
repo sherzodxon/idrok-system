@@ -14,6 +14,8 @@ export interface SimulatorOptions {
   model?: string;
   /** Wall-clock offset of the device, e.g. "+05:00". */
   offset?: string;
+  /** Older firmware: no UserInfo/SetUp, only Record (create) and Modify (update). */
+  legacyUserApi?: boolean;
 }
 
 export interface SimEvent {
@@ -49,6 +51,7 @@ export class HikvisionSimulator {
       serialNumber: opts.serialNumber ?? "DS-K1T341AMF0020230101AAWRSIM0001",
       model: opts.model ?? "DS-K1T341AMF",
       offset: opts.offset ?? "+05:00",
+      legacyUserApi: opts.legacyUserApi ?? false,
     };
   }
 
@@ -179,9 +182,15 @@ export class HikvisionSimulator {
             `<firmwareVersion>V3.2.30</firmwareVersion></DeviceInfo>`,
         );
         return;
-      case "PUT /ISAPI/AccessControl/UserInfo/SetUp": {
+      case "PUT /ISAPI/AccessControl/UserInfo/SetUp":
+      case "POST /ISAPI/AccessControl/UserInfo/Record":
+      case "PUT /ISAPI/AccessControl/UserInfo/Modify": {
+        const call = (path ?? "").split("/").pop();
+        if ((call === "SetUp") === this.opts.legacyUserApi) return fail(404, "notSupport");
         const u = (json().UserInfo ?? {}) as { employeeNo?: string; name?: string };
         if (!u.employeeNo) return fail(400, "badParameters");
+        if (call === "Record" && this.users.has(u.employeeNo)) return fail(400, "employeeNoAlreadyExist");
+        if (call === "Modify" && !this.users.has(u.employeeNo)) return fail(400, "employeeNoNotExist");
         this.users.set(u.employeeNo, { name: u.name ?? "" });
         return ok();
       }
