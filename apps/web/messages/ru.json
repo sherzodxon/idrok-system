@@ -651,7 +651,8 @@
       "portal": "Портал",
       "calendar": "Календарь и расписание",
       "curriculum": "Учебные планы",
-      "coins": "Коины"
+      "coins": "Коины",
+      "attendance": "Посещаемость и Face ID"
     },
     "codes": {
       "users_view": "Просмотр",
@@ -701,7 +702,12 @@
       "coins_criteria_manage": "Критерии",
       "coins_limits_manage": "Лимиты",
       "coin_shop_manage": "Товары магазина",
-      "coin_orders_process": "Обработка заказов"
+      "coin_orders_process": "Обработка заказов",
+      "attendance_view": "Просмотр посещаемости школы",
+      "attendance_mark": "Ручная отметка посещаемости",
+      "attendance_settings_manage": "Настройки посещаемости и интервалы опозданий",
+      "devices_manage": "Устройства Face ID и Bridge",
+      "face_manage": "Фото лиц и синхронизация"
     }
   },
   "audit": {

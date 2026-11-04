@@ -74,6 +74,11 @@ applied migration — add a new one.
 | `CoinTransaction_shape_check` | CHECK | ″ | amount ≠ 0; `REWARD`/`REFUND` > 0, `PENALTY`/`PURCHASE` < 0; only a `REVERSAL` points at the row it undoes, only a `CORRECTION` at the row it lowers |
 | `CoinProduct_check` | CHECK | ″ | `price >= 1`, `stock >= 0` |
 | `CoinOrder_price_check` | CHECK | ″ | `priceAtOrder >= 1` |
+| `AttendanceSettings_check` | CHECK | `20261106090000_m6_face_id` | default school day start < end (minutes of day); grace 0..120 min; clock skew 0..3600 s; event age 1..60 days; device stale window 30 s..1 day |
+| `LatenessBand_check` | CHECK | ″ | `fromMinute >= 1`; `toMinute` empty or greater than `fromMinute` |
+| `Device_port_check` | CHECK | ″ | port 1..65535 |
+| `AccessEvent_append_only` | TRIGGER | ″ | raw terminal events are never updated or deleted (attendance is recomputed from them) |
+| `AttendanceRecord_check` | CHECK | ″ | device status ⇔ arrival time; lateness and band only when `LATE`; departure not before arrival; a manual mark has author, time and reason; a row has a device result or a manual mark |
 
 Checking a new migration does not touch them:
 

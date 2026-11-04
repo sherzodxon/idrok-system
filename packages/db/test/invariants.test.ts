@@ -62,6 +62,10 @@ const CONSTRAINTS = [
   "CoinTransaction_shape_check",
   "CoinProduct_check",
   "CoinOrder_price_check",
+  "AttendanceSettings_check",
+  "LatenessBand_check",
+  "Device_port_check",
+  "AttendanceRecord_check",
 ];
 const TRIGGERS = [
   "AuditLog_append_only",
@@ -75,6 +79,7 @@ const TRIGGERS = [
   "QuestionVersion_append_only",
   "OfflineResult_history",
   "CoinTransaction_append_only",
+  "AccessEvent_append_only",
 ];
 
 let client: pg.Client;

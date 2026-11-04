@@ -47,6 +47,7 @@ export const ROLE_DEFAULT_PERMISSIONS: Record<SystemRoleCode, readonly Permissio
     ...ASSESSMENT_VIEW,
     "tests.results.view",
     "coins.view",
+    "attendance.view",
     "exports.run",
     "audit_logs.view",
   ],
@@ -85,6 +86,9 @@ export const ROLE_DEFAULT_PERMISSIONS: Record<SystemRoleCode, readonly Permissio
     "coins.view",
     "coins.reverse",
     "coin_orders.process",
+    // M6: school attendance journal and manual marks; devices, faces and settings stay with the admin
+    "attendance.view",
+    "attendance.mark",
   ],
   METHODIST: [
     ...STRUCTURE_VIEW,
@@ -97,7 +101,8 @@ export const ROLE_DEFAULT_PERMISSIONS: Record<SystemRoleCode, readonly Permissio
     "tests.results.view",
   ],
   TEACHER: [...STRUCTURE_VIEW, "students.view", ...TEACHING],
-  CLASS_TEACHER: [...STRUCTURE_VIEW, "students.view", "guardians.view", ...TEACHING],
+  // M6: arrival times of their own class (scope in the service)
+  CLASS_TEACHER: [...STRUCTURE_VIEW, "students.view", "guardians.view", ...TEACHING, "attendance.view"],
   STUDENT: ["portal.student"],
   GUARDIAN: ["portal.guardian"],
 };

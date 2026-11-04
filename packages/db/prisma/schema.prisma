@@ -59,6 +59,7 @@ enum FileKind {
   OTHER
   QUESTION_IMAGE
   PRODUCT_IMAGE
+  FACE_PHOTO
 }
 
 enum FileStatus {
@@ -299,6 +300,16 @@ model Tenant {
   coinProducts          CoinProduct[]
   coinOrders            CoinOrder[]
   coinAutoRules         CoinAutoRule[]
+
+  attendanceSettings AttendanceSettings?
+  latenessBands      LatenessBand[]
+  bridgeAgents       BridgeAgent[]
+  devices            Device[]
+  accessEvents       AccessEvent[]
+  attendanceRecords  AttendanceRecord[]
+  faceProfiles       FaceProfile[]
+  faceSyncJobs       FaceSyncJob[]
+  bridgeJobs         BridgeJob[]
 }
 
 model SchoolSettings {
@@ -504,6 +515,8 @@ model FileAsset {
   questionImages QuestionVersion[]
 
   coinProductImages CoinProduct[]
+
+  facePhotos FaceProfile[] @relation("FacePhoto")
 
   @@index([tenantId, kind, createdAt])
 }
@@ -847,6 +860,11 @@ model Student {
   coinAccount      CoinAccount?
   coinTransactions CoinTransaction[]
   coinOrders       CoinOrder[]
+
+  accessEvents      AccessEvent[]
+  attendanceRecords AttendanceRecord[]
+  faceProfile       FaceProfile[]
+  faceSyncJobs      FaceSyncJob[]
 
   @@unique([tenantId, studentCode])
   @@index([tenantId, lastName, firstName])
@@ -2249,4 +2267,288 @@ model CoinAutoRule {
   updatedAt   DateTime       @updatedAt @db.Timestamptz(3)
 
   @@index([tenantId, source, isActive])
+}
+
+// ======================================================================
+// M6 — Face ID and school attendance (MASTER_SPEC §11)
+// ======================================================================
+
+enum DeviceDirection {
+  IN
+  OUT
+  BOTH
+}
+
+enum EventDirection {
+  IN
+  OUT
+}
+
+enum AccessEventSource {
+  WEBHOOK // pushed by the terminal (directly or relayed by the bridge)
+  HISTORY // read back from the terminal's event log after an outage
+}
+
+enum SchoolAttendanceStatus {
+  PRESENT
+  LATE
+}
+
+enum ManualAttendanceStatus {
+  PRESENT
+  LATE
+  ABSENT
+  EXCUSED
+}
+
+enum FaceSyncAction {
+  UPSERT
+  DELETE
+}
+
+enum FaceSyncStatus {
+  PENDING
+  IN_PROGRESS
+  SYNCED
+  FAILED
+}
+
+enum BridgeJobType {
+  FACE_UPSERT
+  FACE_DELETE
+  FACE_CHECK
+  DEVICE_INFO
+  EVENT_HISTORY
+}
+
+enum BridgeJobStatus {
+  QUEUED
+  LEASED
+  DONE
+  FAILED
+}
+
+/// One row per school. Missing row = defaults (attendance-config.ts).
+model AttendanceSettings {
+  tenantId            String   @id @db.Uuid
+  tenant              Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  isEnabled           Boolean  @default(false)
+  // used when the student's class has no shift; minutes from midnight, school time zone
+  defaultStartMinute  Int      @default(510)
+  defaultEndMinute    Int      @default(810)
+  graceMinutes        Int      @default(0)
+  // ISAPI minor event types that count as a verified pass (75 = face)
+  acceptedSubEvents   Int[]    @default([75])
+  maxClockSkewSeconds Int      @default(300)
+  maxEventAgeDays     Int      @default(7)
+  deviceStaleSeconds  Int      @default(180)
+  updatedAt           DateTime @updatedAt @db.Timestamptz(3)
+
+  // SQL: AttendanceSettings_check
+}
+
+model LatenessBand {
+  id         String    @id @default(uuid(7)) @db.Uuid
+  tenantId   String    @db.Uuid
+  tenant     Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  name       String
+  // [fromMinute, toMinute) minutes late; toMinute null = no upper bound
+  fromMinute Int
+  toMinute   Int?
+  archivedAt DateTime? @db.Timestamptz(3)
+  createdAt  DateTime  @default(now()) @db.Timestamptz(3)
+
+  records AttendanceRecord[]
+
+  // SQL: LatenessBand_check
+  @@index([tenantId, fromMinute])
+}
+
+/// Local agent in the school network (Windows service). Authenticates with a bearer token (only its hash is stored);
+/// rotation keeps the previous hash valid for a short overlap.
+model BridgeAgent {
+  id                     String    @id @default(uuid(7)) @db.Uuid
+  tenantId               String    @db.Uuid
+  tenant                 Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  name                   String
+  tokenHash              String    @unique
+  previousTokenHash      String?   @unique
+  previousTokenExpiresAt DateTime? @db.Timestamptz(3)
+  tokenRotatedAt         DateTime  @default(now()) @db.Timestamptz(3)
+  version                String?
+  hostname               String?
+  queueDepth             Int?
+  lastSeenAt             DateTime? @db.Timestamptz(3)
+  isActive               Boolean   @default(true)
+  createdAt              DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt              DateTime  @updatedAt @db.Timestamptz(3)
+
+  devices Device[]
+  jobs    BridgeJob[]
+
+  @@unique([tenantId, name])
+}
+
+/// Hikvision terminal. Identified by serial number first (MASTER_SPEC §11); its webhook key is stored hashed.
+model Device {
+  id             String          @id @default(uuid(7)) @db.Uuid
+  tenantId       String          @db.Uuid
+  tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  name           String
+  serialNumber   String?
+  ipAddress      String?
+  port           Int             @default(80)
+  username       String?
+  // AES-256-GCM with DATA_ENCRYPTION_KEY (crypto.ts); never returned by the API
+  passwordEnc    String?
+  direction      DeviceDirection
+  location       String?
+  useBridge      Boolean         @default(true)
+  bridgeAgentId  String?         @db.Uuid
+  bridgeAgent    BridgeAgent?    @relation(fields: [bridgeAgentId], references: [id], onDelete: SetNull)
+  webhookKeyHash String          @unique
+  isActive       Boolean         @default(true)
+  model          String?
+  firmware       String?
+  lastSeenAt     DateTime?       @db.Timestamptz(3)
+  lastEventAt    DateTime?       @db.Timestamptz(3)
+  lastError      String?
+  archivedAt     DateTime?       @db.Timestamptz(3)
+  createdAt      DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime        @updatedAt @db.Timestamptz(3)
+
+  events    AccessEvent[]
+  faceSyncs FaceSyncJob[]
+  jobs      BridgeJob[]
+
+  // SQL: Device_port_check
+  @@unique([tenantId, name])
+  @@unique([tenantId, serialNumber])
+}
+
+/// Raw access event from a terminal. Append-only; (deviceId, eventKey) makes repeated pushes idempotent.
+model AccessEvent {
+  id               String            @id @default(uuid(7)) @db.Uuid
+  tenantId         String            @db.Uuid
+  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  deviceId         String            @db.Uuid
+  device           Device            @relation(fields: [deviceId], references: [id], onDelete: Restrict)
+  eventKey         String
+  occurredAt       DateTime          @db.Timestamptz(3)
+  schoolDate       DateTime          @db.Date
+  employeeNo       String
+  // null = employeeNo matched no student (kept for the Face Check page)
+  studentId        String?           @db.Uuid
+  student          Student?          @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  direction        EventDirection?
+  attendanceStatus String?
+  majorEventType   Int
+  subEventType     Int
+  source           AccessEventSource @default(WEBHOOK)
+  receivedAt       DateTime          @default(now()) @db.Timestamptz(3)
+
+  // SQL: AccessEvent_append_only trigger
+  @@unique([deviceId, eventKey])
+  @@index([tenantId, studentId, schoolDate])
+  @@index([tenantId, schoolDate])
+}
+
+/// SCHOOL_ATTENDANCE: one row per student and school day, recomputed from AccessEvent; a manual mark is stored beside
+/// the device result (both kept). LESSON_ATTENDANCE stays in LessonAttendance (teacher).
+model AttendanceRecord {
+  id                String                  @id @default(uuid(7)) @db.Uuid
+  tenantId          String                  @db.Uuid
+  tenant            Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  studentId         String                  @db.Uuid
+  student           Student                 @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  schoolDate        DateTime                @db.Date
+  firstInAt         DateTime?               @db.Timestamptz(3)
+  lastOutAt         DateTime?               @db.Timestamptz(3)
+  // null = no arrival recorded by a device
+  deviceStatus      SchoolAttendanceStatus?
+  lateMinutes       Int                     @default(0)
+  latenessBandId    String?                 @db.Uuid
+  latenessBand      LatenessBand?           @relation(fields: [latenessBandId], references: [id], onDelete: Restrict)
+  earlyLeaveMinutes Int                     @default(0)
+  manualStatus      ManualAttendanceStatus?
+  manualReason      String?
+  manualById        String?                 @db.Uuid
+  manualAt          DateTime?               @db.Timestamptz(3)
+  createdAt         DateTime                @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime                @updatedAt @db.Timestamptz(3)
+
+  // SQL: AttendanceRecord_check
+  @@unique([tenantId, studentId, schoolDate])
+  @@index([tenantId, schoolDate])
+}
+
+/// The face photo that is sent to terminals (separate from the profile photo). Stored encrypted (FileKind.FACE_PHOTO).
+model FaceProfile {
+  id           String     @id @default(uuid(7)) @db.Uuid
+  tenantId     String     @db.Uuid
+  tenant       Tenant     @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  studentId    String     @db.Uuid
+  student      Student    @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  photoAssetId String?    @db.Uuid
+  photoAsset   FileAsset? @relation("FacePhoto", fields: [photoAssetId], references: [id], onDelete: SetNull)
+  // increases with every new photo; a device is in sync when it holds this version
+  version      Int        @default(1)
+  createdAt    DateTime   @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime   @updatedAt @db.Timestamptz(3)
+
+  @@unique([tenantId, studentId])
+}
+
+/// Sync state of one student's face on one device (the current state; history in AuditLog).
+model FaceSyncJob {
+  id            String         @id @default(uuid(7)) @db.Uuid
+  tenantId      String         @db.Uuid
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  deviceId      String         @db.Uuid
+  device        Device         @relation(fields: [deviceId], references: [id], onDelete: Restrict)
+  studentId     String         @db.Uuid
+  student       Student        @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  action        FaceSyncAction
+  status        FaceSyncStatus @default(PENDING)
+  // FaceProfile.version this job sends (UPSERT)
+  version       Int?
+  syncedVersion Int?
+  attempts      Int            @default(0)
+  lastError     String?
+  lastCheckedAt DateTime?      @db.Timestamptz(3)
+  // result of the last "check on device": true = the device holds a face for the student
+  deviceHasFace Boolean?
+  syncedAt      DateTime?      @db.Timestamptz(3)
+  createdAt     DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime       @updatedAt @db.Timestamptz(3)
+
+  jobs BridgeJob[]
+
+  @@unique([deviceId, studentId])
+  @@index([tenantId, status])
+}
+
+/// Work for a bridge (or the worker, for directly reachable devices). Leased by polling; a lease expires.
+model BridgeJob {
+  id            String          @id @default(uuid(7)) @db.Uuid
+  tenantId      String          @db.Uuid
+  tenant        Tenant          @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  bridgeAgentId String?         @db.Uuid
+  bridgeAgent   BridgeAgent?    @relation(fields: [bridgeAgentId], references: [id], onDelete: SetNull)
+  deviceId      String          @db.Uuid
+  device        Device          @relation(fields: [deviceId], references: [id], onDelete: Restrict)
+  faceSyncId    String?         @db.Uuid
+  faceSync      FaceSyncJob?    @relation(fields: [faceSyncId], references: [id], onDelete: SetNull)
+  type          BridgeJobType
+  payload       Json
+  status        BridgeJobStatus @default(QUEUED)
+  attempts      Int             @default(0)
+  leasedUntil   DateTime?       @db.Timestamptz(3)
+  result        Json?
+  error         String?
+  createdAt     DateTime        @default(now()) @db.Timestamptz(3)
+  completedAt   DateTime?       @db.Timestamptz(3)
+
+  @@index([bridgeAgentId, status, createdAt])
+  @@index([tenantId, deviceId, status])
 }
