@@ -9,12 +9,15 @@ export function StatCard({
   hint,
   icon,
   loading,
+  delta,
 }: {
   label: string;
   value: ReactNode;
   hint?: string;
   icon?: ReactNode;
   loading?: boolean;
+  /** Change against the previous period, already worded ("+3 since yesterday"); tone says if it is good news. */
+  delta?: { text: string; tone: "good" | "bad" | "neutral" };
 }) {
   return (
     <Card className="flex items-center gap-4 p-5">
@@ -29,6 +32,18 @@ export function StatCard({
           <Skeleton className="mt-1 h-7 w-16" />
         ) : (
           <p className="tabular text-2xl font-bold text-foreground">{value}</p>
+        )}
+        {delta && !loading && (
+          <p
+            className={cn(
+              "text-xs font-semibold",
+              delta.tone === "good" && "text-success",
+              delta.tone === "bad" && "text-danger",
+              delta.tone === "neutral" && "text-muted",
+            )}
+          >
+            {delta.text}
+          </p>
         )}
         {hint && <p className="text-xs text-muted">{hint}</p>}
       </div>

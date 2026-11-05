@@ -233,7 +233,19 @@
     "questions": "Savollar banki",
     "coins": "Coin",
     "coinShop": "Coin do'koni",
-    "attendance": "Davomat"
+    "attendance": "Davomat",
+    "groups": {
+      "main": "Asosiy",
+      "people": "Odamlar",
+      "teaching": "O'quv jarayoni",
+      "assessment": "Baholash",
+      "attendance": "Davomat",
+      "rewards": "Rag'bat",
+      "system": "Tizim",
+      "today": "Bugun",
+      "lesson": "Dars",
+      "prep": "Tayyorgarlik"
+    }
   },
   "shell": {
     "context": "Ish rejimi",
@@ -2272,5 +2284,40 @@
       "GUARDIAN": "Login — vasiyning telefon raqami."
     },
     "name": "Ism"
+  },
+  "charts": {
+    "limitUsed": "{used} / {limit} ishlatildi",
+    "attendance": {
+      "present": "Keldi",
+      "late": "Kechikdi",
+      "absent": "Kelmadi",
+      "excused": "Sababli",
+      "off": "Dars yo'q",
+      "none": "Ma'lumot yo'q"
+    }
+  },
+  "uiKit": {
+    "title": "Dizayn tizimi",
+    "subtitle": "Komponentlar namunasi · ma'lumotlar namuna, faqat dev rejimida",
+    "present": "Keldi",
+    "presentHint": "388 / 412 o'quvchi",
+    "late": "Kechikdi",
+    "lateDelta": "kechagidan +3",
+    "average": "Chorak o'rtacha bali",
+    "averageDelta": "o'tgan haftadan +1,2",
+    "students": "O'quvchilar",
+    "trendTitle": "Davomat, oxirgi 14 o'quv kuni",
+    "byClass": "Sinflar bo'yicha davomat",
+    "heatmap": "Davomat, 60 o'quv kuni",
+    "limits": "Kunlik ball limiti",
+    "limitRow": "{used} / {limit} ball",
+    "absent": "Kelmadi",
+    "now": "Hozir",
+    "later": "Keyin",
+    "emptyTitle": "Bugun hali hodisa yo'q",
+    "emptyText": "Birinchi o'quvchi terminal oldidan o'tganda bu yerda ko'rinadi.",
+    "openConfirm": "Tasdiqlash oynasi",
+    "confirmTitle": "Ballni bekor qilasizmi?",
+    "confirmText": "Teskari yozuv qo'shiladi; asl yozuv tarixda qoladi."
   }
 }

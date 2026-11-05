@@ -236,3 +236,15 @@ o'rinbosari); `maxQuestionsPerTest` = 50 (maktab sozlamasi, 1–200), minimal ch
 | T-72 | Davomat coini kun smena tugagach, bir marta (`sourceRef = attendance:<sana>`) beriladi va keyin qayta ko'rilmaydi. Qo'lda belgilangan kun, dam olish kuni va hech bir oraliqqa tushmagan kechikish uchun coin yo'q. Jarima qarz chegarasidan oshmaydi (oshgan qismi olinmaydi). Davomat coinlari limitlarga kirmaydi (T-57) | MASTER_SPEC §11, §14 |
 | T-73 | Ruxsatlar: `attendance.view`, `attendance.mark`, `attendance.settings.manage`, `devices.manage`, `face.manage`. Direktor — ko'rish; o'rinbosar — ko'rish va qo'lda belgilash; sinf rahbari — o'z sinfini ko'rish; qurilma, yuz va sozlamalar — admin | rbac-matrix.md |
 
+
+## 1-bosqich auditi qarorlari (egasi 2026-11-05 tasdiqladi)
+
+Audit: https://claude.ai/artifact/NvVRtFeT8jZLW7pgvS4Rb6 (Q1–Q5). Egasi tavsiyalarni qabul qildi.
+
+| # | Qaror | Asos |
+|---|---|---|
+| T-74 | **Rollar.** 9 ta tizim roli va ruxsatlar matritsasi saqlanadi. Brifdagi ADMIN / TEACHER / STUDENT — navigatsiya kontekstlari: maktab, o'qituvchi, portal. Vasiy portali M7 rejasida qoladi | rbac-matrix.md; brif bilan ziddiyat Q1 |
+| T-75 | **Face ID ma'lumoti.** Terminalga faqat ichki kod (`employeeNo`) va yuz rasmi yuboriladi, telefon yuborilmaydi. Telefon raqami shaxs kartasida: xodim uchun o'ziniki (majburiy), o'quvchi uchun ixtiyoriy; bo'lmasa xabarlar vasiy telefoniga. Voyaga yetmagan o'quvchi yuzi faqat qayd etilgan vasiy roziligi bilan saqlanadi (5-bosqich) | brif "face image + phone"; MASTER_SPEC §11 |
+| T-76 | **Xodim davomati.** Xodimlar ham Face ID bilan: `FaceProfile`/`AccessEvent`ga yangi migratsiyada `subjectType` (STUDENT / EMPLOYEE) va `employeeId`, mavjud qatorlar STUDENT bo'lib qoladi. Birinchi navbatda faqat kelish, ketish, kechikish va hisobot; ish haqi bilan bog'lash alohida qaror | brif; Q3 |
+| T-77 | **Mezon limitlari.** `ScoreLimitRule`ga ixtiyoriy `criterionId` scope, `ScoreCriterion`ga `minPoints` / `maxPoints` (Decimal) va tur. Yangi ustunlar nullable: eski qoidalar avvalgidek ishlaydi. O'zgarish siyosatning yangi versiyasi, yopilgan davr natijalari o'zgarmaydi (4-bosqich) | brif; scoring.md; Q4 |
+| T-78 | **Moliya.** To'lovlar hozirgi bosqichlarga kirmaydi; keyin alohida bosqich (M9) sifatida spec yoziladi | ROADMAP.md; Q5 |
