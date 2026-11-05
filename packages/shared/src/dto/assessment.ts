@@ -358,3 +358,4 @@ export const MissingScoresRowSchema = z.object({
   /** Lessons over with no attendance mark for anyone. */
   unmarked: z.number().int(),
 });
+export type MissingScoresRowDto = z.infer<typeof MissingScoresRowSchema>;

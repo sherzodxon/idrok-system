@@ -3,6 +3,7 @@
 import { parseSchoolDate } from "@idrok/shared/time";
 import { describe, expect, it } from "vitest";
 import {
+  attendanceRate,
   attendanceAward,
   attendanceOutcome,
   bandFor,
@@ -186,5 +187,16 @@ describe("hikvision events", () => {
     expect(withinClockSkew(at(9, 1), at(9), 300, 7)).toBe(true);
     expect(withinClockSkew(at(9, 10), at(9), 300, 7)).toBe(false);
     expect(withinClockSkew(at(9, 0, 0, 1), at(9), 300, 7)).toBe(false);
+  });
+});
+
+describe("attendance rate", () => {
+  it("arrived among those due; not arrived yet counts against, excused and no data are left out", () => {
+    expect(attendanceRate({ PRESENT: 2, LATE: 1, ABSENT: 1, EXCUSED: 5 })).toBe("75.0");
+    expect(attendanceRate({ PRESENT: 2, LATE: 1, ABSENT: 1, NOT_ARRIVED: 3 })).toBe("42.9");
+    expect(attendanceRate({ NOT_ARRIVED: 30 })).toBe("0.0");
+    expect(attendanceRate({ PRESENT: 1, ABSENT: 2 })).toBe("33.3");
+    expect(attendanceRate({ PRESENT: 2, ABSENT: 1 })).toBe("66.7");
+    expect(attendanceRate({ EXCUSED: 2, NO_DATA: 4 })).toBeNull();
   });
 });

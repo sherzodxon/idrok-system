@@ -4,7 +4,7 @@
 //
 //   pnpm --filter @idrok/e2e local
 //
-// The admin, the first demo teacher and the first demo guardian get the local password from LOCAL_PASSWORD (default:
+// The admin and the first demo teacher, guardian and student get the local password from LOCAL_PASSWORD (default:
 // the e2e demo password in support/users.ts). Only usernames are printed.
 import { spawn, type ChildProcess } from "node:child_process";
 import { mkdirSync } from "node:fs";
@@ -88,7 +88,7 @@ async function bootstrap(url: string) {
   }
 }
 
-/** The first demo teacher and guardian get the local password, so every view can be tried. */
+/** The first demo teacher, guardian and student get the local password, so every view can be tried. */
 async function localAccounts(url: string, tenantId: string) {
   const root = createRootClient({ url, max: 2 });
   try {
@@ -102,6 +102,7 @@ async function localAccounts(url: string, tenantId: string) {
       { role: "admin", user: await root.user.findFirst({ where: { tenantId, username: "admin" } }) },
       { role: "teacher", user: await firstWith("TEACHER") },
       { role: "guardian", user: await firstWith("GUARDIAN") },
+      { role: "student", user: await firstWith("STUDENT") },
     ];
     const passwordHash = await argon2.hash(localPassword, { type: argon2.argon2id });
     for (const a of accounts) {

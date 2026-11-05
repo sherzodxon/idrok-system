@@ -8,6 +8,7 @@ import type {
   AcademicPeriodDto,
   LessonCountRowDto,
   LessonSessionDto,
+  TeacherDayDto,
   PortalWeekDto,
   StudentSummary,
 } from "@idrok/shared";
@@ -171,32 +172,47 @@ function markable(lesson: LessonSessionDto) {
   return lesson.status !== "CANCELLED" && lesson.date <= schoolToday();
 }
 
+/** The teacher's day (today's lessons with score / attendance state); shared by the dashboard tiles and the card. */
+export function useTeacherDay() {
+  const api = useApi();
+  const me = useMe();
+  return useQuery({
+    queryKey: ["today-lessons"],
+    queryFn: () => api.get<TeacherDayDto>("/me/lessons/day"),
+    enabled: can(me.data, "lessons.view") && !!me.data?.profiles.employeeId,
+  });
+}
+
 /** "Bugungi darslarim" on the teacher's dashboard. */
 export function TodayLessonsCard() {
   const t = useTranslations("lessons");
-  const api = useApi();
   const me = useMe();
-  const today = useQuery({
-    queryKey: ["today-lessons"],
-    queryFn: () => api.get<LessonSessionDto[]>("/me/lessons/today"),
-    enabled: can(me.data, "lessons.view") && !!me.data?.profiles.employeeId,
-  });
+  const today = useTeacherDay();
   const [marking, setMarking] = useState<LessonSessionDto | null>(null);
   if (!me.data?.profiles.employeeId || !can(me.data, "lessons.view")) return null;
   return (
     <Card>
       <CardHeader title={t("today")} />
       <div className="p-4">
-        <QueryBoundary query={today} isEmpty={(l) => l.length === 0} empty={<EmptyState text={t("noLessonsToday")} />}>
-          {(lessons) => (
+        <QueryBoundary
+          query={today}
+          isEmpty={(d) => d.lessons.length === 0}
+          empty={<EmptyState text={t("noLessonsToday")} />}
+        >
+          {(day) => (
             <ul className="flex flex-col gap-2" data-testid="today-lessons">
-              {lessons.map((l) => (
+              {day.lessons.map((l) => (
                 <LessonRow
                   key={l.id}
                   lesson={l}
                   who={l.teachingGroupName}
                   action={
                     <>
+                      {l.started && l.status !== "CANCELLED" && (
+                        <Badge tone={l.scoredStudents > 0 ? "success" : "warning"}>
+                          {l.scoredStudents > 0 ? t("scored", { n: l.scoredStudents }) : t("notScored")}
+                        </Badge>
+                      )}
                       {can(me.data, "lessons.mark") && markable(l) && (
                         <Button
                           size="sm"

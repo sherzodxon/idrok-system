@@ -77,6 +77,23 @@ export const LessonSessionSchema = z.object({
 });
 export type LessonSessionDto = z.infer<typeof LessonSessionSchema>;
 
+/** Teacher dashboard: today's lessons with whether anything was scored or marked, and recent gaps. */
+export const TeacherDaySchema = z.object({
+  today: z.string(),
+  lessons: z.array(
+    LessonSessionSchema.extend({
+      /** Students with at least one score in the lesson. */
+      scoredStudents: z.number().int(),
+      attendanceMarked: z.boolean(),
+      /** The lesson has started (scores and attendance can be expected). */
+      started: z.boolean(),
+    }),
+  ),
+  /** Lessons of the last 7 school-calendar days (today included) that are over and have no score for anyone. */
+  unscoredRecent: z.number().int(),
+});
+export type TeacherDayDto = z.infer<typeof TeacherDaySchema>;
+
 export const LessonSessionQuerySchema = z.object({
   from: SchoolDateSchema,
   to: SchoolDateSchema,
@@ -130,6 +147,8 @@ export const PortalLessonSchema = z.object({
 export const PortalWeekSchema = z.object({
   from: z.string(),
   to: z.string(),
+  /** The school's today (Asia/Tashkent), so clients never work it out themselves. */
+  today: z.string(),
   studentId: z.uuid(),
   lessons: z.array(PortalLessonSchema),
 });

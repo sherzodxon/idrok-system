@@ -96,7 +96,12 @@ export function TrendChart({
         {last && last.y !== null && (
           <>
             <circle cx={last.x} cy={last.y} r={4} className="fill-primary stroke-surface" strokeWidth={2} />
-            <text x={last.x} y={last.y - 9} textAnchor="end" className="fill-foreground text-[11px] font-bold">
+            <text
+              x={last.x}
+              y={last.y - 9}
+              textAnchor={last.x > width / 2 ? "end" : "start"}
+              className="fill-foreground text-[11px] font-bold"
+            >
               {format(last.v)}
             </text>
           </>

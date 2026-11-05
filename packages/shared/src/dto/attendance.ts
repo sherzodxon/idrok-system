@@ -212,6 +212,36 @@ export const AttendanceDaySchema = z.object({
 });
 export type AttendanceDayDto = z.infer<typeof AttendanceDaySchema>;
 
+/** Dashboard: today by class and a short trend of past school days (attendance.view, in the caller's scope). */
+export const AttendanceSummaryQuerySchema = z.object({
+  days: z.coerce.number().int().min(1).max(31).default(14),
+});
+export const AttendanceSummaryDaySchema = z.object({
+  date: SchoolDateSchema,
+  /** Students with a class that day and not on a day off. */
+  expected: z.number().int(),
+  counts: z.record(z.string(), z.number().int()),
+  /** (PRESENT + LATE) / (PRESENT + LATE + ABSENT + NOT_ARRIVED), percent, one decimal; null = nobody due. */
+  rate: z.string().nullable(),
+});
+export const AttendanceSummarySchema = z.object({
+  today: AttendanceSummaryDaySchema.extend({
+    schoolDay: z.boolean(),
+    byClass: z.array(
+      z.object({
+        classGroupId: z.uuid(),
+        className: z.string(),
+        expected: z.number().int(),
+        counts: z.record(z.string(), z.number().int()),
+        rate: z.string().nullable(),
+      }),
+    ),
+  }),
+  /** Oldest first; days off and days without any terminal data are left out. Today is the last item when counted. */
+  trend: z.array(AttendanceSummaryDaySchema),
+});
+export type AttendanceSummaryDto = z.infer<typeof AttendanceSummarySchema>;
+
 export const StudentAttendanceQuerySchema = z.object({
   from: SchoolDateSchema.optional(),
   to: SchoolDateSchema.optional(),

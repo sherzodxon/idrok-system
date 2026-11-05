@@ -31,7 +31,7 @@ test("cancel a lesson; the guardian's week shows it", async ({ page, browser }) 
 
 test("a teacher sees today's lessons and their week", async ({ page }) => {
   await loginToDashboard(page, USERS.planner);
-  await expect(page.getByText("Bugungi darslarim")).toBeVisible();
+  await expect(page.getByTestId("teacher-kpis")).toContainText("Bugungi darslarim");
   await expect(page.getByText("Bugun darsingiz yo'q")).toBeVisible();
   await page.getByTestId("sidebar").getByRole("link", { name: "Jadvalim" }).click();
   await expect(page.getByTestId("week-range")).toBeVisible();

@@ -173,6 +173,7 @@ describe("today, the portal week and the report", () => {
     const guardian = api(t, s.guardian);
     const week = await guardian.get(`/me/timetable?studentId=${s.s7b.id}&date=${tuesday}`);
     expect(week.studentId).toBe(s.s7b.id);
+    expect(week.today).toBe(today);
     expect(week.lessons).toEqual([
       expect.objectContaining({
         date: tuesday,
