@@ -10,6 +10,7 @@
 //   (until then they are "not arrived yet").
 // - A manual mark (device down, forgotten face) wins over the device and keeps the device times for reference.
 // - Only days the student is expected at school count (working day for their grade, active enrollment).
+import { ratio, roundTo, toDecimalString } from "@idrok/shared/decimal";
 import { atSchoolTime, toSchoolDate, type SchoolDate } from "@idrok/shared/time";
 
 export type DeviceDirection = "IN" | "OUT" | "BOTH";
@@ -172,4 +173,15 @@ export type ConnectionStatus = "ONLINE" | "OFFLINE" | "UNKNOWN";
 export function connectionStatus(lastSeenAt: Date | null, now: Date, staleSeconds: number): ConnectionStatus {
   if (!lastSeenAt) return "UNKNOWN";
   return now.getTime() - lastSeenAt.getTime() <= staleSeconds * 1000 ? "ONLINE" : "OFFLINE";
+}
+
+/**
+ * Attendance rate for a dashboard: arrived (on time or late) among the students who are due — absent and not yet
+ * arrived count against it, so during the day it reads "how many have come so far". Excused and no-data days are left
+ * out. Percent, one decimal, half up; null when nobody counts.
+ */
+export function attendanceRate(counts: Partial<Record<string, number>>): string | null {
+  const arrived = (counts.PRESENT ?? 0) + (counts.LATE ?? 0);
+  const r = ratio(arrived, arrived + (counts.ABSENT ?? 0) + (counts.NOT_ARRIVED ?? 0));
+  return r === null ? null : toDecimalString(roundTo(r.times(100), { mode: "HALF_UP", decimals: 1 }), 1);
 }

@@ -9,7 +9,14 @@ import type {
   PortalWeekQuerySchema,
   SetSubstituteSchema,
 } from "@idrok/shared";
-import { diffSchoolDays, schoolDateFromDb, schoolDateToDb, weekRange, type IsoWeekday } from "@idrok/shared/time";
+import {
+  addSchoolDays,
+  diffSchoolDays,
+  schoolDateFromDb,
+  schoolDateToDb,
+  weekRange,
+  type IsoWeekday,
+} from "@idrok/shared/time";
 import type { RequestAuth } from "../../http/auth";
 import { AppError, forbidden, notFound } from "../../http/errors";
 import { schoolClock } from "../access/school-clock";
@@ -249,6 +256,52 @@ export class LessonsService {
     return lessons.map(lessonDto);
   }
 
+  /** Teacher dashboard: today's lessons with score / attendance state and the recent lessons left unscored. */
+  async teacherDay(auth: RequestAuth) {
+    const { today } = await schoolClock(this.db);
+    const employee = await this.db.employee.findUnique({ where: { userId: auth.userId }, select: { id: true } });
+    if (!employee) return { today, lessons: [], unscoredRecent: 0 };
+    const mine = {
+      status: { not: "CANCELLED" as const },
+      OR: [{ teacherId: employee.id, substituteTeacherId: null }, { substituteTeacherId: employee.id }],
+    };
+    const now = new Date();
+    const [lessons, unscoredRecent] = await Promise.all([
+      this.db.lessonSession.findMany({
+        where: { date: schoolDateToDb(today), ...mine },
+        orderBy: [{ startsAt: "asc" }, { lessonNumber: "asc" }],
+        select: { ...lessonSelect, _count: { select: { attendance: true } } },
+      }),
+      this.db.lessonSession.count({
+        where: {
+          date: { gte: schoolDateToDb(addSchoolDays(today, -6)), lte: schoolDateToDb(today) },
+          endsAt: { lte: now },
+          scoreEntries: { none: {} },
+          ...mine,
+        },
+      }),
+    ]);
+    // A reversed score does not count; the reversal row itself is not a score either.
+    const scored = lessons.length
+      ? await this.db.scoreEntry.groupBy({
+          by: ["lessonSessionId", "studentId"],
+          where: { lessonSessionId: { in: lessons.map((l) => l.id) }, kind: "NORMAL", reversedBy: null },
+        })
+      : [];
+    const scoredOf = new Map<string, number>();
+    for (const r of scored) scoredOf.set(r.lessonSessionId, (scoredOf.get(r.lessonSessionId) ?? 0) + 1);
+    return {
+      today,
+      lessons: lessons.map((l) => ({
+        ...lessonDto(l),
+        scoredStudents: scoredOf.get(l.id) ?? 0,
+        attendanceMarked: l._count.attendance > 0,
+        started: l.startsAt <= now,
+      })),
+      unscoredRecent,
+    };
+  }
+
   /** Portal: a student's lessons of one week (their class and subgroups on each day), topic and homework included. */
   async portalWeek(auth: RequestAuth, q: z.infer<typeof PortalWeekQuerySchema>) {
     const { timezone, today } = await schoolClock(this.db);
@@ -290,6 +343,7 @@ export class LessonsService {
     return {
       from,
       to,
+      today,
       studentId,
       lessons: lessons
         .filter((l) => member(l.teachingGroupId, l.date))

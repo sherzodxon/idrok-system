@@ -11,6 +11,8 @@ import type {
   AttendanceDayQuerySchema,
   AttendanceDayRowDto,
   AttendanceMonitoringDto,
+  AttendanceSummaryDto,
+  AttendanceSummaryQuerySchema,
   ManualMarkSchema,
   SchoolAttendanceStatusDto,
   StudentAttendanceDto,
@@ -24,7 +26,7 @@ import {
   schoolDateToDb,
   type SchoolDate,
 } from "@idrok/shared/time";
-import { connectionStatus, isDayOver } from "../../domain/attendance";
+import { attendanceRate, connectionStatus, isDayOver } from "../../domain/attendance";
 import type { RequestAuth } from "../../http/auth";
 import { AppError, notFound } from "../../http/errors";
 import { writeAudit } from "../audit/audit.service";
@@ -154,6 +156,75 @@ export class AttendanceService {
       pageSize: q.pageSize,
       counts,
     };
+  }
+
+  /** Counts of one day for the expected students in scope (statuses as in `day`). */
+  private async dayCounts(
+    date: SchoolDate,
+    ctx: Awaited<ReturnType<AttendanceService["ctx"]>>,
+    student: Prisma.StudentWhereInput,
+    tracked: boolean,
+    now: Date,
+  ) {
+    const days = await studentDays(this.db, date, ctx, { student });
+    const expected = [...days.values()].filter((d) => d.expected);
+    const records = expected.length
+      ? await this.db.attendanceRecord.findMany({
+          where: { studentId: { in: expected.map((d) => d.studentId) }, schoolDate: schoolDateToDb(date) },
+          select: recordSelect,
+        })
+      : [];
+    const recOf = new Map(records.map((r) => [r.studentId, r]));
+    const rows = expected.map((d) => ({ day: d, status: dayFields(recOf.get(d.studentId), d, now, tracked).status }));
+    return { schoolDay: expected.length > 0 || days.size === 0, rows };
+  }
+
+  /**
+   * Dashboard: today by class plus the last `days` calendar days (school days only). One pass per day — a short
+   * range by design (≤ 31); the full history stays in the student and day views.
+   */
+  async summary(auth: RequestAuth, q: z.infer<typeof AttendanceSummaryQuerySchema>): Promise<AttendanceSummaryDto> {
+    const ctx = await this.ctx();
+    const scope = await resolveScope(this.db, auth, ctx.tz);
+    const student = attendanceStudentWhere(scope, ctx.today);
+    const from = addSchoolDays(ctx.today, -(q.days - 1));
+    const tracked = await this.trackedDates(from, ctx.today);
+    const now = new Date();
+    const trend: AttendanceSummaryDto["trend"] = [];
+    let today: AttendanceSummaryDto["today"] | null = null;
+    for (const date of eachSchoolDate(from, ctx.today)) {
+      const isToday = date === ctx.today;
+      if (!isToday && !tracked.has(date)) continue;
+      const { schoolDay, rows } = await this.dayCounts(date, ctx, student, tracked.has(date), now);
+      const counts = countBy(rows.map((r) => r.status));
+      const item = { date, expected: rows.length, counts, rate: attendanceRate(counts) };
+      if (rows.length > 0 && tracked.has(date)) trend.push(item);
+      if (isToday) {
+        const classes = new Map<string, { className: string; statuses: SchoolAttendanceStatusDto[] }>();
+        for (const r of rows) {
+          const c = classes.get(r.day.classGroupId) ?? { className: r.day.className, statuses: [] };
+          c.statuses.push(r.status);
+          classes.set(r.day.classGroupId, c);
+        }
+        today = {
+          ...item,
+          schoolDay,
+          byClass: [...classes]
+            .map(([classGroupId, c]) => {
+              const cc = countBy(c.statuses);
+              return {
+                classGroupId,
+                className: c.className,
+                expected: c.statuses.length,
+                counts: cc,
+                rate: attendanceRate(cc),
+              };
+            })
+            .sort((a, b) => a.className.localeCompare(b.className, "uz", { numeric: true })),
+        };
+      }
+    }
+    return { today: today!, trend };
   }
 
   /** Staff (attendance.view, in scope), the student themself or their guardian. */

@@ -7,6 +7,8 @@ import {
   AttendanceDaySchema,
   AttendanceFeatureSchema,
   AttendanceMonitoringSchema,
+  AttendanceSummaryQuerySchema,
+  AttendanceSummarySchema,
   AttendanceSettingsSchema,
   BridgeAgentSchema,
   BridgeTokenSchema,
@@ -153,6 +155,18 @@ export function attendanceRoutes(router: Router, registry: OpenApiRegistry, deps
       responses: { 200: { description: "Day", schema: AttendanceDaySchema } },
     },
     async ({ res, auth, query }) => res.json(await attendance.day(auth, query)),
+  );
+  route(
+    {
+      method: "get",
+      path: "/attendance/summary",
+      summary: "Dashboard: today's attendance by class and a short trend of past school days",
+      tags,
+      access: "attendance.view",
+      query: AttendanceSummaryQuerySchema,
+      responses: { 200: { description: "Summary", schema: AttendanceSummarySchema } },
+    },
+    async ({ res, auth, query }) => res.json(await attendance.summary(auth, query)),
   );
   route(
     {

@@ -16,6 +16,7 @@ import {
   LessonSessionQuerySchema,
   LessonSessionSchema,
   SetSubstituteSchema,
+  TeacherDaySchema,
 } from "@idrok/shared";
 import type { AppDeps } from "../../deps";
 import { routesFor } from "../../http/route";
@@ -117,6 +118,17 @@ export function lessonRoutes(router: Router, registry: OpenApiRegistry, deps: Ap
       responses: { 200: { description: "Lessons", schema: z.array(LessonSessionSchema) } },
     },
     async ({ res, auth }) => res.json(await lessons.today(auth)),
+  );
+  route(
+    {
+      method: "get",
+      path: "/me/lessons/day",
+      summary: "Teacher dashboard: today's lessons with score and attendance state, recent unscored lessons",
+      tags,
+      access: "lessons.view",
+      responses: { 200: { description: "Day", schema: TeacherDaySchema } },
+    },
+    async ({ res, auth }) => res.json(await lessons.teacherDay(auth)),
   );
   route(
     {

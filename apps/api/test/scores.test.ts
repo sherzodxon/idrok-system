@@ -1,7 +1,7 @@
 // M3 step 3: scores on lessons — scoring.md §11 acceptance 17–24 (24's FINAL-result part is in the period-closing
 // test), attendance, reversals and the lesson journal.
 import { randomUUID } from "node:crypto";
-import { diffSchoolDays, schoolDateFromDb, schoolToday } from "@idrok/shared/time";
+import { addSchoolDays, diffSchoolDays, schoolDateFromDb, schoolToday } from "@idrok/shared/time";
 import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createTestApp } from "./support/app";
@@ -321,5 +321,57 @@ describe("settings, criteria and batches", () => {
       lateEntryDays: 3,
     });
     expect(bad.status).toBe(400);
+  });
+});
+
+describe("teacher dashboard day", () => {
+  it("today's lessons with scored students, and recent lessons left unscored", async () => {
+    const now = new Date();
+    const window = { gte: new Date(`${addSchoolDays(today, -6)}T00:00:00Z`), lte: new Date(`${today}T00:00:00Z`) };
+    const unscored = () =>
+      t.deps.root.lessonSession.findMany({
+        where: {
+          tenantId: t.defaultTenant.tenant.id,
+          teacherId: s.emp1.id,
+          substituteTeacherId: null,
+          status: { not: "CANCELLED" },
+          date: window,
+          endsAt: { lte: now },
+          scoreEntries: { none: {} },
+        },
+        select: { id: true },
+        orderBy: { startsAt: "desc" },
+      });
+    const before = await api(t, s.teacher1).get("/me/lessons/day");
+    expect(before.today).toBe(today);
+    const gaps = await unscored();
+    expect(before.unscoredRecent).toBe(gaps.length);
+    expect(before.lessons).toHaveLength(
+      await t.deps.root.lessonSession.count({
+        where: {
+          tenantId: t.defaultTenant.tenant.id,
+          teacherId: s.emp1.id,
+          substituteTeacherId: null,
+          status: { not: "CANCELLED" },
+          date: window.lte,
+        },
+      }),
+    );
+
+    // Scoring one of those lessons takes it off the list; a reversed score does not count as scored.
+    const started = before.lessons.find((l: { started: boolean }) => l.started);
+    const target = started?.id ?? gaps[0]?.id;
+    if (target) {
+      const res = await score(s.teacher1, target, 1);
+      expect(res.status).toBe(201);
+      const after = await api(t, s.teacher1).get("/me/lessons/day");
+      if (started) {
+        expect(after.lessons.find((l: { id: string }) => l.id === target).scoredStudents).toBe(1);
+        await api(t, s.teacher1).post(`/scores/${res.body.id}/reverse`, { idempotencyKey: randomUUID() });
+        const reversed = await api(t, s.teacher1).get("/me/lessons/day");
+        expect(reversed.lessons.find((l: { id: string }) => l.id === target).scoredStudents).toBe(0);
+      } else expect(after.unscoredRecent).toBe(gaps.length - 1);
+    }
+    expect((await api(t, s.guardian).raw("get", "/me/lessons/day")).status).toBe(403);
   });
 });

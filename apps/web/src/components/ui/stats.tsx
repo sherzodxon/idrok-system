@@ -20,7 +20,7 @@ export function StatCard({
   delta?: { text: string; tone: "good" | "bad" | "neutral" };
 }) {
   return (
-    <Card className="flex items-center gap-4 p-5">
+    <Card className="flex items-center gap-4 p-4 sm:p-5">
       {icon && (
         <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary">
           {icon}
@@ -64,7 +64,7 @@ export function KpiHeroCard({
   loading?: boolean;
 }) {
   return (
-    <div className="rounded-card bg-linear-135 from-brand to-brand-deep p-5 text-on-brand shadow-card">
+    <div className="rounded-card bg-linear-135 from-brand to-brand-deep p-4 text-on-brand shadow-card sm:p-5">
       <p className="text-sm opacity-90">{label}</p>
       {loading ? (
         <Skeleton className="mt-2 h-9 w-20 opacity-40" />

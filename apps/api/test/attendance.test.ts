@@ -225,6 +225,29 @@ describe("school attendance", () => {
     expect((await api(t, s.teacher2).raw("get", `/attendance/students/${s.s7a.id}`)).status).toBe(404);
   });
 
+  it("the dashboard summary: today by class, past school days with a rate, scoped like the day", async () => {
+    const day = await s.a.get(`/attendance/day?date=${DAY}`);
+    const sum = await s.a.get("/attendance/summary?days=14");
+    expect(sum.today.date).toBe(schoolToday());
+    const past = sum.trend.find((d: { date: string }) => d.date === DAY);
+    expect(past).toMatchObject({ expected: day.total, counts: day.counts });
+    const c = day.counts as Record<string, number>;
+    const arrivedN = (c.PRESENT ?? 0) + (c.LATE ?? 0);
+    const due = arrivedN + (c.ABSENT ?? 0) + (c.NOT_ARRIVED ?? 0);
+    expect(past.rate).toBe((Math.round((arrivedN / due) * 1000) / 10).toFixed(1));
+    // A day with no terminal data is not in the trend (it would read as 0 %).
+    let quiet = addSchoolDays(DAY, -1);
+    while (isoWeekday(quiet) === 7) quiet = addSchoolDays(quiet, -1);
+    expect(sum.trend.map((d: { date: string }) => d.date)).not.toContain(quiet);
+    expect(sum.today.byClass.reduce((n: number, c: { expected: number }) => n + c.expected, 0)).toBe(
+      sum.today.expected,
+    );
+    const mine = await api(t, s.teacher2).get("/attendance/summary?days=14");
+    expect(mine.trend.find((d: { date: string }) => d.date === DAY).expected).toBe(1);
+    expect((await api(t, s.teacher1).raw("get", "/attendance/summary")).status).toBe(403);
+    expect((await s.a.raw("get", "/attendance/summary?days=40")).status).toBe(400);
+  });
+
   it("guardians and students see their own history only", async () => {
     const own = await api(t, s.guardian).get(`/attendance/students/${s.s7b.id}?from=${DAY}&to=${DAY}`);
     expect(own.days).toEqual([expect.objectContaining({ date: DAY, status: "LATE", latenessBandName: "3-7" })]);
