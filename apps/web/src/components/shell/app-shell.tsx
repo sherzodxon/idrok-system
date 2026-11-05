@@ -15,7 +15,7 @@ import { can, homePath, isPortalUser, useMe } from "@/lib/use-me";
 import { useShellBranding } from "./branding-context";
 import { BrandBadge } from "@/components/shell/brand-mark";
 import { LocaleSwitcher } from "./locale-switcher";
-import { NAV, availableContexts, type NavContext } from "./nav-config";
+import { NAV, availableContexts, groupNav, type NavContext } from "./nav-config";
 import { ThemeToggle } from "./theme-toggle";
 import { UserMenu } from "./user-menu";
 
@@ -35,31 +35,49 @@ function NavList({
   const t = useTranslations("nav");
   const pathname = usePathname();
   return (
-    <ul className="flex flex-col gap-1">
-      {NAV[context]
-        .filter((item) => !item.permission || can(me, item.permission))
-        .map(({ key, href, icon: Icon }) => {
-          const active = pathname === href || pathname.startsWith(`${href}/`);
-          return (
-            <li key={key}>
-              <Link
-                href={href}
-                onClick={onNavigate}
-                aria-current={active ? "page" : undefined}
-                title={collapsed ? t(key) : undefined}
-                className={cn(
-                  "flex h-10 items-center gap-3 rounded-button px-3 text-sm font-medium text-muted hover:bg-surface-muted hover:text-foreground",
-                  active && "bg-primary-soft text-primary-strong hover:bg-primary-soft hover:text-primary-strong",
-                  collapsed && "justify-center px-0",
-                )}
-              >
-                <Icon className="size-5 shrink-0" aria-hidden />
-                <span className={cn(collapsed && "sr-only")}>{t(key)}</span>
-              </Link>
-            </li>
-          );
-        })}
-    </ul>
+    <div className="flex flex-col gap-3">
+      {groupNav(NAV[context].filter((item) => !item.permission || can(me, item.permission))).map(({ group, items }) => (
+        <section
+          key={group}
+          aria-labelledby={collapsed ? undefined : `nav-group-${group}`}
+          className="flex flex-col gap-1"
+        >
+          {collapsed ? (
+            <hr className="mx-2 border-border first:hidden" />
+          ) : (
+            <h3
+              id={`nav-group-${group}`}
+              className="px-3 pt-1 text-xs font-semibold tracking-wider text-disabled uppercase"
+            >
+              {t(`groups.${group}`)}
+            </h3>
+          )}
+          <ul className="flex flex-col gap-1">
+            {items.map(({ key, href, icon: Icon }) => {
+              const active = pathname === href || pathname.startsWith(`${href}/`);
+              return (
+                <li key={key}>
+                  <Link
+                    href={href}
+                    onClick={onNavigate}
+                    aria-current={active ? "page" : undefined}
+                    title={collapsed ? t(key) : undefined}
+                    className={cn(
+                      "flex h-10 items-center gap-3 rounded-button px-3 text-sm font-medium text-muted hover:bg-surface-muted hover:text-foreground",
+                      active && "bg-primary-soft text-primary-strong hover:bg-primary-soft hover:text-primary-strong",
+                      collapsed && "justify-center px-0",
+                    )}
+                  >
+                    <Icon className="size-5 shrink-0" aria-hidden />
+                    <span className={cn(collapsed && "sr-only")}>{t(key)}</span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ))}
+    </div>
   );
 }
 
