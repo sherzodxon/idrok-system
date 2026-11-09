@@ -1,5 +1,6 @@
 # Render Blueprint — staging (demo data only, Q-30). Step-by-step: docs/DEPLOY.md.
-# Backend only: API, worker and Redis. The web app (apps/web) is deployed on Vercel (T-87, apps/web/vercel.json).
+# All services here for staging (T-88): web (apps/web), API, worker, Redis. Vercel is an alternative for the web app
+# (apps/web/vercel.json, docs/DEPLOY.md §2b) — then remove idrok-web below.
 # Secrets are never written here: every `sync: false` value is entered by the owner in the Render dashboard.
 # Region: Frankfurt (closest to Tashkent; create the Supabase project in eu-central-1 as well).
 # Builds install devDependencies explicitly (NODE_ENV=development): NODE_ENV=production is visible at build time too,
@@ -67,7 +68,7 @@ services:
       # Client → Render load balancer → API (docs/DEPLOY.md "TRUST_PROXY")
       - key: TRUST_PROXY
         value: "1"
-      # https://app.<domain> (the Vercel domain of apps/web)
+      # https://app.<domain>
       - key: CORS_ORIGINS
         sync: false
       # <domain> shared by app.<domain> and api.<domain>
@@ -90,3 +91,25 @@ services:
           type: keyvalue
           name: idrok-redis
           property: connectionString
+
+  - type: web
+    name: idrok-web
+    runtime: node
+    region: frankfurt
+    plan: starter
+    buildCommand: corepack enable && NODE_ENV=development pnpm install --frozen-lockfile && pnpm turbo run build --filter=@idrok/web
+    startCommand: cd apps/web && node node_modules/next/dist/bin/next start -p $PORT
+    healthCheckPath: /login
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
+      # https://api.<domain>/api/v1
+      - key: API_PUBLIC_URL
+        sync: false
+      # Private network: http://idrok-api:10000/api/v1 (optional; falls back to API_PUBLIC_URL)
+      - key: API_INTERNAL_URL
+        sync: false
+      - key: TENANT_SLUG
+        value: idrok

@@ -1,10 +1,10 @@
-# Deploy (Vercel + Render + Supabase) — staging
+# Deploy (Render + Supabase) — staging
 
 > Staging'da **faqat sun'iy demo ma'lumot** (Q-30). Haqiqiy o'quvchi/vasiy ma'lumoti faqat VPS'ga ko'chgandan keyin.
 > Bu yo'riqnomadagi secret'larni (parollar, kalitlar) faqat egasi kiritadi — ular repo'ga, chatga yoki log'ga yozilmaydi.
 
 Tarkib: [0. Oldindan](#0-oldindan) · [1. Supabase](#1-supabase) · [2. Render Blueprint](#2-render-blueprint) ·
-[2b. Vercel](#2b-vercel-frontend) ·
+[2b. Vercel (muqobil)](#2b-vercel-frontend-muqobil) ·
 [3. Domen](#3-domen-va-cookie) · [4. Birinchi deploy](#4-birinchi-deploy) · [5. Seed](#5-seed) · [6. Smoke](#6-smoke-tekshiruv) ·
 [7. Migratsiyalar](#7-migratsiya-pipeline) · [8. Secret'lar](#8-secretlar) · [TRUST_PROXY](#klient-ip-va-trust_proxy-security-baselinemd-s2) · [Redis](#redis-render-key-value)
 
@@ -25,7 +25,7 @@ pnpm --filter @idrok/e2e local
 ## Arxitektura
 
 ```
-brauzer ──https──▶ app.<domen>  (Vercel: apps/web, Next.js) ──https──▶ api.<domen> (SSR: brending)
+brauzer ──https──▶ app.<domen>  (Render: idrok-web, Next.js) ──private──▶ idrok-api (SSR: brending)
         ──https──▶ api.<domen>  (Render: idrok-api, Express)  ──▶ Supabase Postgres (pooler 6543)
                                                               ──▶ idrok-redis (Key Value, noeviction)
                    Render: idrok-worker (BullMQ: import, outbox, tungi tozalash) ──▶ o'sha DB, Redis, Storage
@@ -33,21 +33,20 @@ brauzer ──https──▶ app.<domen>  (Vercel: apps/web, Next.js) ──http
 
 | Papka | Nima | Qayerda |
 |---|---|---|
-| `apps/web` | Frontend (Next.js) | **Vercel** — [2b-bo'lim](#2b-vercel-frontend), sozlama `apps/web/vercel.json` |
+| `apps/web` | Frontend (Next.js) | **Render** `idrok-web` (hozir, T-88). Muqobil: Vercel — [2b-bo'lim](#2b-vercel-frontend-muqobil) |
 | `apps/api` | Backend (REST `/api/v1`) | **Render** `idrok-api` — `render.yaml` |
 | `apps/worker` | Fon vazifalari | **Render** `idrok-worker` |
 | `packages/db` | Sxema va migratsiyalar | **Supabase** PostgreSQL (migratsiya API deploy'ida) |
 | `packages/shared` | Umumiy tiplar | alohida joylanmaydi — build paytida web va api'ga kiradi |
 
-Render Blueprint (`render.yaml`): `idrok-redis`, `idrok-api`, `idrok-worker`; region — Frankfurt. Vercel: bitta loyiha,
-region `fra1` (Frankfurt). Frontend va backend alohida deploy bo'ladi: biri o'zgarsa, ikkinchisi qayta qurilmaydi.
+Render Blueprint (`render.yaml`): `idrok-redis`, `idrok-api`, `idrok-worker`, `idrok-web`; region — Frankfurt.
+Har servis alohida build va deploy bo'ladi (frontend o'zgarsa, backend qayta qurilmaydi va aksincha).
 
 ## 0. Oldindan
 
 | Kerak | Nega |
 |---|---|
-| GitHub repo (Render va Vercel ulanadi) | Render `render.yaml`ni, Vercel `apps/web`ni repo'dan o'qiydi |
-| Vercel akkaunti | Frontend (Hobby yetadi demo uchun; jamoa/tijorat uchun Pro) |
+| GitHub repo (Render ulanadi) | Blueprint `render.yaml`ni repo'dan o'qiydi |
 | Render akkaunti, to'lov kartasi | `worker`, `preDeployCommand` va Shell faqat pullik (Starter) rejalarda |
 | Supabase akkaunti | PostgreSQL + Storage |
 | **O'z domeningiz** (masalan `idrok.uz`) va DNS boshqaruvi | Pastda, [3-bo'lim](#3-domen-va-cookie) — usiz login ishlamaydi |
@@ -77,17 +76,21 @@ region `fra1` (Frankfurt). Frontend va backend alohida deploy bo'ladi: biri o'zg
 | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | `idrok-server` | 1-bo'lim, 4-band |
 | `CORS_ORIGINS` | `idrok-api` | `https://app.<domen>` |
 | `COOKIE_DOMAIN` | `idrok-api` | `<domen>` (masalan `staging.idrok.uz`, agar `app.staging.idrok.uz` / `api.staging.idrok.uz`) |
+| `API_PUBLIC_URL` | `idrok-web` | `https://api.<domen>/api/v1` |
+| `API_INTERNAL_URL` | `idrok-web` | `http://idrok-api:10000/api/v1` (Render private network; port — `idrok-api` servisidagi `PORT`, default `10000`). Bo'sh qolsa `API_PUBLIC_URL` ishlatiladi |
 
 `JWT_SECRET` Render tomonidan tasodifiy yaratiladi (`generateValue`) va API hamda worker'da bir xil bo'ladi.
 Qolgan qiymatlar (`TRUST_PROXY=1`, `COOKIE_SECURE=true`, `STORAGE_DRIVER=supabase`, ...) `render.yaml`da.
 To'liq ro'yxat va tavsif: `.env.example`.
 
-3. **Apply**. Render uchta servisni (Redis, API, worker) yaratadi va build boshlaydi. Frontend — 2b-bo'limda.
+3. **Apply**. Render to'rtta servisni yaratadi va build boshlaydi.
 
 > Build `corepack enable` bilan pnpm'ni `package.json`dagi `packageManager` versiyasida yoqadi. Agar Render'da
 > `corepack enable` ruxsat xatosi bersa, build buyrug'ining boshini `npm install -g pnpm@12.16.1 &&` ga almashtiring.
 
-## 2b. Vercel (frontend)
+## 2b. Vercel (frontend, muqobil)
+
+Hozir frontend Render'da (T-88). Vercel'ga o'tkazilsa: `render.yaml`dan `idrok-web` servisini olib tashlang, keyin:
 
 1. Vercel → **Add New → Project** → o'sha GitHub repo.
 2. **Root Directory**: `apps/web` va **"Include files outside the root directory"** yoqilgan bo'lsin (monorepo: `packages/shared` kerak).
@@ -117,16 +120,15 @@ Login cookie'lari `SameSite=Lax` va `COOKIE_DOMAIN` ota-domenda o'rnatiladi. `*.
 `idrok-web.onrender.com` va `idrok-api.onrender.com` brauzer uchun **ikki xil sayt**, shuning uchun
 `onrender.com` manzillari bilan sessiya ishlamaydi. Bitta domen ostidagi ikki subdomen kerak:
 
-1. Vercel loyihasi → **Settings → Domains** → `app.<domen>`; Render `idrok-api` → **Settings → Custom Domains** → `api.<domen>`.
-2. DNS'da Vercel va Render ko'rsatgan `CNAME` yozuvlarini qo'shing. TLS sertifikatlarini ular o'zi chiqaradi.
+1. `idrok-web` → **Settings → Custom Domains** → `app.<domen>`; `idrok-api` → `api.<domen>` (Vercel bo'lsa — `app.` Vercel'da).
+2. DNS'da Render (yoki Vercel) ko'rsatgan `CNAME` yozuvlarini qo'shing. TLS sertifikatlarini ular o'zi chiqaradi.
    `vercel.app` va `onrender.com` ham "public suffix": ular bilan ham sessiya ishlamaydi.
 3. `CORS_ORIGINS`, `COOKIE_DOMAIN`, `API_PUBLIC_URL` 2-bo'limdagidek bo'lsin; o'zgartirsangiz servislarni qayta deploy qiling.
 
 ## 4. Birinchi deploy
 
 Tartib Render'da avtomatik: `idrok-redis` → `idrok-api` (build → **preDeploy: `prisma migrate deploy`** → start) →
-`idrok-worker`. Frontend Vercel'da o'zi build bo'ladi (2b-bo'lim); API birinchi bo'lsin — aks holda login sahifasi
-brendingsiz ochiladi (xato emas, standart ranglar).
+`idrok-worker` → `idrok-web`.
 
 Tekshirish:
 - `idrok-api` → **Logs**: `api listening`; `https://api.<domen>/api/v1/readyz` → `{"status":"ok","checks":{"db":"ok","redis":"ok"}}`.
