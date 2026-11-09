@@ -1327,6 +1327,7 @@ enum ScoreLimitScope {
   GRADE
   TEACHER
   TEACHING_GROUP
+  CRITERION
 }
 
 model ScoreCriterion {
@@ -1335,12 +1336,16 @@ model ScoreCriterion {
   tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   name        String
   description String?
+  // Bounds of one entry under this criterion (T-77); null = only the general limits apply.
+  minPoints   Decimal? @db.Decimal(8, 2)
+  maxPoints   Decimal? @db.Decimal(8, 2)
   isActive    Boolean  @default(true)
   order       Int      @default(0)
   createdAt   DateTime @default(now()) @db.Timestamptz(3)
   updatedAt   DateTime @updatedAt @db.Timestamptz(3)
 
   scoreEntries ScoreEntry[]
+  limitRules   ScoreLimitRule[]
 
   @@unique([tenantId, name])
 }
@@ -1429,6 +1434,8 @@ model ScoreLimitRule {
   teacher         Employee?        @relation(fields: [teacherId], references: [id], onDelete: Restrict)
   teachingGroupId String?          @db.Uuid
   teachingGroup   TeachingGroup?   @relation(fields: [teachingGroupId], references: [id], onDelete: Restrict)
+  criterionId     String?          @db.Uuid
+  criterion       ScoreCriterion?  @relation(fields: [criterionId], references: [id], onDelete: Restrict)
   maxPoints       Decimal          @db.Decimal(8, 2)
   isActive        Boolean          @default(true)
   createdAt       DateTime         @default(now()) @db.Timestamptz(3)
@@ -1436,6 +1443,7 @@ model ScoreLimitRule {
 
   // SQL: ScoreLimitRule_scope_check, ScoreLimitRule_one_active (partial unique)
   @@index([tenantId, window, scopeType, isActive])
+  @@index([criterionId])
 }
 
 // Q-06, Q-07 defaults.

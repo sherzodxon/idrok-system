@@ -127,6 +127,7 @@ export async function loadStudentSessions(
           teacherId: s.substituteTeacherId ?? s.teacherId,
           gradeId,
           teachingGroupId: s.teachingGroupId,
+          criterionId: null,
         }),
         attendance: marks.get(key(s.id, m.studentId)) ?? null,
         entries: lines.get(key(s.id, m.studentId)) ?? [],

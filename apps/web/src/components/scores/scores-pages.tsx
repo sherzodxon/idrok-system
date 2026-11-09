@@ -37,6 +37,7 @@ import { useActiveYear } from "@/lib/queries";
 import { can, useMe } from "@/lib/use-me";
 import { useErrorText } from "@/lib/use-error-text";
 import { useListState } from "@/lib/use-list-state";
+import { boundsText } from "./bounds";
 
 const ATTENDANCE: AttendanceStatusCode[] = ["PRESENT", "LATE", "ABSENT_EXCUSED", "ABSENT_UNEXCUSED"];
 const ATTENDANCE_TONE: Record<AttendanceStatusCode, string> = {
@@ -164,7 +165,7 @@ export function LessonJournalPage({ lessonId, backHref }: { lessonId: string; ba
                     <option value="">{t("noCriterion")}</option>
                     {j.criteria.map((c) => (
                       <option key={c.id} value={c.id}>
-                        {c.name}
+                        {boundsText(c) ? `${c.name} (${boundsText(c)})` : c.name}
                       </option>
                     ))}
                   </Select>

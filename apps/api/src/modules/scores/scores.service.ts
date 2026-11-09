@@ -16,6 +16,7 @@ import {
 } from "@idrok/shared/time";
 import {
   checkLimits,
+  criterionBoundsError,
   remainingToday,
   sessionMaxPoints,
   type EntryScope,
@@ -28,7 +29,7 @@ import { markStale } from "../assessment/closing.service";
 import { schoolClock } from "../access/school-clock";
 import { writeAudit } from "../audit/audit.service";
 import { LessonsService } from "../lessons/lessons.service";
-import { activeLimitRules, limitSettings, scoreSettings } from "./score-config.service";
+import { activeLimitRules, criterionDto, criterionSelect, limitSettings, scoreSettings } from "./score-config.service";
 
 const conflict = (reason: string, details: Record<string, unknown> = {}) =>
   new AppError("CONFLICT", 409, { reason, ...details });
@@ -171,6 +172,7 @@ export class ScoresService {
         teacherId: true,
         gradeId: true,
         teachingGroupId: true,
+        criterionId: true,
         points: true,
       },
     });
@@ -193,6 +195,17 @@ export class ScoresService {
         const criterion = await tx.scoreCriterion.findFirst({ where: { id: input.criterionId, isActive: true } });
         if (!criterion)
           throw new AppError("VALIDATION_ERROR", 400, { fields: [{ path: "criterionId", code: "invalid" }] });
+        const outOfBounds = criterionBoundsError(input.points, criterion);
+        if (outOfBounds)
+          throw new AppError("VALIDATION_ERROR", 400, {
+            fields: [
+              {
+                path: "points",
+                code: outOfBounds.bound === "min" ? "below_criterion_min" : "above_criterion_max",
+                limit: outOfBounds.value.toString(),
+              },
+            ],
+          });
       }
       const gradeId = await this.studentOnLesson(tx, lesson, input.studentId);
 
@@ -215,6 +228,7 @@ export class ScoresService {
         teacherId: lesson.substituteTeacherId ?? lesson.teacherId,
         gradeId,
         teachingGroupId: lesson.teachingGroupId,
+        criterionId: input.criterionId ?? null,
       };
       const existing = await this.entriesAround(tx, [input.studentId], date, lesson.periodId);
       const violation = checkLimits(await activeLimitRules(tx), limitSettings(settings), existing, scope, input.points);
@@ -498,7 +512,7 @@ export class ScoresService {
       this.db.scoreCriterion.findMany({
         where: { isActive: true },
         orderBy: [{ order: "asc" }, { name: "asc" }],
-        select: { id: true, name: true, description: true, isActive: true, order: true },
+        select: criterionSelect,
       }),
       activeLimitRules(this.db),
     ]);
@@ -520,6 +534,7 @@ export class ScoresService {
       teacherId: lesson.substituteTeacherId ?? lesson.teacherId,
       gradeId,
       teachingGroupId: lesson.teachingGroupId,
+      criterionId: null,
     });
     const anyGrade = students.find((s) => s.enrollments[0])?.enrollments[0]?.classGroup.gradeId ?? "";
     const maxPoints = sessionMaxPoints(rules, limits, scopeFor(anyGrade));
@@ -534,7 +549,7 @@ export class ScoresService {
       topicTitle: lesson.planItem?.topic.title ?? null,
       maxPoints: maxPoints.toString(),
       locked,
-      criteria,
+      criteria: criteria.map(criterionDto),
       students: students.map((s) => {
         const mine = entries.filter((e) => e.studentId === s.id);
         const lessonPoints = sum(mine.map((e) => e.points));

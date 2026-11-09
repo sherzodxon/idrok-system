@@ -11,7 +11,22 @@ import { AppError, isConstraintError, notFound } from "../../http/errors";
 import { writeAudit } from "../audit/audit.service";
 import type { LimitRule, LimitSettings } from "../../domain/score-limits";
 
-const criterionSelect = { id: true, name: true, description: true, isActive: true, order: true } as const;
+export const criterionSelect = {
+  id: true,
+  name: true,
+  description: true,
+  minPoints: true,
+  maxPoints: true,
+  isActive: true,
+  order: true,
+} satisfies Prisma.ScoreCriterionSelect;
+type CriterionRow = Prisma.ScoreCriterionGetPayload<{ select: typeof criterionSelect }>;
+
+export const criterionDto = (c: CriterionRow) => ({
+  ...c,
+  minPoints: c.minPoints?.toString() ?? null,
+  maxPoints: c.maxPoints?.toString() ?? null,
+});
 
 const ruleSelect = {
   id: true,
@@ -25,13 +40,15 @@ const ruleSelect = {
   teacher: { select: { firstName: true, lastName: true } },
   teachingGroupId: true,
   teachingGroup: { select: { name: true } },
+  criterionId: true,
+  criterion: { select: { name: true } },
   maxPoints: true,
   isActive: true,
 } satisfies Prisma.ScoreLimitRuleSelect;
 type RuleRow = Prisma.ScoreLimitRuleGetPayload<{ select: typeof ruleSelect }>;
 
-const scopeIdOf = (r: Pick<RuleRow, "subjectId" | "gradeId" | "teacherId" | "teachingGroupId">) =>
-  r.subjectId ?? r.gradeId ?? r.teacherId ?? r.teachingGroupId;
+const scopeIdOf = (r: Pick<RuleRow, "subjectId" | "gradeId" | "teacherId" | "teachingGroupId" | "criterionId">) =>
+  r.subjectId ?? r.gradeId ?? r.teacherId ?? r.teachingGroupId ?? r.criterionId;
 
 function ruleDto(r: RuleRow) {
   const scopeName =
@@ -39,6 +56,7 @@ function ruleDto(r: RuleRow) {
     r.grade?.name ??
     (r.teacher ? `${r.teacher.lastName} ${r.teacher.firstName}` : null) ??
     r.teachingGroup?.name ??
+    r.criterion?.name ??
     null;
   return {
     id: r.id,
@@ -77,47 +95,59 @@ export const settingsDto = (s: Awaited<ReturnType<typeof scoreSettings>>) => ({
   lateEntryDays: s.lateEntryDays,
 });
 
+/** A bound sent alone may cross the stored one: the database check decides, the client gets a field error. */
+function boundsError(err: unknown): never {
+  if (isConstraintError(err, "ScoreCriterion_points_check"))
+    throw new AppError("VALIDATION_ERROR", 400, { fields: [{ path: "minPoints", code: "min_above_max" }] });
+  throw err;
+}
+
 export class ScoreConfigService {
   constructor(private readonly db: Db) {}
 
-  listCriteria(activeOnly: boolean) {
-    return this.db.scoreCriterion.findMany({
+  async listCriteria(activeOnly: boolean) {
+    const rows = await this.db.scoreCriterion.findMany({
       where: activeOnly ? { isActive: true } : {},
       orderBy: [{ order: "asc" }, { name: "asc" }],
       select: criterionSelect,
     });
+    return rows.map(criterionDto);
   }
 
   async createCriterion(input: z.infer<typeof UpsertScoreCriterionSchema>) {
-    return this.db.$transaction(async (tx) => {
-      const created = await tx.scoreCriterion.create({
-        data: { tenantId: requireTenantId(), ...input, description: input.description ?? null },
-        select: criterionSelect,
-      });
-      await writeAudit(tx, {
-        action: "score_criterion.create",
-        entityType: "ScoreCriterion",
-        entityId: created.id,
-        after: input,
-      });
-      return created;
-    });
+    return this.db
+      .$transaction(async (tx) => {
+        const created = await tx.scoreCriterion.create({
+          data: { tenantId: requireTenantId(), ...input, description: input.description ?? null },
+          select: criterionSelect,
+        });
+        await writeAudit(tx, {
+          action: "score_criterion.create",
+          entityType: "ScoreCriterion",
+          entityId: created.id,
+          after: input,
+        });
+        return criterionDto(created);
+      })
+      .catch(boundsError);
   }
 
   async updateCriterion(id: string, input: z.infer<typeof UpsertScoreCriterionSchema>) {
-    return this.db.$transaction(async (tx) => {
-      const before = await tx.scoreCriterion.findUnique({ where: { id }, select: criterionSelect });
-      if (!before) throw notFound();
-      const updated = await tx.scoreCriterion.update({ where: { id }, data: input, select: criterionSelect });
-      await writeAudit(tx, {
-        action: "score_criterion.update",
-        entityType: "ScoreCriterion",
-        entityId: id,
-        before,
-        after: input,
-      });
-      return updated;
-    });
+    return this.db
+      .$transaction(async (tx) => {
+        const before = await tx.scoreCriterion.findUnique({ where: { id }, select: criterionSelect });
+        if (!before) throw notFound();
+        const updated = await tx.scoreCriterion.update({ where: { id }, data: input, select: criterionSelect });
+        await writeAudit(tx, {
+          action: "score_criterion.update",
+          entityType: "ScoreCriterion",
+          entityId: id,
+          before: criterionDto(before),
+          after: input,
+        });
+        return criterionDto(updated);
+      })
+      .catch(boundsError);
   }
 
   async getSettings() {
@@ -157,6 +187,7 @@ export class ScoreConfigService {
       GRADE: "gradeId",
       TEACHER: "teacherId",
       TEACHING_GROUP: "teachingGroupId",
+      CRITERION: "criterionId",
     }[input.scopeType];
     return this.db.$transaction(async (tx) => {
       // The scope row must belong to this school (a foreign key alone would accept another tenant's id).
@@ -169,7 +200,9 @@ export class ScoreConfigService {
               ? await tx.grade.findFirst(where)
               : input.scopeType === "TEACHER"
                 ? await tx.employee.findFirst(where)
-                : await tx.teachingGroup.findFirst(where);
+                : input.scopeType === "CRITERION"
+                  ? await tx.scoreCriterion.findFirst(where)
+                  : await tx.teachingGroup.findFirst(where);
         if (!found) throw notFound();
       }
       try {
