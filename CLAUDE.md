@@ -20,7 +20,7 @@ Qabul qilingan qarorlar (o'zgartirish faqat egasining ruxsati bilan):
 | Vaqt mintaqasi | `Asia/Tashkent` |
 | Valyuta | UZS |
 | Baholash formulasi | Maktab sozlaydi. Tizim default preset bilan keladi |
-| Hosting (hozir) | Web + backend + worker: Render. DB: Supabase PostgreSQL. Redis: Render Key Value |
+| Hosting (hozir) | Web (`apps/web`): Vercel. Backend + worker: Render. DB: Supabase PostgreSQL. Redis: Render Key Value (T-87) |
 | Haqiqiy ma'lumot | VPS'ga ko'chguncha Render/Supabase'da faqat demo ma'lumot. Haqiqiy o'quvchi/vasiy ma'lumoti faqat VPS'da |
 | Shaxsiy hujjatlar | Pasport, tug'ilganlik guvohnomasi, INN yig'ilmaydi va modelda yo'q |
 | Login | O'quvchi: 5-sinfdan. Vasiy: telefon raqami (login) + admin bergan vaqtinchalik parol. Telegram — M7 |
