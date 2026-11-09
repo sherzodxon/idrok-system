@@ -33,7 +33,7 @@ import { writeAudit } from "../audit/audit.service";
 import { schoolClock } from "../access/school-clock";
 import { resolveScope, studentWhere, type DataScope } from "../access/scope";
 import { activeBands, attendanceSettings } from "./attendance-config.service";
-import { studentDays, type StudentDay } from "./school-day";
+import { studentDays, studentDaysRange, type StudentDay } from "./school-day";
 
 const MAX_RANGE_DAYS = 92;
 const STATUSES: SchoolAttendanceStatusDto[] = ["PRESENT", "LATE", "ABSENT", "NOT_ARRIVED", "EXCUSED", "NO_DATA"];
@@ -159,14 +159,7 @@ export class AttendanceService {
   }
 
   /** Counts of one day for the expected students in scope (statuses as in `day`). */
-  private async dayCounts(
-    date: SchoolDate,
-    ctx: Awaited<ReturnType<AttendanceService["ctx"]>>,
-    student: Prisma.StudentWhereInput,
-    tracked: boolean,
-    now: Date,
-  ) {
-    const days = await studentDays(this.db, date, ctx, { student });
+  private async dayCounts(date: SchoolDate, days: Map<string, StudentDay>, tracked: boolean, now: Date) {
     const expected = [...days.values()].filter((d) => d.expected);
     const records = expected.length
       ? await this.db.attendanceRecord.findMany({
@@ -189,13 +182,14 @@ export class AttendanceService {
     const student = attendanceStudentWhere(scope, ctx.today);
     const from = addSchoolDays(ctx.today, -(q.days - 1));
     const tracked = await this.trackedDates(from, ctx.today);
+    const range = await studentDaysRange(this.db, from, ctx.today, ctx, { student });
     const now = new Date();
     const trend: AttendanceSummaryDto["trend"] = [];
     let today: AttendanceSummaryDto["today"] | null = null;
     for (const date of eachSchoolDate(from, ctx.today)) {
       const isToday = date === ctx.today;
       if (!isToday && !tracked.has(date)) continue;
-      const { schoolDay, rows } = await this.dayCounts(date, ctx, student, tracked.has(date), now);
+      const { schoolDay, rows } = await this.dayCounts(date, range.get(date) ?? new Map(), tracked.has(date), now);
       const counts = countBy(rows.map((r) => r.status));
       const item = { date, expected: rows.length, counts, rate: attendanceRate(counts) };
       if (rows.length > 0 && tracked.has(date)) trend.push(item);
@@ -227,6 +221,60 @@ export class AttendanceService {
     return { today: today!, trend };
   }
 
+  /**
+   * Every expected student of each school day in [from, to] with the day's status (Excel report). Records come in one
+   * query; who is expected is worked out per day (enrollments and the calendar can change). At most 92 days.
+   */
+  async rangeRows(auth: RequestAuth, from: SchoolDate, to: SchoolDate, classGroupId?: string) {
+    if (diffSchoolDays(from, to) < 0 || diffSchoolDays(from, to) > MAX_RANGE_DAYS)
+      throw new AppError("VALIDATION_ERROR", 400, { fields: [{ path: "from", code: "range" }] });
+    const ctx = await this.ctx();
+    const scope = await resolveScope(this.db, auth, ctx.tz);
+    const student = attendanceStudentWhere(scope, ctx.today);
+    const last = to > ctx.today ? ctx.today : to;
+    const [tracked, records] = await Promise.all([
+      this.trackedDates(from, last),
+      this.db.attendanceRecord.findMany({
+        where: { schoolDate: { gte: schoolDateToDb(from), lte: schoolDateToDb(last) }, student },
+        select: recordSelect,
+      }),
+    ]);
+    const recOf = new Map(records.map((r) => [`${r.studentId}:${schoolDateFromDb(r.schoolDate)}`, r]));
+    const now = new Date();
+    const rows: {
+      date: SchoolDate;
+      studentId: string;
+      className: string;
+      status: SchoolAttendanceStatusDto;
+      firstInAt: string | null;
+      lastOutAt: string | null;
+      lateMinutes: number;
+      earlyLeaveMinutes: number;
+    }[] = [];
+    const range = await studentDaysRange(this.db, from, last, ctx, { student });
+    for (const date of eachSchoolDate(from, last)) {
+      for (const d of (range.get(date) ?? new Map<string, StudentDay>()).values()) {
+        if (!d.expected || (classGroupId && d.classGroupId !== classGroupId)) continue;
+        const f = dayFields(recOf.get(`${d.studentId}:${date}`), d, now, tracked.has(date));
+        rows.push({
+          date,
+          studentId: d.studentId,
+          className: d.className,
+          status: f.status,
+          firstInAt: f.firstInAt,
+          lastOutAt: f.lastOutAt,
+          lateMinutes: f.lateMinutes,
+          earlyLeaveMinutes: f.earlyLeaveMinutes,
+        });
+      }
+    }
+    const students = await this.db.student.findMany({
+      where: { id: { in: [...new Set(rows.map((r) => r.studentId))] } },
+      select: { id: true, studentCode: true, firstName: true, lastName: true },
+    });
+    return { rows, students: new Map(students.map((x) => [x.id, x])) };
+  }
+
   /** Staff (attendance.view, in scope), the student themself or their guardian. */
   async student(
     auth: RequestAuth,
@@ -253,9 +301,12 @@ export class AttendanceService {
     const tracked = await this.trackedDates(from, to);
     const now = new Date();
     const days: StudentAttendanceDto["days"] = [];
+    const range = await studentDaysRange(this.db, from, to > ctx.today ? ctx.today : to, ctx, {
+      studentIds: [studentId],
+    });
     for (const date of eachSchoolDate(from, to)) {
       if (date > ctx.today) break;
-      const day = (await studentDays(this.db, date, ctx, { studentIds: [studentId] })).get(studentId);
+      const day = range.get(date)?.get(studentId);
       const rec = recOf.get(date);
       // Days without a class or off for the grade are skipped unless something was recorded.
       if (!rec && (!day || !day.expected)) continue;

@@ -8,6 +8,7 @@ import {
   Coins,
   DoorOpen,
   FileQuestion,
+  FileBarChart,
   FileSpreadsheet,
   Gift,
   GraduationCap,
@@ -50,17 +51,27 @@ export interface NavItem {
     | "questions"
     | "coins"
     | "coinShop"
-    | "attendance";
+    | "attendance"
+    | "reports";
   href: string;
   icon: LucideIcon;
   group: NavGroupKey;
   /** Hidden without it — the API checks again (CLAUDE.md §4). */
   permission?: PermissionCode;
+  /** Shown with any of these (a page whose parts need different permissions). */
+  anyOf?: PermissionCode[];
 }
 
 export const NAV: Record<NavContext, NavItem[]> = {
   school: [
     { key: "dashboard", href: "/dashboard", icon: LayoutDashboard, group: "main" },
+    {
+      key: "reports",
+      href: "/admin/reports",
+      icon: FileBarChart,
+      group: "main",
+      anyOf: ["attendance.view", "employees.view", "assessment.view", "coins.view"],
+    },
     { key: "students", href: "/admin/students", icon: Users, group: "people", permission: "students.view" },
     { key: "guardians", href: "/admin/guardians", icon: UsersRound, group: "people", permission: "guardians.view" },
     { key: "employees", href: "/admin/employees", icon: UserRound, group: "people", permission: "employees.view" },

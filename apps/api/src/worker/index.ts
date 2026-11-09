@@ -6,6 +6,7 @@ import type { Logger } from "pino";
 import { buildDeps, closeDeps } from "../bootstrap";
 import type { Env } from "../config/env";
 import type { AppDeps } from "../deps";
+import { alertMessage, createAlertSink, type AlertSink } from "../infra/alerts";
 import { relayOutbox } from "../infra/outbox";
 import { DataCipher, parseEncryptionKey } from "../infra/crypto";
 import {
@@ -81,6 +82,17 @@ export async function attendanceCoins(deps: AppDeps, now: Date = new Date()) {
  * Technical records with a built-in expiry only (idempotency keys, relayed outbox events). Business and academic
  * data is never deleted here (security-baseline.md S3).
  */
+const sinks = new WeakMap<AppDeps, AlertSink>();
+/** One alert sink per worker (its throttle state is shared by all jobs of the process). */
+function workerAlerts(deps: AppDeps): AlertSink {
+  let sink = sinks.get(deps);
+  if (!sink) {
+    sink = createAlertSink(deps.env.ALERT_WEBHOOK_URL, { service: "worker", environment: deps.env.NODE_ENV });
+    sinks.set(deps, sink);
+  }
+  return sink;
+}
+
 export async function maintenance(deps: AppDeps) {
   const [idempotency, outbox] = await Promise.all([
     deps.root.idempotencyRecord.deleteMany({ where: { expiresAt: { lt: new Date() } } }),
@@ -91,11 +103,16 @@ export async function maintenance(deps: AppDeps) {
   deps.logger.info({ idempotency: idempotency.count, outbox: outbox.count }, "maintenance done");
   // The cached coin balances must match the ledger; a mismatch is reported, never fixed silently.
   const mismatched = await reconcileCoins(deps.root);
-  if (mismatched.length)
+  if (mismatched.length) {
     deps.logger.error(
       { accounts: mismatched.map((m) => ({ tenantId: m.tenantId, studentId: m.studentId })) },
       "coin balance mismatch",
     );
+    workerAlerts(deps).notify({
+      kind: "coin_mismatch",
+      message: `${mismatched.length} coin account(s) differ from the ledger`,
+    });
+  }
   // Students who left lose their face on the terminals and on the server (biometric data is not kept).
   const cipher = new DataCipher(parseEncryptionKey(deps.env.DATA_ENCRYPTION_KEY));
   for (const tenant of await deps.root.tenant.findMany({ select: { id: true } })) {
@@ -143,10 +160,12 @@ export async function startWorker(env: Env, logger?: Logger) {
     { name: "cleanup" },
   );
 
+  const alerts = workerAlerts(deps);
   for (const w of [imports, housekeeping, tests, devices]) {
-    w.on("failed", (job, err) =>
-      deps.logger.error({ err, jobId: job?.id, queue: w.name, attempts: job?.attemptsMade }, "job failed"),
-    );
+    w.on("failed", (job, err) => {
+      deps.logger.error({ err, jobId: job?.id, queue: w.name, attempts: job?.attemptsMade }, "job failed");
+      alerts.notify({ kind: "worker_error", message: alertMessage(err), route: `queue ${w.name}` });
+    });
   }
 
   let relaying = false;

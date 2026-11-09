@@ -7,6 +7,7 @@ import { maskUrlSecrets } from "./logger";
 import type { AppDeps } from "./deps";
 import { authenticate, csrfProtection, passwordChangeGate } from "./http/auth";
 import { errorHandler, notFoundHandler } from "./http/errors";
+import { createAlertSink } from "./infra/alerts";
 import { healthRouter } from "./http/health";
 import { idempotency } from "./http/idempotency";
 import { requestId } from "./http/request-id";
@@ -30,6 +31,7 @@ import { scoreRoutes } from "./modules/scores/scores.routes";
 import { curriculumRoutes } from "./modules/curriculum/curriculum.routes";
 import { authRoutes } from "./modules/auth/auth.routes";
 import { importsRoutes } from "./modules/imports/imports.routes";
+import { reportsRoutes } from "./modules/reports/reports.routes";
 import { settingsRoutes } from "./modules/settings/settings.routes";
 import { meRoutes } from "./modules/me/me.routes";
 import { peopleRoutes } from "./modules/people/people.routes";
@@ -42,6 +44,7 @@ export function createApp(deps: AppDeps): express.Express {
   const app = express();
   app.disable("x-powered-by");
   app.set("trust proxy", deps.env.TRUST_PROXY);
+  app.locals.alerts = createAlertSink(deps.env.ALERT_WEBHOOK_URL, { service: "api", environment: deps.env.NODE_ENV });
 
   app.use(
     pinoHttp({
@@ -77,7 +80,8 @@ export function createApp(deps: AppDeps): express.Express {
       origin: deps.env.CORS_ORIGINS,
       credentials: true,
       allowedHeaders: ["Content-Type", "Authorization", "X-CSRF-Token", "Idempotency-Key", "X-Request-Id"],
-      exposedHeaders: ["X-Request-Id", "Idempotent-Replayed"],
+      // Content-Disposition: the web app names downloaded files (reports, exports) after the server.
+      exposedHeaders: ["X-Request-Id", "Idempotent-Replayed", "Content-Disposition"],
     }),
   );
   app.use(cookieParser());
@@ -114,6 +118,7 @@ export function createApp(deps: AppDeps): express.Express {
   usersRoutes(v1, registry, deps);
   importsRoutes(v1, registry, deps);
   settingsRoutes(v1, registry, deps);
+  reportsRoutes(v1, registry, deps);
 
   routesFor(v1, registry)(
     {

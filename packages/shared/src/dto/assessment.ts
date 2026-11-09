@@ -349,6 +349,14 @@ export const ManualScoreQuerySchema = z.object({
 
 export const MissingScoresQuerySchema = z.object({ from: SchoolDateSchema, to: SchoolDateSchema });
 
+/** Excel reports (audit phase 6): a school-date range, an optional class and the language of the file. */
+export const ReportRangeQuerySchema = z.object({
+  from: SchoolDateSchema,
+  to: SchoolDateSchema,
+  classGroupId: z.uuid().optional(),
+  locale: z.enum(["uz", "ru"]).default("uz"),
+});
+
 export const MissingScoresRowSchema = z.object({
   teacherId: z.uuid(),
   teacherName: z.string(),
