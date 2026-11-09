@@ -72,3 +72,26 @@ test("the policy editor checks the component sum as you type", async ({ page }) 
   await expect(page.getByTestId("policy-problems")).toContainText("davr maksimumiga teng emas");
   await expect(page.getByRole("button", { name: "E'lon qilish" })).toBeDisabled();
 });
+
+test("a criterion with bounds: the admin sets them, the journal refuses a score above them", async ({ page }) => {
+  await loginToDashboard(page, USERS.importer);
+  await page.getByTestId("sidebar").getByRole("link", { name: "Baholash" }).click();
+  await page.getByRole("tab", { name: "Limitlar" }).click();
+  await page.getByRole("textbox", { name: "Mezon nomi" }).fill("E2E faollik");
+  await page.getByRole("textbox", { name: "Min ball" }).fill("1");
+  await page.getByRole("textbox", { name: "Maks ball" }).fill("2");
+  await page.getByRole("button", { name: "Mezon qo'shish" }).click();
+  await expect(page.locator('[data-criterion="E2E faollik"]')).toContainText("Bir baho: 1–2");
+
+  await page.context().clearCookies();
+  await loginToDashboard(page, USERS.planner);
+  await page.getByTestId("sidebar").getByRole("link", { name: "Jurnal" }).click();
+  await choose(page.getByRole("combobox", { name: "Guruh va fan" }), "7-A · E2E reja fani");
+  await page.getByTestId("gradebook").locator("thead a").first().click();
+  await choose(page.getByRole("combobox", { name: "Mezon" }), "E2E faollik (1–2)");
+  const row = page.getByTestId("journal").locator("[data-student]").first();
+  const before = await row.getByTestId("lesson-points").textContent();
+  await row.locator('[data-points="3"]').click();
+  await expect(page.getByText("Bu mezon bo'yicha bir baho ko'pi bilan 2 ball")).toBeVisible();
+  await expect(row.getByTestId("lesson-points")).toHaveText(before ?? "");
+});

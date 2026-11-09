@@ -5,7 +5,7 @@ import { monthRange, weekRange, type SchoolDate } from "@idrok/shared/time";
 
 export const LIMIT_WINDOWS = ["LESSON", "DAY", "WEEK", "MONTH", "PERIOD"] as const;
 export type LimitWindow = (typeof LIMIT_WINDOWS)[number];
-export const LIMIT_SCOPES = ["GLOBAL", "SUBJECT", "GRADE", "TEACHER", "TEACHING_GROUP"] as const;
+export const LIMIT_SCOPES = ["GLOBAL", "SUBJECT", "GRADE", "TEACHER", "TEACHING_GROUP", "CRITERION"] as const;
 export type LimitScope = (typeof LIMIT_SCOPES)[number];
 
 export interface LimitRule {
@@ -25,6 +25,8 @@ export interface EntryScope {
   teacherId: string;
   gradeId: string;
   teachingGroupId: string;
+  /** null = an entry without a criterion: CRITERION rules do not apply to it. */
+  criterionId: string | null;
 }
 
 export interface ExistingEntry extends EntryScope {
@@ -56,7 +58,9 @@ const scopeValue = (scope: LimitScope, e: EntryScope): string | null =>
         ? e.teacherId
         : scope === "TEACHING_GROUP"
           ? e.teachingGroupId
-          : null;
+          : scope === "CRITERION"
+            ? e.criterionId
+            : null;
 
 /**
  * For each window and scope type, the rule that applies: the one for this exact subject / grade / ... if there is
@@ -68,6 +72,8 @@ export function applicableRules(rules: readonly LimitRule[], entry: EntryScope):
     for (const scopeType of LIMIT_SCOPES) {
       const ofType = rules.filter((r) => r.window === window && r.scopeType === scopeType);
       const value = scopeValue(scopeType, entry);
+      // A criterion limit (its default included) is about scores under some criterion only.
+      if (scopeType === "CRITERION" && value === null) continue;
       const exact = value === null ? undefined : ofType.find((r) => r.scopeId === value);
       const rule = exact ?? ofType.find((r) => r.scopeId === null);
       if (rule) chosen.push(rule);
@@ -156,4 +162,21 @@ export function remainingToday(
     ),
   );
   return Decimal.max(Decimal.min(...left), 0);
+}
+
+/** Bounds of one entry under its criterion (T-77). */
+export interface CriterionBounds {
+  minPoints: DecimalInput | null;
+  maxPoints: DecimalInput | null;
+}
+
+/** Whether the points fit the criterion's bounds; the broken bound when they do not. */
+export function criterionBoundsError(
+  points: DecimalInput,
+  bounds: CriterionBounds,
+): { bound: "min" | "max"; value: Decimal } | null {
+  const p = D(points);
+  if (bounds.minPoints !== null && p.lt(bounds.minPoints)) return { bound: "min", value: D(bounds.minPoints) };
+  if (bounds.maxPoints !== null && p.gt(bounds.maxPoints)) return { bound: "max", value: D(bounds.maxPoints) };
+  return null;
 }

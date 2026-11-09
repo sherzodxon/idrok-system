@@ -193,7 +193,10 @@
       "bridge_required": "Bridge'ni tanlang",
       "invalid_host": "IP manzil noto'g'ri",
       "range": "Oraliq 8 kundan oshmasin",
-      "invalid_username": "Login noto'g'ri: kichik lotin harflari, raqam, nuqta, chiziqcha; 3–50 belgi"
+      "invalid_username": "Login noto'g'ri: kichik lotin harflari, raqam, nuqta, chiziqcha; 3–50 belgi",
+      "above_criterion_max": "Bu mezon bo'yicha bir baho ko'pi bilan {limit} ball",
+      "below_criterion_min": "Bu mezon bo'yicha bir baho kamida {limit} ball",
+      "min_above_max": "Minimal ball maksimaldan katta bo'lishi mumkin emas"
     }
   },
   "states": {
@@ -1313,7 +1316,8 @@
       "SUBJECT": "Fan",
       "GRADE": "Parallel",
       "TEACHER": "O'qituvchi",
-      "TEACHING_GROUP": "Guruh"
+      "TEACHING_GROUP": "Guruh",
+      "CRITERION": "Mezon"
     },
     "active": "Faol",
     "inactive": "O'chirilgan",
@@ -1376,7 +1380,14 @@
     "higherPeriods": "Yarim yil va yil natijasi",
     "higherPeriodsHint": "Har bir katta davr uchun choraklar qanday birlashtirilishini tanlang. Vazn — nisbiy son (masalan, 1 va 2).",
     "useDefault": "Umumiy qoida ({rule})",
-    "finalWeight": "Yakuniy nazorat vazni"
+    "finalWeight": "Yakuniy nazorat vazni",
+    "criterionMin": "Min ball",
+    "criterionMax": "Maks ball",
+    "boundsTitle": "{name}: bir baho chegarasi",
+    "boundsHint": "Bo'sh qoldirilsa, faqat umumiy limitlar ishlaydi",
+    "boundsValue": "Bir baho: {bounds}",
+    "noBounds": "Chegara yo'q",
+    "editBounds": "Chegaralar"
   },
   "tests": {
     "title": "Testlar",

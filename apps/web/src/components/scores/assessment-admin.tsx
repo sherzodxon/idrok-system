@@ -28,12 +28,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Field, Input, Select } from "@/components/ui/field";
-import { ConfirmDialog } from "@/components/ui/modal";
+import { ConfirmDialog, Modal } from "@/components/ui/modal";
 import { EmptyState, QueryBoundary } from "@/components/ui/states";
 import { PageHeader, Tabs, Toolbar } from "@/components/ui/toolbar";
 import { useActiveYear, useEmployees, useGrades, useSubjects } from "@/lib/queries";
 import { can, useMe } from "@/lib/use-me";
 import { useSave } from "@/lib/use-save";
+import { boundsText } from "./bounds";
 
 type Tab = "policy" | "limits" | "scales" | "closing" | "missing";
 
@@ -800,7 +801,7 @@ function SettingsForm({ initial, manage }: { initial: ScoreSettingsDto; manage: 
 }
 
 const WINDOWS = ["LESSON", "DAY", "WEEK", "MONTH", "PERIOD"] as const;
-const SCOPES = ["GLOBAL", "SUBJECT", "GRADE", "TEACHER", "TEACHING_GROUP"] as const;
+const SCOPES = ["GLOBAL", "SUBJECT", "GRADE", "TEACHER", "TEACHING_GROUP", "CRITERION"] as const;
 
 function NewRuleForm() {
   const t = useTranslations("assessment");
@@ -816,6 +817,10 @@ function NewRuleForm() {
         .get<Page<TeacherAssignmentDto>>(`/teacher-assignments?pageSize=100&academicYearId=${year.data!.id}`)
         .then((p) => p.items),
     enabled: !!year.data,
+  });
+  const criteria = useQuery({
+    queryKey: ["score-criteria"],
+    queryFn: () => api.get<ScoreCriterionDto[]>("/score-criteria"),
   });
   const [rule, setRule] = useState({
     window: "DAY" as (typeof WINDOWS)[number],
@@ -839,7 +844,9 @@ function NewRuleForm() {
                   ]),
                 ).values(),
               ]
-            : [];
+            : rule.scopeType === "CRITERION"
+              ? (criteria.data ?? []).filter((c) => c.isActive).map((c) => ({ id: c.id, name: c.name }))
+              : [];
   const save = useSave(
     () => api.post("/score-limit-rules", { ...rule, scopeId: rule.scopeId || null }),
     ["score-limit-rules"],
@@ -928,22 +935,44 @@ function RuleRow({ rule, manage }: { rule: ScoreLimitRuleDto; manage: boolean })
 function NewCriterionForm() {
   const t = useTranslations("assessment");
   const api = useApi();
-  const [name, setName] = useState("");
+  const empty = { name: "", minPoints: "", maxPoints: "" };
+  const [form, setForm] = useState(empty);
   const save = useSave(
-    () => api.post("/score-criteria", { name: name.trim() }),
+    () =>
+      api.post("/score-criteria", {
+        name: form.name.trim(),
+        minPoints: form.minPoints || null,
+        maxPoints: form.maxPoints || null,
+      }),
     ["score-criteria"],
-    () => setName(""),
+    () => setForm(empty),
   );
   return (
     <Toolbar>
       <Input
         aria-label={t("criterionName")}
         placeholder={t("criterionName")}
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        className="sm:w-72"
+        value={form.name}
+        onChange={(e) => setForm({ ...form, name: e.target.value })}
+        className="sm:w-64"
       />
-      <Button disabled={!name.trim()} loading={save.isPending} onClick={() => save.mutate(undefined)}>
+      <Input
+        aria-label={t("criterionMin")}
+        placeholder={t("criterionMin")}
+        inputMode="decimal"
+        value={form.minPoints}
+        onChange={(e) => setForm({ ...form, minPoints: e.target.value })}
+        className="sm:w-24"
+      />
+      <Input
+        aria-label={t("criterionMax")}
+        placeholder={t("criterionMax")}
+        inputMode="decimal"
+        value={form.maxPoints}
+        onChange={(e) => setForm({ ...form, maxPoints: e.target.value })}
+        className="sm:w-24"
+      />
+      <Button disabled={!form.name.trim()} loading={save.isPending} onClick={() => save.mutate(undefined)}>
         <Plus className="size-4" aria-hidden />
         {t("addCriterion")}
       </Button>
@@ -951,22 +980,90 @@ function NewCriterionForm() {
   );
 }
 
+function CriterionBoundsDialog({ criterion, onClose }: { criterion: ScoreCriterionDto; onClose: () => void }) {
+  const t = useTranslations("assessment");
+  const tc = useTranslations("common");
+  const api = useApi();
+  const [form, setForm] = useState({ minPoints: criterion.minPoints ?? "", maxPoints: criterion.maxPoints ?? "" });
+  const save = useSave(
+    () =>
+      api.patch(`/score-criteria/${criterion.id}`, {
+        name: criterion.name,
+        minPoints: form.minPoints || null,
+        maxPoints: form.maxPoints || null,
+      }),
+    ["score-criteria"],
+    onClose,
+  );
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title={t("boundsTitle", { name: criterion.name })}
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose}>
+            {tc("cancel")}
+          </Button>
+          <Button loading={save.isPending} onClick={() => save.mutate(undefined)} data-testid="save-bounds">
+            {tc("save")}
+          </Button>
+        </>
+      }
+    >
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label={t("criterionMin")} hint={t("boundsHint")}>
+          {(id, describedBy) => (
+            <Input
+              id={id}
+              aria-describedby={describedBy}
+              inputMode="decimal"
+              value={form.minPoints}
+              onChange={(e) => setForm({ ...form, minPoints: e.target.value })}
+            />
+          )}
+        </Field>
+        <Field label={t("criterionMax")}>
+          {(id, describedBy) => (
+            <Input
+              id={id}
+              aria-describedby={describedBy}
+              inputMode="decimal"
+              value={form.maxPoints}
+              onChange={(e) => setForm({ ...form, maxPoints: e.target.value })}
+            />
+          )}
+        </Field>
+      </div>
+    </Modal>
+  );
+}
+
 function CriterionRow({ criterion, manage }: { criterion: ScoreCriterionDto; manage: boolean }) {
   const t = useTranslations("assessment");
   const api = useApi();
+  const [editing, setEditing] = useState(false);
   const toggle = useSave(
     () => api.patch(`/score-criteria/${criterion.id}`, { name: criterion.name, isActive: !criterion.isActive }),
     ["score-criteria"],
   );
+  const bounds = boundsText(criterion);
   return (
-    <li className="flex items-center gap-3 px-4 py-2 text-sm">
-      <span className="flex-1">{criterion.name}</span>
+    <li className="flex flex-wrap items-center gap-3 px-4 py-2 text-sm" data-criterion={criterion.name}>
+      <span className="min-w-0 flex-1">{criterion.name}</span>
+      <span className="tabular text-muted">{bounds ? t("boundsValue", { bounds }) : t("noBounds")}</span>
       <Badge tone={criterion.isActive ? "success" : "neutral"}>{t(criterion.isActive ? "active" : "inactive")}</Badge>
       {manage && (
-        <Button size="sm" variant="ghost" loading={toggle.isPending} onClick={() => toggle.mutate(undefined)}>
-          {t(criterion.isActive ? "deactivate" : "activate")}
-        </Button>
+        <>
+          <Button size="sm" variant="ghost" onClick={() => setEditing(true)}>
+            {t("editBounds")}
+          </Button>
+          <Button size="sm" variant="ghost" loading={toggle.isPending} onClick={() => toggle.mutate(undefined)}>
+            {t(criterion.isActive ? "deactivate" : "activate")}
+          </Button>
+        </>
       )}
+      {editing && <CriterionBoundsDialog criterion={criterion} onClose={() => setEditing(false)} />}
     </li>
   );
 }

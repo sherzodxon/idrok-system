@@ -248,3 +248,14 @@ Audit: https://claude.ai/artifact/NvVRtFeT8jZLW7pgvS4Rb6 (Q1–Q5). Egasi tavsiy
 | T-76 | **Xodim davomati.** Xodimlar ham Face ID bilan: `FaceProfile`/`AccessEvent`ga yangi migratsiyada `subjectType` (STUDENT / EMPLOYEE) va `employeeId`, mavjud qatorlar STUDENT bo'lib qoladi. Birinchi navbatda faqat kelish, ketish, kechikish va hisobot; ish haqi bilan bog'lash alohida qaror | brif; Q3 |
 | T-77 | **Mezon limitlari.** `ScoreLimitRule`ga ixtiyoriy `criterionId` scope, `ScoreCriterion`ga `minPoints` / `maxPoints` (Decimal) va tur. Yangi ustunlar nullable: eski qoidalar avvalgidek ishlaydi. O'zgarish siyosatning yangi versiyasi, yopilgan davr natijalari o'zgarmaydi (4-bosqich) | brif; scoring.md; Q4 |
 | T-78 | **Moliya.** To'lovlar hozirgi bosqichlarga kirmaydi; keyin alohida bosqich (M9) sifatida spec yoziladi | ROADMAP.md; Q5 |
+
+## Audit 4-bosqichi (mezon limitlari) — qarorlar va ochiq savol
+
+| # | Qaror | Asos |
+|---|---|---|
+| T-79 | T-77 amalga oshirildi: limit qoidasining yangi turi `CRITERION` (aniq mezon yoki "hammasi (default)" — har mezon uchun alohida). Mezonsiz baho mezon qoidalariga kirmaydi. Bir baho mezon chegarasidan (`minPoints` / `maxPoints`) tashqarida bo'lsa — `VALIDATION_ERROR` (`above_criterion_max` / `below_criterion_min`, `limit`), limit tekshiruvidan oldin. Bekor qilingan (reversal) ball limitni bo'shatadi. Tekshiruv o'quvchi lock'i ostida, bir transaction'da | T-77; CLAUDE.md §4 |
+| T-80 | Tuzatish (T-77 matniga): limit qoidalari siyosat versiyasiga kirmaydi (M3'dagidek `isActive` qatorlar). Ular faqat yangi yozuvni tekshiradi, shuning uchun yopilgan davr natijalari va eski yozuvlar o'zgarmaydi | scoring.md §3.1 |
+
+| # | Savol | Nega muhim | Variantlar | Tavsiya etilgan default | Kim hal qiladi |
+|---|---|---|---|---|---|
+| Q-53 | Mezon "turi" (masalan, jarima mezoni — manfiy ball)? | Hozir ball doim musbat (`ScoreEntry_kind_check`, `PointsSchema`); manfiy ball davr formulalari, foizlar va limitlarni o'zgartiradi | (a) tur yo'q, jarima faqat coin'da; (b) `PENALTY` turi va manfiy ball — alohida spec | (a): jarimalar coin tizimida bor (M5). Ballda jarimaga ehtiyoj bo'lsa, alohida spec bilan | Egasi |

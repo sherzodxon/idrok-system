@@ -42,6 +42,7 @@ const CONSTRAINTS = [
   "PlanItem_hours_check",
   "ScoreEntry_kind_check",
   "ScoreLimitRule_scope_check",
+  "ScoreCriterion_points_check",
   "ScoreSettings_values_check",
   "GradeScaleBand_range_check",
   "ManualAssessmentScore_points_check",

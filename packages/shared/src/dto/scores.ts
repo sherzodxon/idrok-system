@@ -1,5 +1,6 @@
 // M3 scores, attendance, criteria, limits and the lesson journal (docs/spec/scoring.md §2, §3, §8).
 import { z } from "zod";
+import { D } from "../decimal";
 import { DecimalStringSchema } from "./assessment";
 import { SchoolDateSchema } from "./common";
 
@@ -18,6 +19,9 @@ export const ScoreCriterionSchema = z.object({
   id: z.uuid(),
   name: z.string(),
   description: z.string().nullable(),
+  /** Bounds of one entry under this criterion; null = only the general limits apply. */
+  minPoints: z.string().nullable(),
+  maxPoints: z.string().nullable(),
   isActive: z.boolean(),
   order: z.number().int(),
 });
@@ -27,10 +31,16 @@ export const UpsertScoreCriterionSchema = z
   .object({
     name: z.string().trim().min(1).max(100),
     description: z.string().trim().max(500).nullable().optional(),
+    minPoints: PointsSchema.nullable().optional(),
+    maxPoints: PointsSchema.nullable().optional(),
     isActive: z.boolean().optional(),
     order: z.number().int().min(0).max(1000).optional(),
   })
-  .strict();
+  .strict()
+  .refine((v) => !v.minPoints || !v.maxPoints || D(v.minPoints).lte(v.maxPoints), {
+    message: "min_above_max",
+    path: ["minPoints"],
+  });
 
 // ---- settings
 
@@ -60,7 +70,7 @@ export const UpdateScoreSettingsSchema = z
 // ---- limit rules
 
 export const LimitWindowSchema = z.enum(["LESSON", "DAY", "WEEK", "MONTH", "PERIOD"]);
-export const LimitScopeSchema = z.enum(["GLOBAL", "SUBJECT", "GRADE", "TEACHER", "TEACHING_GROUP"]);
+export const LimitScopeSchema = z.enum(["GLOBAL", "SUBJECT", "GRADE", "TEACHER", "TEACHING_GROUP", "CRITERION"]);
 
 export const ScoreLimitRuleSchema = z.object({
   id: z.uuid(),
