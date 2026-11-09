@@ -284,3 +284,4 @@ Audit: https://claude.ai/artifact/NvVRtFeT8jZLW7pgvS4Rb6 (Q1–Q5). Egasi tavsiy
 | # | Qaror | Asos |
 |---|---|---|
 | T-87 | **Frontend Vercel'ga (egasi, 2026-11-09: "Ha, tayyorla").** `apps/web` — Vercel (Root Directory `apps/web`, `apps/web/vercel.json`, region `fra1`). API va worker Render'da qoladi, `render.yaml`dan `idrok-web` olib tashlandi. Login uchun `app.<domen>` (Vercel) va `api.<domen>` (Render) bitta domen ostida bo'lishi shart (`COOKIE_DOMAIN`); `*.vercel.app` preview'larda login ishlamaydi. Kod o'zgarmadi: API manzili runtime env'dan (`API_PUBLIC_URL`). Haqiqiy ma'lumot baribir faqat VPS'da | `docs/DEPLOY.md` §2b |
+| T-88 | **Frontend hozircha Render'da (egasi, 2026-11-09).** Sinov (UAT) bosqichi Render + Supabase'da: `idrok-web`, `idrok-api`, `idrok-worker`, `idrok-redis` — hammasi `render.yaml`da. Vercel sozlamasi (`apps/web/vercel.json`, DEPLOY §2b) muqobil sifatida qoladi. Sinov rejasi: `docs/testing/UAT.md` | T-87 o'rniga |
