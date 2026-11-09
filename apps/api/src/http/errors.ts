@@ -2,6 +2,7 @@ import type { ErrorRequestHandler, RequestHandler } from "express";
 // Brings in pino-http's `req.log` / `req.id` typings for every compilation that includes this file (e.g. the worker).
 import type {} from "pino-http";
 import { ZodError } from "zod";
+import { alertMessage, type AlertSink } from "../infra/alerts";
 import { Prisma, TenantContextMissingError, TenantMismatchError } from "@idrok/db";
 import { errorMessageKey, type ApiErrorBody, type ErrorCode } from "@idrok/shared";
 
@@ -58,10 +59,13 @@ export const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
     res.status(404).json(body("NOT_FOUND"));
     return;
   }
-  if (err instanceof TenantContextMissingError || err instanceof TenantMismatchError) {
-    req.log?.error({ err }, "tenant isolation violation");
-  } else {
-    req.log?.error({ err }, "unhandled error");
-  }
+  const tenantViolation = err instanceof TenantContextMissingError || err instanceof TenantMismatchError;
+  req.log?.error({ err }, tenantViolation ? "tenant isolation violation" : "unhandled error");
+  (req.app.locals.alerts as AlertSink | undefined)?.notify({
+    kind: tenantViolation ? "tenant_violation" : "api_error",
+    message: alertMessage(err),
+    requestId: String(req.id),
+    route: `${req.method} ${req.originalUrl.split("?")[0]}`,
+  });
   res.status(500).json(body("INTERNAL_ERROR", { requestId: req.id }));
 };

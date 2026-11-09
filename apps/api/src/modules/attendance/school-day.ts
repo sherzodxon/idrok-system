@@ -1,10 +1,9 @@
 // Who is expected at school on a day and with which times: the student's class on that day (enrollment), the class's
 // shift (else the school default) and the school calendar (working weekdays, holidays per grade).
 import type { Db, DbTransaction, Prisma } from "@idrok/db";
-import { atSchoolTime, schoolDateFromDb, schoolDateToDb, type SchoolDate } from "@idrok/shared/time";
+import { atSchoolTime, eachSchoolDate, schoolDateFromDb, schoolDateToDb, type SchoolDate } from "@idrok/shared/time";
 import type { DayRules, LatenessBand } from "../../domain/attendance";
 import { lessonWeekday, type CalendarDayInput } from "../../domain/lessons";
-import { activeOn } from "../access/scope";
 import { DEFAULT_WORKING_WEEKDAYS } from "../calendar/calendar.service";
 import type { attendanceSettings } from "./attendance-config.service";
 
@@ -29,10 +28,26 @@ export async function studentDays(
   ctx: { settings: Settings; bands: LatenessBand[]; tz: string },
   where: { studentIds?: string[]; student?: Prisma.StudentWhereInput } = {},
 ): Promise<Map<string, StudentDay>> {
-  const d = schoolDateToDb(date);
+  return (await studentDaysRange(db, date, date, ctx, where)).get(date) ?? new Map();
+}
+
+/**
+ * `studentDays` for every day of [from, to] with three queries in all (enrollments, school weeks, calendar marks)
+ * instead of three per day — the history, the dashboard trend and the Excel report read ranges.
+ */
+export async function studentDaysRange(
+  db: Db | DbTransaction,
+  from: SchoolDate,
+  to: SchoolDate,
+  ctx: { settings: Settings; bands: LatenessBand[]; tz: string },
+  where: { studentIds?: string[]; student?: Prisma.StudentWhereInput } = {},
+): Promise<Map<SchoolDate, Map<string, StudentDay>>> {
+  const fromDb = schoolDateToDb(from);
+  const toDb = schoolDateToDb(to);
   const enrollments = await db.studentEnrollment.findMany({
     where: {
-      ...activeOn(date),
+      validFrom: { lte: toDb },
+      OR: [{ validTo: null }, { validTo: { gte: fromDb } }],
       status: { not: "CANCELLED" },
       ...(where.studentIds ? { studentId: { in: where.studentIds } } : {}),
       student: { status: "ACTIVE", ...where.student },
@@ -41,6 +56,8 @@ export async function studentDays(
     select: {
       studentId: true,
       academicYearId: true,
+      validFrom: true,
+      validTo: true,
       classGroup: {
         select: {
           id: true,
@@ -55,7 +72,7 @@ export async function studentDays(
   const [weeks, marks] = await Promise.all([
     db.schoolWeek.findMany({ where: { academicYearId: { in: yearIds } } }),
     db.calendarDay.findMany({
-      where: { academicYearId: { in: yearIds }, date: d },
+      where: { academicYearId: { in: yearIds }, date: { gte: fromDb, lte: toDb } },
       select: {
         academicYearId: true,
         date: true,
@@ -69,41 +86,42 @@ export async function studentDays(
   const weekdays = new Map(weeks.map((w) => [w.academicYearId, new Set(w.workingWeekdays)]));
   const markOf = new Map<string, Map<string, CalendarDayInput>>();
   for (const m of marks) {
-    markOf.set(
-      m.academicYearId,
-      new Map([
-        [
-          schoolDateFromDb(m.date),
-          {
-            date: schoolDateFromDb(m.date),
-            kind: m.kind,
-            followsWeekday: m.followsWeekday,
-            gradeIds: m.appliesToAll ? null : m.grades.map((g) => g.gradeId),
-          },
-        ],
-      ]),
-    );
-  }
-  const out = new Map<string, StudentDay>();
-  for (const e of enrollments) {
-    if (out.has(e.studentId)) continue; // newest enrollment wins on a transfer day
-    const working = weekdays.get(e.academicYearId) ?? new Set(DEFAULT_WORKING_WEEKDAYS);
-    const expected =
-      lessonWeekday(date, e.classGroup.gradeId, working, markOf.get(e.academicYearId) ?? new Map()) !== null;
-    out.set(e.studentId, {
-      studentId: e.studentId,
-      classGroupId: e.classGroup.id,
-      className: e.classGroup.name,
-      expected,
-      rules: {
-        schoolDate: date,
-        startMinute: e.classGroup.shift?.startMinute ?? ctx.settings.defaultStartMinute,
-        endMinute: e.classGroup.shift?.endMinute ?? ctx.settings.defaultEndMinute,
-        graceMinutes: ctx.settings.graceMinutes,
-        bands: ctx.bands,
-        tz: ctx.tz,
-      },
+    const date = schoolDateFromDb(m.date);
+    const ofYear = markOf.get(m.academicYearId) ?? new Map<string, CalendarDayInput>();
+    ofYear.set(date, {
+      date,
+      kind: m.kind,
+      followsWeekday: m.followsWeekday,
+      gradeIds: m.appliesToAll ? null : m.grades.map((g) => g.gradeId),
     });
+    markOf.set(m.academicYearId, ofYear);
+  }
+  const out = new Map<SchoolDate, Map<string, StudentDay>>();
+  for (const date of eachSchoolDate(from, to)) {
+    const d = schoolDateToDb(date);
+    const day = new Map<string, StudentDay>();
+    for (const e of enrollments) {
+      if (e.validFrom > d || (e.validTo !== null && e.validTo < d)) continue;
+      if (day.has(e.studentId)) continue; // newest enrollment wins on a transfer day
+      const working = weekdays.get(e.academicYearId) ?? new Set(DEFAULT_WORKING_WEEKDAYS);
+      const expected =
+        lessonWeekday(date, e.classGroup.gradeId, working, markOf.get(e.academicYearId) ?? new Map()) !== null;
+      day.set(e.studentId, {
+        studentId: e.studentId,
+        classGroupId: e.classGroup.id,
+        className: e.classGroup.name,
+        expected,
+        rules: {
+          schoolDate: date,
+          startMinute: e.classGroup.shift?.startMinute ?? ctx.settings.defaultStartMinute,
+          endMinute: e.classGroup.shift?.endMinute ?? ctx.settings.defaultEndMinute,
+          graceMinutes: ctx.settings.graceMinutes,
+          bands: ctx.bands,
+          tz: ctx.tz,
+        },
+      });
+    }
+    out.set(date, day);
   }
   return out;
 }

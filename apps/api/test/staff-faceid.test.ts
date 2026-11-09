@@ -98,7 +98,9 @@ describe("staff attendance", () => {
     expect((await pass("E-T001", "08:07:00")).body).toMatchObject({ accepted: 1, unmatched: 0 });
     expect((await pass("E-T001", "16:30:00")).body.accepted).toBe(1);
     expect((await pass("E-NOBODY", "08:00:00")).body.unmatched).toBe(1);
-    const event = await t.deps.root.accessEvent.findFirstOrThrow({ where: { employeeNo: "E-T001" } });
+    const event = await t.deps.root.accessEvent.findFirstOrThrow({
+      where: { tenantId: t.defaultTenant.tenant.id, employeeNo: "E-T001" },
+    });
     expect(event).toMatchObject({ employeeId: s.emp1.id, studentId: null });
 
     const day = await s.a.get(`/attendance/staff/day?date=${DAY}`);

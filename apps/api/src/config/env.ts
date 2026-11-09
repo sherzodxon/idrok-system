@@ -43,6 +43,8 @@ const EnvSchema = z.object({
     .optional(),
   /** Public base URL of the API as terminals and bridges reach it (webhook URLs shown to the admin). */
   DEVICE_PUBLIC_API_URL: z.string().url().optional(),
+  /** Optional: errors are POSTed here as short JSON alerts (infra/alerts.ts). Keep it secret if it carries a token. */
+  ALERT_WEBHOOK_URL: z.string().url().optional(),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

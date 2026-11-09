@@ -254,7 +254,8 @@
       "today": "Bugun",
       "lesson": "Dars",
       "prep": "Tayyorgarlik"
-    }
+    },
+    "reports": "Hisobotlar"
   },
   "shell": {
     "context": "Ish rejimi",
@@ -2416,5 +2417,36 @@
     "openConfirm": "Tasdiqlash oynasi",
     "confirmTitle": "Ballni bekor qilasizmi?",
     "confirmText": "Teskari yozuv qo'shiladi; asl yozuv tarixda qoladi."
+  },
+  "reports": {
+    "title": "Hisobotlar",
+    "subtitle": "Tanlangan oraliq bo'yicha Excel fayllar (maktab sanasi, Asia/Tashkent)",
+    "from": "Boshlanish",
+    "to": "Tugash",
+    "class": "Sinf",
+    "allClasses": "Barcha sinflar",
+    "none": "Sizda hisobot olish huquqi yo'q",
+    "download": "Excel yuklab olish",
+    "maxDays": "Oraliq: ko'pi bilan {n} kun",
+    "maxDaysClass": "Oraliq: ko'pi bilan {n} kun · sinf bo'yicha filtrlash mumkin",
+    "rangeTooLong": "Oraliq 0–{n} kun bo'lishi kerak",
+    "kinds": {
+      "attendance": {
+        "title": "Davomat",
+        "text": "Har o'quvchi uchun jami va kunma-kun holat, kelish-ketish vaqti"
+      },
+      "staff-attendance": {
+        "title": "Xodimlar davomati",
+        "text": "Har ish kuni: kelish, ketish, kechikish va erta ketish"
+      },
+      "scores": {
+        "title": "Ballar",
+        "text": "Barcha baholar: fan, o'qituvchi, mezon; bekor qilinganlar alohida qator"
+      },
+      "coins": {
+        "title": "Coin",
+        "text": "Coin daftaridagi barcha yozuvlar: mukofot, jarima, xarid, tuzatish"
+      }
+    }
   }
 }

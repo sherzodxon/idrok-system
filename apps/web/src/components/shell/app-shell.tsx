@@ -36,7 +36,12 @@ function NavList({
   const pathname = usePathname();
   return (
     <div className="flex flex-col gap-3">
-      {groupNav(NAV[context].filter((item) => !item.permission || can(me, item.permission))).map(({ group, items }) => (
+      {groupNav(
+        NAV[context].filter(
+          (item) =>
+            (!item.permission || can(me, item.permission)) && (!item.anyOf || item.anyOf.some((p) => can(me, p))),
+        ),
+      ).map(({ group, items }) => (
         <section
           key={group}
           aria-labelledby={collapsed ? undefined : `nav-group-${group}`}
