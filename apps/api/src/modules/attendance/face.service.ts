@@ -11,6 +11,8 @@ import type {
   FaceProfileDto,
   FaceProfileQuerySchema,
   RecordFaceConsentSchema,
+  StaffFaceDto,
+  StaffFaceQuerySchema,
 } from "@idrok/shared";
 import { schoolDateFromDb, schoolDateToDb } from "@idrok/shared/time";
 import type { z } from "zod";
@@ -21,6 +23,7 @@ import { storageKey, type StorageProvider } from "../../infra/storage";
 import { schoolClock } from "../access/school-clock";
 import { writeAudit } from "../audit/audit.service";
 import { attendanceSettings } from "./attendance-config.service";
+import { staffEmployeeNo } from "../../domain/attendance";
 import { imageType } from "../question-bank/question-bank.service";
 import { enqueueDeviceJob, type JobDevice } from "./device-jobs";
 
@@ -60,19 +63,32 @@ const activeDevices = (tx: DbTransaction | Db) =>
     select: { id: true, useBridge: true, bridgeAgentId: true },
   });
 
-type Student = { id: string; studentCode: string; firstName: string; lastName: string };
+/**
+ * Whose face: a student (terminal number = student code) or an employee (T-76; terminal number = "E-" + employee
+ * code, so the two never collide).
+ */
+export type FaceSubject = {
+  kind: "STUDENT" | "EMPLOYEE";
+  id: string;
+  employeeNo: string;
+  name: string;
+  active: boolean;
+};
 
-/** Puts one student's face (or its removal) on the given devices: sync row + device job each. */
-async function syncStudent(
+const subjectWhere = (s: Pick<FaceSubject, "kind" | "id">) =>
+  s.kind === "STUDENT" ? { studentId: s.id } : { employeeId: s.id };
+
+/** Puts one person's face (or its removal) on the given devices: sync row + device job each. */
+async function syncSubject(
   tx: DbTransaction,
-  student: Student,
+  subject: FaceSubject,
   profile: { version: number; hasPhoto: boolean },
   devices: JobDevice[],
 ) {
   for (const device of devices) {
     const action = profile.hasPhoto ? "UPSERT" : "DELETE";
-    const existing = await tx.faceSyncJob.findUnique({
-      where: { deviceId_studentId: { deviceId: device.id, studentId: student.id } },
+    const existing = await tx.faceSyncJob.findFirst({
+      where: { deviceId: device.id, ...subjectWhere(subject) },
       select: { id: true },
     });
     if (!existing && action === "DELETE") continue;
@@ -86,25 +102,57 @@ async function syncStudent(
     const sync = existing
       ? await tx.faceSyncJob.update({ where: { id: existing.id }, data })
       : await tx.faceSyncJob.create({
-          data: { tenantId: requireTenantId(), deviceId: device.id, studentId: student.id, ...data },
+          data: { tenantId: requireTenantId(), deviceId: device.id, ...subjectWhere(subject), ...data },
         });
     await enqueueDeviceJob(
       tx,
       device,
       profile.hasPhoto ? "FACE_UPSERT" : "FACE_DELETE",
       profile.hasPhoto
-        ? {
-            employeeNo: student.studentCode,
-            name: `${student.lastName} ${student.firstName}`,
-            version: profile.version,
-          }
-        : { employeeNo: student.studentCode },
+        ? { employeeNo: subject.employeeNo, name: subject.name, version: profile.version }
+        : { employeeNo: subject.employeeNo },
       sync.id,
     );
   }
 }
 
 const studentSelect = { id: true, studentCode: true, firstName: true, lastName: true, status: true } as const;
+const employeeSelect = {
+  id: true,
+  employeeCode: true,
+  firstName: true,
+  lastName: true,
+  status: true,
+  phone: true,
+} as const;
+
+const studentSubject = (s: {
+  id: string;
+  studentCode: string;
+  firstName: string;
+  lastName: string;
+  status: string;
+}): FaceSubject => ({
+  kind: "STUDENT",
+  id: s.id,
+  employeeNo: s.studentCode,
+  name: `${s.lastName} ${s.firstName}`,
+  active: s.status === "ACTIVE",
+});
+
+const employeeSubject = (e: {
+  id: string;
+  employeeCode: string | null;
+  firstName: string;
+  lastName: string;
+  status: string;
+}): FaceSubject => ({
+  kind: "EMPLOYEE",
+  id: e.id,
+  employeeNo: e.employeeCode ? staffEmployeeNo(e.employeeCode) : "",
+  name: `${e.lastName} ${e.firstName}`,
+  active: e.status === "ACTIVE",
+});
 
 /** Serialises photo uploads and consent changes of one student (a revoke cannot lose to an upload in flight). */
 const lockFace = (tx: DbTransaction, studentId: string) =>
@@ -135,6 +183,69 @@ const consentDto = (c: {
   revokeReason: c.revokeReason,
 });
 
+const syncSelect = {
+  deviceId: true,
+  action: true,
+  status: true,
+  version: true,
+  syncedVersion: true,
+  attempts: true,
+  lastError: true,
+  syncedAt: true,
+  lastCheckedAt: true,
+  deviceHasFace: true,
+} as const;
+type SyncRow = Prisma.FaceSyncJobGetPayload<{ select: typeof syncSelect }>;
+
+/** Per-device states and the worst of them (NONE without a photo) — the same for students and employees. */
+function faceState(
+  jobs: SyncRow[],
+  devices: { id: string; name: string }[],
+  profile: { version: number; photoAssetId: string | null } | undefined,
+) {
+  const deviceName = new Map(devices.map((d) => [d.id, d.name]));
+  const hasPhoto = !!profile?.photoAssetId;
+  const states: FaceDeviceStateDto[] = jobs.map((j) => ({
+    deviceId: j.deviceId,
+    deviceName: deviceName.get(j.deviceId) ?? "",
+    action: j.action,
+    status: j.status,
+    upToDate: j.status === "SYNCED" && (j.action === "DELETE" || j.syncedVersion === profile?.version),
+    attempts: j.attempts,
+    lastError: j.lastError,
+    syncedAt: j.syncedAt?.toISOString() ?? null,
+    lastCheckedAt: j.lastCheckedAt?.toISOString() ?? null,
+    deviceHasFace: j.deviceHasFace,
+  }));
+  const upserts = states.filter((x) => x.action === "UPSERT");
+  const overall: FaceProfileDto["overall"] = !hasPhoto
+    ? "NONE"
+    : upserts.some((x) => x.status === "FAILED")
+      ? "FAILED"
+      : upserts.length < devices.length || upserts.some((x) => !x.upToDate)
+        ? "PENDING"
+        : "SYNCED";
+  return { hasPhoto, overall, states };
+}
+
+const pageOfRows = <T extends { overall: string }>(
+  all: T[],
+  q: { page: number; pageSize: number; overall?: string },
+) => {
+  const counts = Object.fromEntries(
+    (["NONE", "SYNCED", "PENDING", "FAILED"] as const).map((k) => [k, all.filter((r) => r.overall === k).length]),
+  );
+  const filtered = q.overall ? all.filter((r) => r.overall === q.overall) : all;
+  const start = (q.page - 1) * q.pageSize;
+  return {
+    items: filtered.slice(start, start + q.pageSize),
+    total: filtered.length,
+    page: q.page,
+    pageSize: q.pageSize,
+    counts,
+  };
+};
+
 export class FaceService {
   constructor(
     private readonly db: Db,
@@ -142,27 +253,55 @@ export class FaceService {
     private readonly cipher: DataCipher,
   ) {}
 
-  private async student(id: string) {
+  private async student(id: string): Promise<FaceSubject> {
     const s = await this.db.student.findFirst({ where: { id }, select: studentSelect });
     if (!s) throw notFound();
-    return s;
+    return studentSubject(s);
+  }
+
+  private async employee(id: string) {
+    const e = await this.db.employee.findFirst({ where: { id }, select: employeeSelect });
+    if (!e) throw notFound();
+    return { subject: employeeSubject(e), phone: e.phone, employeeCode: e.employeeCode };
   }
 
   async setPhoto(auth: RequestAuth, studentId: string, file: { buffer: Buffer }): Promise<FaceProfileDto> {
-    if (!this.cipher.configured) throw new AppError("CONFLICT", 409, { reason: "ENCRYPTION_NOT_CONFIGURED" });
     const student = await this.student(studentId);
-    if (student.status !== "ACTIVE") throw new AppError("CONFLICT", 409, { reason: "STUDENT_NOT_ACTIVE" });
+    if (!student.active) throw new AppError("CONFLICT", 409, { reason: "STUDENT_NOT_ACTIVE" });
     const { faceConsentRequired } = await attendanceSettings(this.db);
     if (faceConsentRequired && !(await activeConsent(this.db, studentId))) throw consentRequired();
+    // Checked again under the lock: the consent may have been revoked while the photo was processed.
+    await this.storePhoto(auth, student, file, async (tx) => {
+      if (faceConsentRequired && !(await activeConsent(tx, studentId))) throw consentRequired();
+    });
+    return this.profile(studentId);
+  }
+
+  /** T-75, T-76: an employee's face needs their own phone and an employee code (the terminal number). */
+  async setStaffPhoto(auth: RequestAuth, employeeId: string, file: { buffer: Buffer }): Promise<StaffFaceDto> {
+    const { subject, phone, employeeCode } = await this.employee(employeeId);
+    if (!subject.active) throw new AppError("CONFLICT", 409, { reason: "EMPLOYEE_NOT_ACTIVE" });
+    if (!employeeCode) throw new AppError("CONFLICT", 409, { reason: "EMPLOYEE_CODE_REQUIRED" });
+    if (!phone) throw new AppError("CONFLICT", 409, { reason: "EMPLOYEE_PHONE_REQUIRED" });
+    await this.storePhoto(auth, subject, file);
+    return this.staffProfile(employeeId);
+  }
+
+  private async storePhoto(
+    auth: RequestAuth,
+    subject: FaceSubject,
+    file: { buffer: Buffer },
+    guard?: (tx: DbTransaction) => Promise<void>,
+  ) {
+    if (!this.cipher.configured) throw new AppError("CONFLICT", 409, { reason: "ENCRYPTION_NOT_CONFIGURED" });
     const jpeg = await normalizeFacePhoto(file.buffer);
     const tenantId = requireTenantId();
     const assetId = randomUUID();
     const key = storageKey(tenantId, "FACE_PHOTO", assetId, "bin");
     await this.storage.put(key, this.cipher.encrypt(jpeg), { contentType: "application/octet-stream" });
     const oldKey = await this.db.$transaction(async (tx) => {
-      // Checked again under the lock: the consent may have been revoked while the photo was processed.
-      await lockFace(tx, studentId);
-      if (faceConsentRequired && !(await activeConsent(tx, studentId))) throw consentRequired();
+      await lockFace(tx, subject.id);
+      await guard?.(tx);
       await tx.fileAsset.create({
         data: {
           id: assetId,
@@ -177,34 +316,33 @@ export class FaceService {
           createdById: auth.userId,
         },
       });
-      const before = await tx.faceProfile.findUnique({
-        where: { tenantId_studentId: { tenantId, studentId } },
-        select: { version: true, photoAsset: { select: { id: true, storageKey: true } } },
+      const before = await tx.faceProfile.findFirst({
+        where: subjectWhere(subject),
+        select: { id: true, version: true, photoAsset: { select: { id: true, storageKey: true } } },
       });
       const profile = before
         ? await tx.faceProfile.update({
-            where: { tenantId_studentId: { tenantId, studentId } },
+            where: { id: before.id },
             data: { photoAssetId: assetId, version: { increment: 1 } },
           })
-        : await tx.faceProfile.create({ data: { tenantId, studentId, photoAssetId: assetId } });
+        : await tx.faceProfile.create({ data: { tenantId, ...subjectWhere(subject), photoAssetId: assetId } });
       if (before?.photoAsset) {
         await tx.fileAsset.update({
           where: { id: before.photoAsset.id },
           data: { status: "DELETED", deletedAt: new Date() },
         });
       }
-      await syncStudent(tx, student, { version: profile.version, hasPhoto: true }, await activeDevices(tx));
+      await syncSubject(tx, subject, { version: profile.version, hasPhoto: true }, await activeDevices(tx));
       await writeAudit(tx, {
         action: "face.photo.set",
         entityType: "FaceProfile",
-        entityId: studentId,
-        after: { version: profile.version },
+        entityId: subject.id,
+        after: { version: profile.version, kind: subject.kind },
       });
       return before?.photoAsset?.storageKey ?? null;
     });
     // Biometric data is not kept once replaced (best effort; the row is already marked DELETED).
     if (oldKey) await this.storage.delete(oldKey).catch(() => undefined);
-    return this.profile(studentId);
   }
 
   // ---------------------------------------------------------------- consent (T-75)
@@ -281,17 +419,27 @@ export class FaceService {
   }
 
   async removePhoto(studentId: string): Promise<FaceProfileDto> {
-    const student = await this.student(studentId);
-    const oldKey = await this.db.$transaction(async (tx) => this.clearFace(tx, student));
-    if (oldKey) await this.storage.delete(oldKey).catch(() => undefined);
+    await this.removeFace(await this.student(studentId));
     return this.profile(studentId);
   }
 
+  async removeStaffPhoto(employeeId: string): Promise<StaffFaceDto> {
+    await this.removeFace((await this.employee(employeeId)).subject);
+    return this.staffProfile(employeeId);
+  }
+
+  private async removeFace(subject: FaceSubject) {
+    const oldKey = await this.db.$transaction(async (tx) => {
+      await lockFace(tx, subject.id);
+      return this.clearFace(tx, subject);
+    });
+    if (oldKey) await this.storage.delete(oldKey).catch(() => undefined);
+  }
+
   /** Removes the photo and queues its removal from every device it was sent to. */
-  private async clearFace(tx: DbTransaction, student: Student): Promise<string | null> {
-    const tenantId = requireTenantId();
-    const before = await tx.faceProfile.findUnique({
-      where: { tenantId_studentId: { tenantId, studentId: student.id } },
+  private async clearFace(tx: DbTransaction, subject: FaceSubject): Promise<string | null> {
+    const before = await tx.faceProfile.findFirst({
+      where: subjectWhere(subject),
       select: { id: true, version: true, photoAsset: { select: { id: true, storageKey: true } } },
     });
     if (!before?.photoAsset) return null;
@@ -304,49 +452,65 @@ export class FaceService {
       data: { status: "DELETED", deletedAt: new Date() },
     });
     const devices = await tx.device.findMany({
-      where: { archivedAt: null, faceSyncs: { some: { studentId: student.id } } },
+      where: { archivedAt: null, faceSyncs: { some: subjectWhere(subject) } },
       select: { id: true, useBridge: true, bridgeAgentId: true },
     });
-    await syncStudent(tx, student, { version: profile.version, hasPhoto: false }, devices);
-    await writeAudit(tx, { action: "face.photo.remove", entityType: "FaceProfile", entityId: student.id });
+    await syncSubject(tx, subject, { version: profile.version, hasPhoto: false }, devices);
+    await writeAudit(tx, { action: "face.photo.remove", entityType: "FaceProfile", entityId: subject.id });
     return before.photoAsset.storageKey;
   }
 
   /** Sends the current state again (after a failure), to every active device or one. */
   async resync(studentId: string, deviceId?: string): Promise<FaceProfileDto> {
-    const student = await this.student(studentId);
-    await this.db.$transaction(async (tx) => {
-      const profile = await tx.faceProfile.findUnique({
-        where: { tenantId_studentId: { tenantId: requireTenantId(), studentId } },
-        select: { version: true, photoAssetId: true },
-      });
-      const hasPhoto = !!profile?.photoAssetId && student.status === "ACTIVE";
-      const devices = (await activeDevices(tx)).filter((d) => !deviceId || d.id === deviceId);
-      if (deviceId && !devices.length) throw notFound();
-      await syncStudent(tx, student, { version: profile?.version ?? 1, hasPhoto }, devices);
-      await writeAudit(tx, {
-        action: "face.resync",
-        entityType: "FaceProfile",
-        entityId: studentId,
-        after: { deviceId },
-      });
-    });
+    await this.resyncSubject(await this.student(studentId), deviceId);
     return this.profile(studentId);
   }
 
-  /** Asks the devices whether they hold the student's face ("Qurilmadan tekshirish"). */
+  async resyncStaff(employeeId: string, deviceId?: string): Promise<StaffFaceDto> {
+    await this.resyncSubject((await this.employee(employeeId)).subject, deviceId);
+    return this.staffProfile(employeeId);
+  }
+
+  private async resyncSubject(subject: FaceSubject, deviceId?: string) {
+    await this.db.$transaction(async (tx) => {
+      const profile = await tx.faceProfile.findFirst({
+        where: subjectWhere(subject),
+        select: { version: true, photoAssetId: true },
+      });
+      const hasPhoto = !!profile?.photoAssetId && subject.active;
+      const devices = (await activeDevices(tx)).filter((d) => !deviceId || d.id === deviceId);
+      if (deviceId && !devices.length) throw notFound();
+      await syncSubject(tx, subject, { version: profile?.version ?? 1, hasPhoto }, devices);
+      await writeAudit(tx, {
+        action: "face.resync",
+        entityType: "FaceProfile",
+        entityId: subject.id,
+        after: { deviceId },
+      });
+    });
+  }
+
+  /** Asks the devices whether they hold the face ("Qurilmadan tekshirish"). */
   async check(studentId: string): Promise<FaceProfileDto> {
-    const student = await this.student(studentId);
+    await this.checkSubject(await this.student(studentId));
+    return this.profile(studentId);
+  }
+
+  async checkStaff(employeeId: string): Promise<StaffFaceDto> {
+    await this.checkSubject((await this.employee(employeeId)).subject);
+    return this.staffProfile(employeeId);
+  }
+
+  private async checkSubject(subject: FaceSubject) {
     await this.db.$transaction(async (tx) => {
       const syncs = await tx.faceSyncJob.findMany({
-        where: { studentId, device: { archivedAt: null, isActive: true } },
+        where: { ...subjectWhere(subject), device: { archivedAt: null, isActive: true } },
         select: { id: true, device: { select: { id: true, useBridge: true, bridgeAgentId: true } } },
       });
       for (const s of syncs) {
-        await enqueueDeviceJob(tx, s.device, "FACE_CHECK", { employeeNo: student.studentCode }, s.id);
+        await enqueueDeviceJob(tx, s.device, "FACE_CHECK", { employeeNo: subject.employeeNo }, s.id);
       }
     });
-    return this.profile(studentId);
   }
 
   /** Every active student with a photo, to one device (a new or reset terminal). */
@@ -358,10 +522,16 @@ export class FaceService {
       });
       if (!device) throw notFound();
       const profiles = await tx.faceProfile.findMany({
-        where: { photoAssetId: { not: null }, student: { status: "ACTIVE" } },
-        select: { version: true, student: { select: studentSelect } },
+        where: {
+          photoAssetId: { not: null },
+          OR: [{ student: { status: "ACTIVE" } }, { employee: { status: "ACTIVE", employeeCode: { not: null } } }],
+        },
+        select: { version: true, student: { select: studentSelect }, employee: { select: employeeSelect } },
       });
-      for (const p of profiles) await syncStudent(tx, p.student, { version: p.version, hasPhoto: true }, [device]);
+      for (const p of profiles) {
+        const subject = p.student ? studentSubject(p.student) : employeeSubject(p.employee!);
+        await syncSubject(tx, subject, { version: p.version, hasPhoto: true }, [device]);
+      }
       await writeAudit(tx, {
         action: "face.sync_device",
         entityType: "Device",
@@ -373,24 +543,33 @@ export class FaceService {
   }
 
   /**
-   * Students who left (not ACTIVE) lose their face on every device and on the server (maintenance; idempotent).
+   * Students and employees who left (not ACTIVE) lose their face on every device and on the server (maintenance;
+   * idempotent).
    * Returns how many were cleared.
    */
   async removeInactive(): Promise<number> {
     const left = await this.db.faceProfile.findMany({
-      where: { photoAssetId: { not: null }, student: { status: { not: "ACTIVE" } } },
-      select: { student: { select: studentSelect } },
+      where: {
+        photoAssetId: { not: null },
+        OR: [{ student: { status: { not: "ACTIVE" } } }, { employee: { status: { not: "ACTIVE" } } }],
+      },
+      select: { student: { select: studentSelect }, employee: { select: employeeSelect } },
     });
-    for (const p of left) {
-      const key = await this.db.$transaction((tx) => this.clearFace(tx, p.student));
-      if (key) await this.storage.delete(key).catch(() => undefined);
-    }
+    for (const p of left) await this.removeFace(p.student ? studentSubject(p.student) : employeeSubject(p.employee!));
     return left.length;
   }
 
   async photo(studentId: string): Promise<Buffer> {
-    const p = await this.db.faceProfile.findUnique({
-      where: { tenantId_studentId: { tenantId: requireTenantId(), studentId } },
+    return this.photoOf({ studentId });
+  }
+
+  async staffPhoto(employeeId: string): Promise<Buffer> {
+    return this.photoOf({ employeeId });
+  }
+
+  private async photoOf(where: { studentId: string } | { employeeId: string }): Promise<Buffer> {
+    const p = await this.db.faceProfile.findFirst({
+      where,
       select: { photoAsset: { select: { storageKey: true, status: true } } },
     });
     if (!p?.photoAsset || p.photoAsset.status !== "READY") throw notFound();
@@ -416,47 +595,12 @@ export class FaceService {
         enrollments: { where: { status: "ACTIVE" }, select: { classGroup: { select: { name: true } } }, take: 1 },
         faceProfile: { select: { version: true, photoAssetId: true, updatedAt: true } },
         faceConsents: { where: { revokedAt: null }, select: { givenBy: true, givenOn: true }, take: 1 },
-        faceSyncJobs: {
-          where: { deviceId: { in: devices.map((d) => d.id) } },
-          select: {
-            deviceId: true,
-            action: true,
-            status: true,
-            version: true,
-            syncedVersion: true,
-            attempts: true,
-            lastError: true,
-            syncedAt: true,
-            lastCheckedAt: true,
-            deviceHasFace: true,
-          },
-        },
+        faceSyncJobs: { where: { deviceId: { in: devices.map((d) => d.id) } }, select: syncSelect },
       },
     });
-    const deviceName = new Map(devices.map((d) => [d.id, d.name]));
     return students.map((s): FaceProfileDto => {
       const p = s.faceProfile[0];
-      const hasPhoto = !!p?.photoAssetId;
-      const states: FaceDeviceStateDto[] = s.faceSyncJobs.map((j) => ({
-        deviceId: j.deviceId,
-        deviceName: deviceName.get(j.deviceId) ?? "",
-        action: j.action,
-        status: j.status,
-        upToDate: j.status === "SYNCED" && (j.action === "DELETE" || j.syncedVersion === p?.version),
-        attempts: j.attempts,
-        lastError: j.lastError,
-        syncedAt: j.syncedAt?.toISOString() ?? null,
-        lastCheckedAt: j.lastCheckedAt?.toISOString() ?? null,
-        deviceHasFace: j.deviceHasFace,
-      }));
-      const upserts = states.filter((x) => x.action === "UPSERT");
-      const overall = !hasPhoto
-        ? "NONE"
-        : upserts.some((x) => x.status === "FAILED")
-          ? "FAILED"
-          : upserts.length < devices.length || upserts.some((x) => !x.upToDate)
-            ? "PENDING"
-            : "SYNCED";
+      const { hasPhoto, overall, states } = faceState(s.faceSyncJobs, devices, p);
       return {
         studentId: s.id,
         studentCode: s.studentCode,
@@ -495,18 +639,69 @@ export class FaceService {
           }
         : {}),
     };
-    const all = await this.rows(where);
-    const counts = Object.fromEntries(
-      (["NONE", "SYNCED", "PENDING", "FAILED"] as const).map((k) => [k, all.filter((r) => r.overall === k).length]),
-    );
-    const filtered = q.overall ? all.filter((r) => r.overall === q.overall) : all;
-    const start = (q.page - 1) * q.pageSize;
-    return {
-      items: filtered.slice(start, start + q.pageSize),
-      total: filtered.length,
-      page: q.page,
-      pageSize: q.pageSize,
-      counts,
+    return pageOfRows(await this.rows(where), q);
+  }
+
+  // ---------------------------------------------------------------- staff faces (T-76)
+
+  private async staffRows(where: Prisma.EmployeeWhereInput): Promise<StaffFaceDto[]> {
+    const devices = await this.db.device.findMany({
+      where: { archivedAt: null, isActive: true },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    });
+    const employees = await this.db.employee.findMany({
+      where,
+      orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+      select: {
+        id: true,
+        employeeCode: true,
+        firstName: true,
+        lastName: true,
+        positionTitle: true,
+        phone: true,
+        faceProfile: { select: { version: true, photoAssetId: true, updatedAt: true } },
+        faceSyncJobs: { where: { deviceId: { in: devices.map((d) => d.id) } }, select: syncSelect },
+      },
+    });
+    return employees.map((e) => {
+      const p = e.faceProfile[0];
+      const { hasPhoto, overall, states } = faceState(e.faceSyncJobs, devices, p);
+      return {
+        employeeId: e.id,
+        employeeCode: e.employeeCode,
+        firstName: e.firstName,
+        lastName: e.lastName,
+        positionTitle: e.positionTitle,
+        phone: e.phone,
+        hasPhoto,
+        version: p?.version ?? null,
+        updatedAt: hasPhoto ? (p?.updatedAt.toISOString() ?? null) : null,
+        overall,
+        devices: states,
+      };
+    });
+  }
+
+  async staffProfile(employeeId: string): Promise<StaffFaceDto> {
+    const [row] = await this.staffRows({ id: employeeId });
+    if (!row) throw notFound();
+    return row;
+  }
+
+  async staffList(q: z.infer<typeof StaffFaceQuerySchema>) {
+    const where: Prisma.EmployeeWhereInput = {
+      status: "ACTIVE",
+      ...(q.q
+        ? {
+            OR: [
+              { lastName: { contains: q.q, mode: "insensitive" as const } },
+              { firstName: { contains: q.q, mode: "insensitive" as const } },
+              { employeeCode: { contains: q.q, mode: "insensitive" as const } },
+            ],
+          }
+        : {}),
     };
+    return pageOfRows(await this.staffRows(where), q);
   }
 }

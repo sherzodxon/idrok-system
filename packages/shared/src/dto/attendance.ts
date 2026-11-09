@@ -17,6 +17,10 @@ export const AttendanceSettingsSchema = z.object({
   deviceStaleSeconds: z.number().int().min(30).max(86_400),
   /** T-75: a student's face is stored only with a recorded guardian consent. */
   faceConsentRequired: z.boolean(),
+  /** T-76: the staff working day (minutes from midnight, school time zone). */
+  staffStartMinute: minuteOfDay,
+  staffEndMinute: minuteOfDay,
+  staffGraceMinutes: z.number().int().min(0).max(120),
   /** Read-only: the server can encrypt device passwords and face photos (DATA_ENCRYPTION_KEY set). */
   encryptionConfigured: z.boolean(),
 });
@@ -186,6 +190,34 @@ export const FaceProfileSchema = z.object({
 });
 export type FaceProfileDto = z.infer<typeof FaceProfileSchema>;
 
+/** An employee's face (T-76): the terminal number is "E-" + employee code; the phone is required. */
+export const StaffFaceSchema = z.object({
+  employeeId: z.uuid(),
+  employeeCode: z.string().nullable(),
+  firstName: z.string(),
+  lastName: z.string(),
+  positionTitle: z.string().nullable(),
+  phone: z.string().nullable(),
+  hasPhoto: z.boolean(),
+  version: z.number().int().nullable(),
+  updatedAt: z.iso.datetime().nullable(),
+  overall: z.enum(["NONE", "SYNCED", "PENDING", "FAILED"]),
+  devices: z.array(FaceDeviceStateSchema),
+});
+export type StaffFaceDto = z.infer<typeof StaffFaceSchema>;
+
+export const StaffFaceQuerySchema = ListQuerySchema.extend({
+  overall: z.enum(["NONE", "SYNCED", "PENDING", "FAILED"]).optional(),
+});
+
+export const StaffFacePageSchema = z.object({
+  items: z.array(StaffFaceSchema),
+  total: z.number().int(),
+  page: z.number().int(),
+  pageSize: z.number().int(),
+  counts: z.record(z.string(), z.number().int()),
+});
+
 export const FaceProfileQuerySchema = ListQuerySchema.extend({
   classGroupId: z.uuid().optional(),
   overall: z.enum(["NONE", "SYNCED", "PENDING", "FAILED"]).optional(),
@@ -272,6 +304,36 @@ export const AttendanceSummarySchema = z.object({
 });
 export type AttendanceSummaryDto = z.infer<typeof AttendanceSummarySchema>;
 
+/** T-76: one day of the staff, worked out from the terminal passes (first IN, last OUT) against the staff day. */
+export const StaffAttendanceQuerySchema = ListQuerySchema.extend({
+  date: SchoolDateSchema.optional(),
+  status: SchoolAttendanceStatusSchema.optional(),
+});
+export const StaffAttendanceRowSchema = z.object({
+  employeeId: z.uuid(),
+  firstName: z.string(),
+  lastName: z.string(),
+  positionTitle: z.string().nullable(),
+  /** false = no face on the terminals yet: an absence may only mean "not enrolled". */
+  hasFace: z.boolean(),
+  status: SchoolAttendanceStatusSchema,
+  firstInAt: z.iso.datetime().nullable(),
+  lastOutAt: z.iso.datetime().nullable(),
+  lateMinutes: z.number().int(),
+  earlyLeaveMinutes: z.number().int(),
+});
+export const StaffAttendanceDaySchema = z.object({
+  date: SchoolDateSchema,
+  startMinute: z.number().int(),
+  endMinute: z.number().int(),
+  items: z.array(StaffAttendanceRowSchema),
+  total: z.number().int(),
+  page: z.number().int(),
+  pageSize: z.number().int(),
+  counts: z.record(z.string(), z.number().int()),
+});
+export type StaffAttendanceDayDto = z.infer<typeof StaffAttendanceDaySchema>;
+
 export const StudentAttendanceQuerySchema = z.object({
   from: SchoolDateSchema.optional(),
   to: SchoolDateSchema.optional(),
@@ -315,6 +377,9 @@ export const AccessEventSchema = z.object({
   employeeNo: z.string(),
   studentId: z.uuid().nullable(),
   studentName: z.string().nullable(),
+  /** A staff member's pass (T-76); then studentId is null. */
+  employeeId: z.uuid().nullable(),
+  employeeName: z.string().nullable(),
   direction: z.enum(["IN", "OUT"]).nullable(),
   source: z.enum(["WEBHOOK", "HISTORY"]),
 });

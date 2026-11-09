@@ -134,3 +134,16 @@ test("the guardian sees the day on a phone", async ({ browser }) => {
   await expectNoHorizontalScroll(page);
   await page.close();
 });
+
+test("staff: the day of the staff and their faces (T-76)", async ({ page }) => {
+  await loginToDashboard(page, USERS.coinAdmin);
+  await openAttendance(page, "Xodimlar");
+  await expect(page.getByText(/Ish kuni: \d\d:\d\d–\d\d:\d\d/)).toBeVisible();
+  await expect(page.getByTestId("staff-day").or(page.getByText("Face ID'ga ulangan xodim"))).toBeVisible();
+  await page.getByRole("tab", { name: "Face Check" }).click();
+  await page.getByRole("tab", { name: "Xodimlar" }).last().click();
+  const staff = page.getByTestId("staff-faces");
+  await expect(staff).toBeVisible();
+  await staff.locator("tr", { hasText: "Ustoz" }).first().click();
+  await expect(page.getByTestId("face-dialog")).toBeVisible();
+});

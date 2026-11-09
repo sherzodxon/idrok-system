@@ -162,7 +162,10 @@
       "GUARDIAN_LOGIN_IS_PHONE": "Vasiy logini — telefon raqami; uni vasiy kartasida o'zgartiring",
       "ACCOUNT_HAS_PERSON": "Bu hisob allaqachon kartaga bog'langan",
       "FACE_CONSENT_REQUIRED": "Avval vasiy roziligini qayd eting",
-      "CONSENT_EXISTS": "Bu o'quvchida amaldagi rozilik allaqachon bor"
+      "CONSENT_EXISTS": "Bu o'quvchida amaldagi rozilik allaqachon bor",
+      "EMPLOYEE_NOT_ACTIVE": "Xodim faol emas",
+      "EMPLOYEE_CODE_REQUIRED": "Xodim kartasida xodim kodi yo'q: u terminaldagi raqam bo'ladi",
+      "EMPLOYEE_PHONE_REQUIRED": "Xodim kartasida telefon raqami yo'q"
     },
     "SCORE_LIMIT_EXCEEDED": "Ball limiti oshib ketadi",
     "COIN_LIMIT_EXCEEDED": "Coin limiti oshib ketadi",
@@ -2044,7 +2047,8 @@
       "journal": "Jurnal",
       "faces": "Face Check",
       "devices": "Qurilmalar",
-      "settings": "Sozlamalar"
+      "settings": "Sozlamalar",
+      "staff": "Xodimlar"
     },
     "status": {
       "PRESENT": "Keldi",
@@ -2128,7 +2132,15 @@
         "givenByLabel": "Rozilik bergan shaxs (F.I.)",
         "date": "Rozilik sanasi",
         "record": "Rozilikni qayd etish"
-      }
+      },
+      "students": "O'quvchilar",
+      "staff": "Xodimlar",
+      "searchStaff": "Ism yoki xodim kodi",
+      "emptyStaff": "Faol xodim topilmadi",
+      "employee": "Xodim",
+      "requirements": "Telefon",
+      "cardIncomplete": "Kartada telefon yoki kod yo'q",
+      "staffNeeds": "Xodim kartasida telefon raqami va xodim kodi bo'lishi kerak. Terminaldagi raqam: E-<kod>"
     },
     "monitoring": {
       "devices": "Qurilmalar onlayn",
@@ -2230,7 +2242,10 @@
       "ageHint": "Bundan eski hodisalar qabul qilinmaydi",
       "stale": "Oflayn deb hisoblash (soniya)",
       "staleHint": "Qurilma yoki Bridge shuncha vaqt javob bermasa, oflayn ko'rsatiladi",
-      "faceConsentRequired": "Yuz rasmi uchun vasiy roziligi majburiy"
+      "faceConsentRequired": "Yuz rasmi uchun vasiy roziligi majburiy",
+      "staffHint": "Xodimlar ish kuni: kechikish va erta ketish shu vaqtga nisbatan hisoblanadi.",
+      "staffStart": "Xodimlar kelishi",
+      "staffEnd": "Xodimlar ketishi"
     },
     "bands": {
       "title": "Kechikish oraliqlari",
@@ -2259,7 +2274,12 @@
       "arrivedAt": "{time} da keldi",
       "noToday": "Bugun dars kuni emas"
     },
-    "cancel": "Bekor qilish"
+    "cancel": "Bekor qilish",
+    "staff": {
+      "workday": "Ish kuni: {start}–{end}",
+      "empty": "Bu kunda Face ID'ga ulangan xodim yoki o'tish yo'q",
+      "noFace": "Yuz yo'q"
+    }
   },
   "userPage": {
     "back": "Foydalanuvchilar",

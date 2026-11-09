@@ -795,6 +795,10 @@ model Employee {
   coinLimitRules   CoinLimitRule[]
   coinTransactions CoinTransaction[]
 
+  faceProfile  FaceProfile[]
+  faceSyncJobs FaceSyncJob[]
+  accessEvents AccessEvent[]
+
   @@unique([tenantId, employeeCode])
   @@index([tenantId, lastName, firstName])
 }
@@ -2355,6 +2359,10 @@ model AttendanceSettings {
   deviceStaleSeconds  Int      @default(180)
   // T-75: a student's face is stored only with a recorded guardian consent.
   faceConsentRequired Boolean  @default(true)
+  // T-76: the staff working day (lateness and early leave of employees).
+  staffStartMinute    Int      @default(480)
+  staffEndMinute      Int      @default(1020)
+  staffGraceMinutes   Int      @default(0)
   updatedAt           DateTime @updatedAt @db.Timestamptz(3)
 
   // SQL: AttendanceSettings_check
@@ -2450,9 +2458,11 @@ model AccessEvent {
   occurredAt       DateTime          @db.Timestamptz(3)
   schoolDate       DateTime          @db.Date
   employeeNo       String
-  // null = employeeNo matched no student (kept for the Face Check page)
+  // Both null = employeeNo matched nobody (kept for the Face Check page)
   studentId        String?           @db.Uuid
   student          Student?          @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  employeeId       String?           @db.Uuid
+  employee         Employee?         @relation(fields: [employeeId], references: [id], onDelete: Restrict)
   direction        EventDirection?
   attendanceStatus String?
   majorEventType   Int
@@ -2463,6 +2473,7 @@ model AccessEvent {
   // SQL: AccessEvent_append_only trigger
   @@unique([deviceId, eventKey])
   @@index([tenantId, studentId, schoolDate])
+  @@index([tenantId, employeeId, schoolDate])
   @@index([tenantId, schoolDate])
 }
 
@@ -2522,8 +2533,11 @@ model FaceProfile {
   id           String     @id @default(uuid(7)) @db.Uuid
   tenantId     String     @db.Uuid
   tenant       Tenant     @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  studentId    String     @db.Uuid
-  student      Student    @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  // Exactly one of the two (T-76: staff faces too). SQL: FaceProfile_subject_check
+  studentId    String?    @db.Uuid
+  student      Student?   @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  employeeId   String?    @db.Uuid
+  employee     Employee?  @relation(fields: [employeeId], references: [id], onDelete: Restrict)
   photoAssetId String?    @db.Uuid
   photoAsset   FileAsset? @relation("FacePhoto", fields: [photoAssetId], references: [id], onDelete: SetNull)
   // increases with every new photo; a device is in sync when it holds this version
@@ -2532,6 +2546,7 @@ model FaceProfile {
   updatedAt    DateTime   @updatedAt @db.Timestamptz(3)
 
   @@unique([tenantId, studentId])
+  @@unique([tenantId, employeeId])
 }
 
 /// Sync state of one student's face on one device (the current state; history in AuditLog).
@@ -2541,8 +2556,11 @@ model FaceSyncJob {
   tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   deviceId      String         @db.Uuid
   device        Device         @relation(fields: [deviceId], references: [id], onDelete: Restrict)
-  studentId     String         @db.Uuid
-  student       Student        @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  // Exactly one of the two. SQL: FaceSyncJob_subject_check
+  studentId     String?        @db.Uuid
+  student       Student?       @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  employeeId    String?        @db.Uuid
+  employee      Employee?      @relation(fields: [employeeId], references: [id], onDelete: Restrict)
   action        FaceSyncAction
   status        FaceSyncStatus @default(PENDING)
   // FaceProfile.version this job sends (UPSERT)
@@ -2560,6 +2578,7 @@ model FaceSyncJob {
   jobs BridgeJob[]
 
   @@unique([deviceId, studentId])
+  @@unique([deviceId, employeeId])
   @@index([tenantId, status])
 }
 

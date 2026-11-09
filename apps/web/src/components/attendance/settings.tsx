@@ -44,6 +44,9 @@ function SettingsForm({ initial }: { initial: AttendanceSettingsDto }) {
     maxEventAgeDays: String(initial.maxEventAgeDays),
     deviceStaleSeconds: String(initial.deviceStaleSeconds),
     faceConsentRequired: initial.faceConsentRequired,
+    staffStart: toHhMm(initial.staffStartMinute),
+    staffEnd: toHhMm(initial.staffEndMinute),
+    staffGraceMinutes: String(initial.staffGraceMinutes),
   });
   const set = (patch: Partial<typeof d>) => setD((x) => ({ ...x, ...patch }));
   const save = useSave(
@@ -61,6 +64,9 @@ function SettingsForm({ initial }: { initial: AttendanceSettingsDto }) {
         maxEventAgeDays: Number(d.maxEventAgeDays),
         deviceStaleSeconds: Number(d.deviceStaleSeconds),
         faceConsentRequired: d.faceConsentRequired,
+        staffStartMinute: fromHhMm(d.staffStart),
+        staffEndMinute: fromHhMm(d.staffEnd),
+        staffGraceMinutes: Number(d.staffGraceMinutes),
       }),
     ["attendance-settings", "attendance-status"],
   );
@@ -106,6 +112,34 @@ function SettingsForm({ initial }: { initial: AttendanceSettingsDto }) {
           </Field>
           <Field label={t("settings.grace")} hint={t("settings.graceHint")}>
             {num("graceMinutes", 0, 120)}
+          </Field>
+        </div>
+        <p className="text-sm text-muted">{t("settings.staffHint")}</p>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <Field label={t("settings.staffStart")}>
+            {(id) => (
+              <Input
+                id={id}
+                type="time"
+                required
+                value={d.staffStart}
+                onChange={(e) => set({ staffStart: e.target.value })}
+              />
+            )}
+          </Field>
+          <Field label={t("settings.staffEnd")}>
+            {(id) => (
+              <Input
+                id={id}
+                type="time"
+                required
+                value={d.staffEnd}
+                onChange={(e) => set({ staffEnd: e.target.value })}
+              />
+            )}
+          </Field>
+          <Field label={t("settings.grace")} hint={t("settings.graceHint")}>
+            {num("staffGraceMinutes", 0, 120)}
           </Field>
         </div>
         <details className="rounded-card border border-border px-4 py-3">

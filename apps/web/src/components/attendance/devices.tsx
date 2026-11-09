@@ -663,7 +663,8 @@ function Events() {
                   key: "who",
                   header: t("journal.student"),
                   cell: (e) =>
-                    e.studentName ?? (
+                    e.studentName ??
+                    e.employeeName ?? (
                       <span className="text-warning">{t("events.unknownCode", { code: e.employeeNo })}</span>
                     ),
                 },

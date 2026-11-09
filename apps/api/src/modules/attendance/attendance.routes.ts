@@ -19,6 +19,8 @@ import {
   LatenessBandSchema,
   ManualMarkParamsSchema,
   ManualMarkSchema,
+  StaffAttendanceDaySchema,
+  StaffAttendanceQuerySchema,
   StudentAttendanceQuerySchema,
   StudentAttendanceSchema,
   UpdateAttendanceSettingsSchema,
@@ -34,6 +36,7 @@ import type { OpenApiRegistry } from "../../openapi/registry";
 import { AttendanceConfigService, attendanceSettings } from "./attendance-config.service";
 import { AttendanceService } from "./attendance.service";
 import { DevicesService } from "./devices.service";
+import { StaffAttendanceService } from "./staff-attendance.service";
 
 const tags = ["attendance"];
 const Deleted = z.object({ deleted: z.boolean() });
@@ -55,6 +58,7 @@ export function attendanceRoutes(router: Router, registry: OpenApiRegistry, deps
   const cipher = cipherFor(deps);
   const config = new AttendanceConfigService(deps.db, cipher);
   const attendance = new AttendanceService(deps.db);
+  const staff = new StaffAttendanceService(deps.db);
   const devices = new DevicesService(deps.db, cipher, deps.env.DEVICE_PUBLIC_API_URL);
   const route = routesFor(router, registry);
 
@@ -167,6 +171,18 @@ export function attendanceRoutes(router: Router, registry: OpenApiRegistry, deps
       responses: { 200: { description: "Summary", schema: AttendanceSummarySchema } },
     },
     async ({ res, auth, query }) => res.json(await attendance.summary(auth, query)),
+  );
+  route(
+    {
+      method: "get",
+      path: "/attendance/staff/day",
+      summary: "Staff attendance of a day (T-76): first IN, last OUT, lateness against the staff day",
+      tags,
+      access: "employees.view",
+      query: StaffAttendanceQuerySchema,
+      responses: { 200: { description: "Day", schema: StaffAttendanceDaySchema } },
+    },
+    async ({ res, query }) => res.json(await staff.day(query)),
   );
   route(
     {

@@ -6,7 +6,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { RefreshCw, ScanFace, Search, Trash2, Upload } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { FaceProfileDto, StudentDetail } from "@idrok/shared";
+import type { FaceProfileDto, StaffFaceDto, StudentDetail } from "@idrok/shared";
 import { schoolToday } from "@idrok/shared/time";
 import { useApi } from "@/components/providers/app-providers";
 import { Badge } from "@/components/ui/badge";
@@ -24,6 +24,17 @@ import { FaceBadge, formatDateTime, useFormatDay } from "./common";
 type Overall = FaceProfileDto["overall"];
 const OVERALL: Overall[] = ["NONE", "PENDING", "FAILED", "SYNCED"];
 
+type Kind = "STUDENT" | "EMPLOYEE";
+const basePath = (kind: Kind, id: string) => (kind === "STUDENT" ? `/face/students/${id}` : `/face/employees/${id}`);
+
+interface StaffPage {
+  items: StaffFaceDto[];
+  total: number;
+  page: number;
+  pageSize: number;
+  counts: Record<string, number>;
+}
+
 interface FacePage {
   items: FaceProfileDto[];
   total: number;
@@ -33,12 +44,22 @@ interface FacePage {
 }
 
 /** The server's face photo, loaded with the session; `version` busts the cache after a change. */
-function FacePhoto({ studentId, version, className }: { studentId: string; version: number; className?: string }) {
+function FacePhoto({
+  kind = "STUDENT",
+  id,
+  version,
+  className,
+}: {
+  kind?: Kind;
+  id: string;
+  version: number;
+  className?: string;
+}) {
   const api = useApi();
   const t = useTranslations("attendance");
   const photo = useQuery({
-    queryKey: ["face-photo", studentId, version],
-    queryFn: () => api.download(`/face/students/${studentId}/photo`),
+    queryKey: ["face-photo", id, version],
+    queryFn: () => api.download(`${basePath(kind, id)}/photo`),
     staleTime: 3_600_000,
   });
   const url = useMemo(() => (photo.data ? URL.createObjectURL(photo.data.blob) : null), [photo.data]);
@@ -47,7 +68,28 @@ function FacePhoto({ studentId, version, className }: { studentId: string; versi
   return <img src={url} alt={t("faces.photoAlt")} className={className} />;
 }
 
+/** Face Check: students and staff (T-76) in two tabs. */
 export function FaceCheck() {
+  const t = useTranslations("attendance.faces");
+  const [who, setWho] = useState<Kind>("STUDENT");
+  return (
+    <>
+      <div className="mb-4">
+        <Tabs
+          tabs={[
+            { value: "STUDENT" as const, label: t("students") },
+            { value: "EMPLOYEE" as const, label: t("staff") },
+          ]}
+          value={who}
+          onChange={setWho}
+        />
+      </div>
+      {who === "STUDENT" ? <StudentFaces /> : <StaffFaces />}
+    </>
+  );
+}
+
+function StudentFaces() {
   const t = useTranslations("attendance");
   const api = useApi();
   const year = useActiveYear();
@@ -114,7 +156,7 @@ export function FaceCheck() {
                       <span className="flex items-center gap-3">
                         {p.hasPhoto ? (
                           <FacePhoto
-                            studentId={p.studentId}
+                            id={p.studentId}
                             version={p.version ?? 0}
                             className="size-10 shrink-0 rounded-full bg-surface-muted object-cover"
                           />
@@ -157,7 +199,109 @@ export function FaceCheck() {
           )}
         </QueryBoundary>
       </Card>
-      {open && <FaceDialog studentId={open} onClose={() => setOpen(null)} />}
+      {open && <FaceDialog kind="STUDENT" id={open} onClose={() => setOpen(null)} />}
+    </>
+  );
+}
+
+function StaffFaces() {
+  const t = useTranslations("attendance");
+  const api = useApi();
+  const [q, setQ] = useState("");
+  const [overall, setOverall] = useState<Overall | "">("");
+  const [page, setPage] = useState(1);
+  const [open, setOpen] = useState<string | null>(null);
+  const params = new URLSearchParams({ page: String(page), pageSize: "25" });
+  if (q) params.set("q", q);
+  if (overall) params.set("overall", overall);
+  const list = useQuery({
+    queryKey: ["face-profiles", "staff", params.toString()],
+    queryFn: () => api.get<StaffPage>(`/face/employees?${params.toString()}`),
+  });
+  return (
+    <>
+      <Card className="mb-4">
+        <Toolbar>
+          <SearchInput
+            value={q}
+            onChange={(v) => {
+              setQ(v);
+              setPage(1);
+            }}
+            label={t("faces.searchStaff")}
+          />
+        </Toolbar>
+      </Card>
+      <Tabs
+        tabs={[
+          { value: "" as const, label: t("faces.all") },
+          ...OVERALL.map((o) => ({ value: o, label: `${t(`face.${o}`)} · ${list.data?.counts[o] ?? 0}` })),
+        ]}
+        value={overall}
+        onChange={(v) => {
+          setOverall(v);
+          setPage(1);
+        }}
+      />
+      <Card>
+        <QueryBoundary
+          query={list}
+          isEmpty={(l) => l.items.length === 0}
+          empty={<EmptyState text={t("faces.emptyStaff")} />}
+        >
+          {(l) => (
+            <>
+              <DataTable
+                testId="staff-faces"
+                rows={l.items.map((p) => ({ ...p, id: p.employeeId }))}
+                onRowClick={(p) => setOpen(p.employeeId)}
+                columns={[
+                  {
+                    key: "employee",
+                    header: t("faces.employee"),
+                    primary: true,
+                    cell: (p) => (
+                      <span className="flex items-center gap-3">
+                        {p.hasPhoto ? (
+                          <FacePhoto
+                            kind="EMPLOYEE"
+                            id={p.employeeId}
+                            version={p.version ?? 0}
+                            className="size-10 shrink-0 rounded-full bg-surface-muted object-cover"
+                          />
+                        ) : (
+                          <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-surface-muted text-muted">
+                            <ScanFace className="size-5" aria-hidden />
+                          </span>
+                        )}
+                        <span>
+                          <span className="block font-medium">{`${p.lastName} ${p.firstName}`}</span>
+                          <span className="text-xs text-muted">
+                            {[p.employeeCode, p.positionTitle].filter(Boolean).join(" · ") || "—"}
+                          </span>
+                        </span>
+                      </span>
+                    ),
+                  },
+                  {
+                    key: "ready",
+                    header: t("faces.requirements"),
+                    cell: (p) =>
+                      p.phone && p.employeeCode ? (
+                        <span className="text-xs text-muted">{p.phone}</span>
+                      ) : (
+                        <Badge tone="warning">{t("faces.cardIncomplete")}</Badge>
+                      ),
+                  },
+                  { key: "overall", header: t("faces.state"), cell: (p) => <FaceBadge value={p.overall} /> },
+                ]}
+              />
+              <Pagination page={l.page} pageSize={l.pageSize} total={l.total} onPage={setPage} />
+            </>
+          )}
+        </QueryBoundary>
+      </Card>
+      {open && <FaceDialog kind="EMPLOYEE" id={open} onClose={() => setOpen(null)} />}
     </>
   );
 }
@@ -293,15 +437,16 @@ function ConsentSection({ profile }: { profile: FaceProfileDto }) {
   );
 }
 
-function FaceDialog({ studentId, onClose }: { studentId: string; onClose: () => void }) {
+function FaceDialog({ kind, id, onClose }: { kind: Kind; id: string; onClose: () => void }) {
   const t = useTranslations("attendance");
   const locale = useLocale();
   const api = useApi();
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
+  const base = basePath(kind, id);
   const profile = useQuery({
-    queryKey: ["face-profile", studentId],
-    queryFn: () => api.get<FaceProfileDto>(`/face/students/${studentId}`),
+    queryKey: ["face-profile", id],
+    queryFn: () => api.get<FaceProfileDto | StaffFaceDto>(base),
     refetchInterval: (q) =>
       q.state.data?.devices.some((d) => d.status === "PENDING" || d.status === "IN_PROGRESS") ? 5_000 : false,
   });
@@ -309,11 +454,11 @@ function FaceDialog({ studentId, onClose }: { studentId: string; onClose: () => 
   const upload = useSave((file: File) => {
     const form = new FormData();
     form.set("file", file);
-    return api.put(`/face/students/${studentId}/photo`, form);
+    return api.put(`${base}/photo`, form);
   }, keys);
-  const remove = useSave(() => api.delete(`/face/students/${studentId}/photo`), keys);
-  const resync = useSave(() => api.post(`/face/students/${studentId}/resync`, {}), keys);
-  const check = useSave(() => api.post(`/face/students/${studentId}/check`), keys);
+  const remove = useSave(() => api.delete(`${base}/photo`), keys);
+  const resync = useSave(() => api.post(`${base}/resync`, {}), keys);
+  const check = useSave(() => api.post(`${base}/check`), keys);
   const [confirmRemove, setConfirmRemove] = useState(false);
   return (
     <Modal open onClose={onClose} side="right" title={t("faces.title")}>
@@ -323,14 +468,27 @@ function FaceDialog({ studentId, onClose }: { studentId: string; onClose: () => 
             <div>
               <p className="font-semibold">{`${p.lastName} ${p.firstName}`}</p>
               <p className="text-sm text-muted">
-                {p.studentCode}
-                {p.className ? ` · ${p.className}` : ""}
+                {"studentId" in p
+                  ? `${p.studentCode}${p.className ? ` · ${p.className}` : ""}`
+                  : [p.employeeCode, p.positionTitle, p.phone].filter(Boolean).join(" · ")}
               </p>
             </div>
-            <ConsentSection profile={p} />
+            {"studentId" in p ? (
+              <ConsentSection profile={p} />
+            ) : (
+              (!p.phone || !p.employeeCode) && (
+                <p
+                  className="rounded-card border border-warning bg-warning-soft p-3 text-sm font-medium text-warning"
+                  data-testid="staff-card-incomplete"
+                >
+                  {t("faces.staffNeeds")}
+                </p>
+              )
+            )}
             {p.hasPhoto ? (
               <FacePhoto
-                studentId={p.studentId}
+                kind={kind}
+                id={id}
                 version={p.version ?? 0}
                 className="aspect-[3/4] w-full max-w-xs rounded-card bg-surface-muted object-cover"
               />
@@ -423,7 +581,7 @@ function FaceDialog({ studentId, onClose }: { studentId: string; onClose: () => 
                       remove.mutate(undefined, {
                         onSuccess: () => {
                           setConfirmRemove(false);
-                          void qc.invalidateQueries({ queryKey: ["face-photo", studentId] });
+                          void qc.invalidateQueries({ queryKey: ["face-photo", id] });
                         },
                       })
                     }
