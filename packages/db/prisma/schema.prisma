@@ -2345,25 +2345,27 @@ enum BridgeJobStatus {
 
 /// One row per school. Missing row = defaults (attendance-config.ts).
 model AttendanceSettings {
-  tenantId            String   @id @db.Uuid
-  tenant              Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  isEnabled           Boolean  @default(false)
+  tenantId               String    @id @db.Uuid
+  tenant                 Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  isEnabled              Boolean   @default(false)
   // used when the student's class has no shift; minutes from midnight, school time zone
-  defaultStartMinute  Int      @default(510)
-  defaultEndMinute    Int      @default(810)
-  graceMinutes        Int      @default(0)
+  defaultStartMinute     Int       @default(510)
+  defaultEndMinute       Int       @default(810)
+  graceMinutes           Int       @default(0)
   // ISAPI minor event types that count as a verified pass (75 = face)
-  acceptedSubEvents   Int[]    @default([75])
-  maxClockSkewSeconds Int      @default(300)
-  maxEventAgeDays     Int      @default(7)
-  deviceStaleSeconds  Int      @default(180)
+  acceptedSubEvents      Int[]     @default([75])
+  maxClockSkewSeconds    Int       @default(300)
+  maxEventAgeDays        Int       @default(7)
+  deviceStaleSeconds     Int       @default(180)
   // T-75: a student's face is stored only with a recorded guardian consent.
-  faceConsentRequired Boolean  @default(true)
+  faceConsentRequired    Boolean   @default(true)
+  // Q-54: until this day, faces stored before T-75 may stay without a consent; afterwards maintenance removes them.
+  faceConsentGraceEndsOn DateTime? @db.Date
   // T-76: the staff working day (lateness and early leave of employees).
-  staffStartMinute    Int      @default(480)
-  staffEndMinute      Int      @default(1020)
-  staffGraceMinutes   Int      @default(0)
-  updatedAt           DateTime @updatedAt @db.Timestamptz(3)
+  staffStartMinute       Int       @default(480)
+  staffEndMinute         Int       @default(1020)
+  staffGraceMinutes      Int       @default(0)
+  updatedAt              DateTime  @updatedAt @db.Timestamptz(3)
 
   // SQL: AttendanceSettings_check
 }

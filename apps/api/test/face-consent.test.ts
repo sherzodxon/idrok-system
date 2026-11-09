@@ -4,6 +4,9 @@ import sharp from "sharp";
 import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { addSchoolDays, schoolToday } from "@idrok/shared/time";
+import { runWithTenant } from "@idrok/db";
+import { cipherFor } from "../src/modules/attendance/attendance.routes";
+import { FaceService } from "../src/modules/attendance/face.service";
 import { createTestApp } from "./support/app";
 import { api, buildSchool } from "./support/school";
 
@@ -107,5 +110,42 @@ describe("revoking a consent", () => {
     const profile = await s.a.get(`/face/students/${s.s7a.id}`);
     expect(profile.consent).toBeNull();
     expect(profile.hasPhoto).toBe(false);
+  });
+});
+
+describe("faces stored before the consent rule (Q-54)", () => {
+  const sweep = () =>
+    runWithTenant({ tenantId: t.defaultTenant.tenant.id }, () =>
+      new FaceService(t.deps.db, t.deps.storage, cipherFor(t.deps)).removeWithoutConsent(),
+    );
+
+  it("are listed with the deadline; they stay until it passes", async () => {
+    // s4a's face was stored while the rule was off (first test).
+    const list = await s.a.get("/face/profiles?consent=missing");
+    expect(list.items.map((p: { studentId: string }) => p.studentId)).toEqual([s.s4a.id]);
+    expect(list).toMatchObject({ noConsent: 1, consentRequired: true, consentGraceEndsOn: null });
+    const until = addSchoolDays(schoolToday(), 30);
+    await s.a.put("/attendance/settings", { faceConsentGraceEndsOn: until });
+    expect((await s.a.get("/face/profiles")).consentGraceEndsOn).toBe(until);
+    expect(await sweep()).toBe(0);
+    expect((await s.a.get(`/face/students/${s.s4a.id}`)).hasPhoto).toBe(true);
+  });
+
+  it("after the deadline, faces without consent are removed; faces with consent stay", async () => {
+    await s.a.post(`/face/students/${s.s7a.id}/consents`, { givenBy: "Aliyeva Gulnora", givenOn: "2026-09-03" });
+    expect((await upload(s.s7a.id)).status).toBe(200);
+    await s.a.put("/attendance/settings", { faceConsentGraceEndsOn: addSchoolDays(schoolToday(), -1) });
+    expect(await sweep()).toBe(1);
+    expect((await s.a.get(`/face/students/${s.s4a.id}`)).hasPhoto).toBe(false);
+    expect((await s.a.get(`/face/students/${s.s7a.id}`)).hasPhoto).toBe(true);
+    expect(await audits("face.consent.expired")).toBe(1);
+    expect(await sweep()).toBe(0);
+  });
+
+  it("nothing is removed while the rule is off", async () => {
+    await s.a.put("/attendance/settings", { faceConsentRequired: false });
+    expect((await upload(s.s4a.id)).status).toBe(200);
+    expect(await sweep()).toBe(0);
+    await s.a.put("/attendance/settings", { faceConsentRequired: true });
   });
 });

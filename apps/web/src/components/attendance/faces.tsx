@@ -18,6 +18,7 @@ import { Modal } from "@/components/ui/modal";
 import { EmptyState, QueryBoundary } from "@/components/ui/states";
 import { FilterSelect, SearchInput, Tabs, Toolbar } from "@/components/ui/toolbar";
 import { useActiveYear, useClassGroups } from "@/lib/queries";
+import { formatDate } from "@/lib/format";
 import { useSave } from "@/lib/use-save";
 import { FaceBadge, formatDateTime, useFormatDay } from "./common";
 
@@ -41,6 +42,9 @@ interface FacePage {
   page: number;
   pageSize: number;
   counts: Record<string, number>;
+  noConsent: number;
+  consentRequired: boolean;
+  consentGraceEndsOn: string | null;
 }
 
 /** The server's face photo, loaded with the session; `version` busts the cache after a change. */
@@ -97,12 +101,14 @@ function StudentFaces() {
   const [q, setQ] = useState("");
   const [classGroupId, setClassGroupId] = useState("");
   const [overall, setOverall] = useState<Overall | "">("");
+  const [noConsentOnly, setNoConsentOnly] = useState(false);
   const [page, setPage] = useState(1);
   const [open, setOpen] = useState<string | null>(null);
   const params = new URLSearchParams({ page: String(page), pageSize: "25" });
   if (q) params.set("q", q);
   if (classGroupId) params.set("classGroupId", classGroupId);
   if (overall) params.set("overall", overall);
+  if (noConsentOnly) params.set("consent", "missing");
   const list = useQuery({
     queryKey: ["face-profiles", params.toString()],
     queryFn: () => api.get<FacePage>(`/face/profiles?${params.toString()}`),
@@ -135,6 +141,22 @@ function StudentFaces() {
         value={overall}
         onChange={reset(setOverall)}
       />
+      {list.data?.consentRequired && (list.data.noConsent > 0 || noConsentOnly) && (
+        <div
+          role="status"
+          className="mb-3 flex flex-wrap items-center gap-3 rounded-card border border-warning bg-warning-soft p-3 text-sm text-warning"
+          data-testid="no-consent-banner"
+        >
+          <span className="min-w-0 flex-1 font-medium">
+            {list.data.consentGraceEndsOn && list.data.consentGraceEndsOn >= schoolToday()
+              ? t("faces.noConsentUntil", { n: list.data.noConsent, date: formatDate(list.data.consentGraceEndsOn) })
+              : t("faces.noConsentNow", { n: list.data.noConsent })}
+          </span>
+          <Button size="sm" variant="secondary" onClick={() => reset(setNoConsentOnly)(!noConsentOnly)}>
+            {noConsentOnly ? t("faces.showAll") : t("faces.showNoConsent")}
+          </Button>
+        </div>
+      )}
       <Card>
         <QueryBoundary
           query={list}
@@ -175,7 +197,16 @@ function StudentFaces() {
                       </span>
                     ),
                   },
-                  { key: "overall", header: t("faces.state"), cell: (p) => <FaceBadge value={p.overall} /> },
+                  {
+                    key: "overall",
+                    header: t("faces.state"),
+                    cell: (p) => (
+                      <span className="flex flex-wrap items-center gap-1">
+                        <FaceBadge value={p.overall} />
+                        {p.hasPhoto && !p.consent && <Badge tone="warning">{t("faces.noConsentBadge")}</Badge>}
+                      </span>
+                    ),
+                  },
                   {
                     key: "devices",
                     header: t("faces.devices"),

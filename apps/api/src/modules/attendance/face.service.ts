@@ -428,12 +428,15 @@ export class FaceService {
     return this.staffProfile(employeeId);
   }
 
-  private async removeFace(subject: FaceSubject) {
+  /** `keep` is asked under the lock; when it says so, nothing is removed. Returns whether a face was removed. */
+  private async removeFace(subject: FaceSubject, keep?: (tx: DbTransaction) => Promise<boolean>) {
     const oldKey = await this.db.$transaction(async (tx) => {
       await lockFace(tx, subject.id);
+      if (await keep?.(tx)) return null;
       return this.clearFace(tx, subject);
     });
     if (oldKey) await this.storage.delete(oldKey).catch(() => undefined);
+    return oldKey !== null;
   }
 
   /** Removes the photo and queues its removal from every device it was sent to. */
@@ -559,6 +562,39 @@ export class FaceService {
     return left.length;
   }
 
+  /**
+   * Q-54: once the grace period is over, a student face with no consent in force is removed (maintenance;
+   * idempotent). Nothing happens while the rule is off or the deadline has not passed. Returns how many were cleared.
+   */
+  async removeWithoutConsent(): Promise<number> {
+    const settings = await attendanceSettings(this.db);
+    if (!settings.faceConsentRequired) return 0;
+    const { today } = await schoolClock(this.db);
+    if (settings.faceConsentGraceEndsOn && today <= settings.faceConsentGraceEndsOn) return 0;
+    const rows = await this.db.faceProfile.findMany({
+      where: {
+        photoAssetId: { not: null },
+        studentId: { not: null },
+        student: { faceConsents: { none: { revokedAt: null } } },
+      },
+      select: { student: { select: studentSelect } },
+    });
+    let removed = 0;
+    for (const r of rows) {
+      const subject = studentSubject(r.student!);
+      // A consent recorded meanwhile (checked under the lock) keeps the face.
+      if (!(await this.removeFace(subject, async (tx) => !!(await activeConsent(tx, subject.id))))) continue;
+      removed++;
+      await writeAudit(this.db, {
+        action: "face.consent.expired",
+        entityType: "FaceProfile",
+        entityId: subject.id,
+        reason: "no consent after the grace period (Q-54)",
+      });
+    }
+    return removed;
+  }
+
   async photo(studentId: string): Promise<Buffer> {
     return this.photoOf({ studentId });
   }
@@ -639,7 +675,16 @@ export class FaceService {
           }
         : {}),
     };
-    return pageOfRows(await this.rows(where), q);
+    const settings = await attendanceSettings(this.db);
+    let all = await this.rows(where);
+    const noConsent = all.filter((r) => r.hasPhoto && !r.consent).length;
+    if (q.consent === "missing") all = all.filter((r) => r.hasPhoto && !r.consent);
+    return {
+      ...pageOfRows(all, q),
+      noConsent,
+      consentRequired: settings.faceConsentRequired,
+      consentGraceEndsOn: settings.faceConsentGraceEndsOn,
+    };
   }
 
   // ---------------------------------------------------------------- staff faces (T-76)
