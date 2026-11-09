@@ -273,3 +273,7 @@ Audit: https://claude.ai/artifact/NvVRtFeT8jZLW7pgvS4Rb6 (Q1–Q5). Egasi tavsiy
 |---|---|---|---|---|---|
 | Q-54 | T-75'dan oldin yuklangan o'quvchi yuzlari (roziliksiz) nima bo'ladi? | Hozir ular saqlanib qoladi va terminalda ishlaydi; faqat yangi yuklash rozilik so'raydi | (a) qoldirish va ro'yxatda "rozilik yo'q" deb ko'rsatish; (b) muddat berib, roziliksizlarini avtomatik o'chirish | (b) haqiqiy ma'lumotga o'tishdan oldin: 30 kun muddat, keyin o'chirish (Face Check'da "rozilik yo'q" filtri bilan) | Egasi |
 | Q-55 | Xodimlar uchun dam olish kunlari va ish jadvali | Hozir dam olish kunida o'tish bo'lmasa "ma'lumot yo'q" chiqadi; smenali xodimlar uchun bitta ish kuni yetmaydi | (a) maktab kalendaridan olish; (b) xodim smenasi | (a) birinchi navbatda, (b) ish haqi bilan birga | Egasi |
+
+| # | Qaror | Asos |
+|---|---|---|
+| T-85 | **Q-54 hal qilindi (egasi, 2026-11-11: "Ha, shunday").** Rozilik qoidasidan oldin saqlangan o'quvchi yuzlari uchun 30 kun: mavjud maktablarda `faceConsentGraceEndsOn` = migratsiya kuni (Asia/Tashkent) + 30. Muddat o'tgach, tungi tozalash amaldagi roziligi yo'q o'quvchi yuzini serverdan va terminallardan o'chiradi (`face.consent.expired` audit). Shu payt qayd etilgan rozilik (lock ostida tekshiriladi) yuzni saqlab qoladi. Qoida o'chirilgan bo'lsa hech narsa o'chmaydi. Face Check'da "rozilik yo'q" belgisi, filtr va muddat ogohlantirishi; muddatni sozlamalar API'si orqali o'zgartirish mumkin | Q-54 |

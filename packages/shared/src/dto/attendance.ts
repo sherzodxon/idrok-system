@@ -17,6 +17,8 @@ export const AttendanceSettingsSchema = z.object({
   deviceStaleSeconds: z.number().int().min(30).max(86_400),
   /** T-75: a student's face is stored only with a recorded guardian consent. */
   faceConsentRequired: z.boolean(),
+  /** Q-54: until this school day, faces stored before the consent rule may stay; null = no grace. */
+  faceConsentGraceEndsOn: SchoolDateSchema.nullable(),
   /** T-76: the staff working day (minutes from midnight, school time zone). */
   staffStartMinute: minuteOfDay,
   staffEndMinute: minuteOfDay,
@@ -221,6 +223,8 @@ export const StaffFacePageSchema = z.object({
 export const FaceProfileQuerySchema = ListQuerySchema.extend({
   classGroupId: z.uuid().optional(),
   overall: z.enum(["NONE", "SYNCED", "PENDING", "FAILED"]).optional(),
+  /** Only students with a face but no consent in force (Q-54). */
+  consent: z.enum(["missing"]).optional(),
 });
 
 export const FaceProfilePageSchema = z.object({
@@ -229,6 +233,10 @@ export const FaceProfilePageSchema = z.object({
   page: z.number().int(),
   pageSize: z.number().int(),
   counts: z.record(z.string(), z.number().int()),
+  /** Faces stored without a consent in force (in the class / search filter), and when they will be removed. */
+  noConsent: z.number().int(),
+  consentRequired: z.boolean(),
+  consentGraceEndsOn: SchoolDateSchema.nullable(),
 });
 
 // ---- school attendance

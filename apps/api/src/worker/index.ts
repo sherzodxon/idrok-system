@@ -103,6 +103,10 @@ export async function maintenance(deps: AppDeps) {
       new FaceService(deps.db, deps.storage, cipher).removeInactive(),
     );
     if (cleared) deps.logger.info({ tenantId: tenant.id, cleared }, "faces of inactive students removed");
+    const expired = await runWithTenant({ tenantId: tenant.id, requestId: "maintenance" }, () =>
+      new FaceService(deps.db, deps.storage, cipher).removeWithoutConsent(),
+    );
+    if (expired) deps.logger.info({ tenantId: tenant.id, expired }, "faces without consent removed (Q-54)");
   }
 }
 

@@ -32,11 +32,11 @@ Sana: 2026-11-11. Qarorlar: `open-questions.md` T-75, T-76, T-81…T-84; ochiq s
 | UI: rozilik → yuz yuklash; xodimlar yorliqlari | ✅ e2e `attendance.spec.ts`, ko'zdan |
 | Haqiqiy DS-K1T343MWX bilan pilot | ❌ qurilma yo'q (M6 #17 dan beri ochiq) |
 | O'qituvchining "Mening davomatim" sahifasi | ❌ keyingi qadam |
-| Avval roziliksiz yuklangan yuzlar | ❌ Q-54 — egasining qarori kerak |
+| Avval roziliksiz yuklangan yuzlar: 30 kun, keyin tungi tozalashda o'chiriladi (T-85) | ✅ API test (muddat ichida qoladi, keyin o'chadi, rozilik borlari qoladi, qoida o'chiq — o'chmaydi), ko'zdan |
 
 ## Tekshiruvlar
 
-`pnpm lint`, `pnpm typecheck`, `pnpm build` — o'tdi. Testlar: api 434, db 44, shared 36, config 12, web 27, hikvision 9, bridge 5; e2e 42 — hammasi o'tdi.
+`pnpm lint`, `pnpm typecheck`, `pnpm build` — o'tdi. Testlar (T-85 bilan): api 437, db 44, shared 36, config 12, web 27, hikvision 9, bridge 5; e2e 42 — hammasi o'tdi.
 
 ## Qolgan muammolar
 

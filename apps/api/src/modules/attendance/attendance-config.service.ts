@@ -8,6 +8,7 @@ import type {
   UpdateAttendanceSettingsSchema,
   UpsertLatenessBandSchema,
 } from "@idrok/shared";
+import { schoolDateFromDb, schoolDateToDb } from "@idrok/shared/time";
 import { bandsOverlap, type LatenessBand } from "../../domain/attendance";
 import { AppError, notFound } from "../../http/errors";
 import type { DataCipher } from "../../infra/crypto";
@@ -25,6 +26,7 @@ export const ATTENDANCE_SETTINGS_DEFAULTS: Settings = {
   maxEventAgeDays: 7,
   deviceStaleSeconds: 180,
   faceConsentRequired: true,
+  faceConsentGraceEndsOn: null,
   staffStartMinute: 8 * 60,
   staffEndMinute: 17 * 60,
   staffGraceMinutes: 0,
@@ -33,8 +35,8 @@ export const ATTENDANCE_SETTINGS_DEFAULTS: Settings = {
 export async function attendanceSettings(db: Db | DbTransaction): Promise<Settings> {
   const row = await db.attendanceSettings.findFirst();
   if (!row) return ATTENDANCE_SETTINGS_DEFAULTS;
-  const { tenantId: _t, updatedAt: _u, ...rest } = row;
-  return rest;
+  const { tenantId: _t, updatedAt: _u, faceConsentGraceEndsOn, ...rest } = row;
+  return { ...rest, faceConsentGraceEndsOn: faceConsentGraceEndsOn ? schoolDateFromDb(faceConsentGraceEndsOn) : null };
 }
 
 /** Active bands of the school, for the attendance calculation. */
@@ -79,10 +81,14 @@ export class AttendanceConfigService {
       if (next.defaultEndMinute <= next.defaultStartMinute) throw invalid("defaultEndMinute", "before_start");
       if (next.staffEndMinute <= next.staffStartMinute) throw invalid("staffEndMinute", "before_start");
       next.acceptedSubEvents = [...new Set(next.acceptedSubEvents)].sort((a, b) => a - b);
+      const row = {
+        ...next,
+        faceConsentGraceEndsOn: next.faceConsentGraceEndsOn ? schoolDateToDb(next.faceConsentGraceEndsOn) : null,
+      };
       await tx.attendanceSettings.upsert({
         where: { tenantId: requireTenantId() },
-        create: { tenantId: requireTenantId(), ...next },
-        update: next,
+        create: { tenantId: requireTenantId(), ...row },
+        update: row,
       });
       await writeAudit(tx, {
         action: "attendance.settings.update",

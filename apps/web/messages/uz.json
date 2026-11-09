@@ -2140,7 +2140,12 @@
       "employee": "Xodim",
       "requirements": "Telefon",
       "cardIncomplete": "Kartada telefon yoki kod yo'q",
-      "staffNeeds": "Xodim kartasida telefon raqami va xodim kodi bo'lishi kerak. Terminaldagi raqam: E-<kod>"
+      "staffNeeds": "Xodim kartasida telefon raqami va xodim kodi bo'lishi kerak. Terminaldagi raqam: E-<kod>",
+      "noConsentUntil": "{n} ta yuz roziliksiz saqlangan. Rozilikni {date} kunigacha qayd eting, keyin ular tungi tozalashda o'chiriladi",
+      "noConsentNow": "{n} ta yuz roziliksiz saqlangan: keyingi tungi tozalashda o'chiriladi",
+      "showNoConsent": "Ularni ko'rsatish",
+      "showAll": "Hammasini ko'rsatish",
+      "noConsentBadge": "Rozilik yo'q"
     },
     "monitoring": {
       "devices": "Qurilmalar onlayn",
