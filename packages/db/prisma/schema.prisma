@@ -311,6 +311,14 @@ model Tenant {
   faceConsents       FaceConsent[]
   faceSyncJobs       FaceSyncJob[]
   bridgeJobs         BridgeJob[]
+
+  telegramLinks           TelegramLink[]
+  telegramLinkCodes       TelegramLinkCode[]
+  telegramUpdates         TelegramUpdate[]
+  notificationSettings    NotificationSettings?
+  notificationPreferences NotificationPreference[]
+  notifications           Notification[]
+  broadcasts              Broadcast[]
 }
 
 model SchoolSettings {
@@ -412,8 +420,11 @@ model AuthSession {
   revokedAt         DateTime?  @db.Timestamptz(3)
   revokeReason      String?
   createdAt         DateTime   @default(now()) @db.Timestamptz(3)
+  // M7 (T-90): a Telegram Mini App session, opened with initData of this link; unlinking revokes it
+  telegramLinkId    String?    @db.Uuid
 
   @@index([tenantId, userId, revokedAt])
+  @@index([telegramLinkId])
 }
 
 // Global catalogue (no tenant), synced from packages/shared/src/permissions.ts by the seed.
@@ -891,6 +902,11 @@ model Guardian {
   updatedAt    DateTime          @updatedAt @db.Timestamptz(3)
   students     StudentGuardian[]
   faceConsents FaceConsent[]
+
+  telegramLinks          TelegramLink[]
+  telegramLinkCodes      TelegramLinkCode[]
+  notificationPreference NotificationPreference?
+  notifications          Notification[]
 
   @@index([tenantId, phone])
 }
@@ -2607,4 +2623,174 @@ model BridgeJob {
 
   @@index([bridgeAgentId, status, createdAt])
   @@index([tenantId, deviceId, status])
+}
+
+// =====================================================================================================================
+// M7: TELEGRAM AND NOTIFICATIONS (docs/architecture/m7-telegram.md, T-87…T-95)
+// =====================================================================================================================
+
+enum NotificationKind {
+  ARRIVAL
+  DEPARTURE
+  LOW_ATTENDANCE
+  DAILY_DIGEST
+  TEST_RESULT
+  BROADCAST
+}
+
+enum NotificationChannel {
+  TELEGRAM
+  SMS
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+  SKIPPED
+}
+
+/// A guardian's Telegram account. One active link per guardian and per Telegram user (partial uniques in SQL);
+/// unlinking keeps the row as history.
+model TelegramLink {
+  id              String    @id @default(uuid(7)) @db.Uuid
+  tenantId        String    @db.Uuid
+  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  guardianId      String    @db.Uuid
+  guardian        Guardian  @relation(fields: [guardianId], references: [id], onDelete: Restrict)
+  telegramUserId  BigInt
+  chatId          BigInt
+  username        String?
+  languageCode    String?
+  method          String // CONTACT | CODE
+  linkedAt        DateTime  @default(now()) @db.Timestamptz(3)
+  // the user blocked the bot (403 from Telegram): nothing is sent until they write to the bot again
+  blockedAt       DateTime? @db.Timestamptz(3)
+  revokedAt       DateTime? @db.Timestamptz(3)
+  revokeReason    String?
+  revokedByUserId String?   @db.Uuid
+
+  @@index([tenantId, guardianId])
+  @@index([tenantId, telegramUserId])
+}
+
+/// One-time deep-link code issued by an admin. Only the SHA-256 hash is stored.
+model TelegramLinkCode {
+  id          String    @id @default(uuid(7)) @db.Uuid
+  tenantId    String    @db.Uuid
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  guardianId  String    @db.Uuid
+  guardian    Guardian  @relation(fields: [guardianId], references: [id], onDelete: Restrict)
+  codeHash    String    @unique
+  expiresAt   DateTime  @db.Timestamptz(3)
+  usedAt      DateTime? @db.Timestamptz(3)
+  cancelledAt DateTime? @db.Timestamptz(3)
+  createdById String    @db.Uuid
+  createdAt   DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@index([tenantId, guardianId])
+}
+
+/// Bot updates received by the webhook: (tenant, update_id) makes a re-delivered update a no-op. The payload is
+/// cleared once processed (it may carry a phone number); rows expire after 7 days.
+model TelegramUpdate {
+  id          String    @id @default(uuid(7)) @db.Uuid
+  tenantId    String    @db.Uuid
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  updateId    BigInt
+  payload     Json?
+  receivedAt  DateTime  @default(now()) @db.Timestamptz(3)
+  processedAt DateTime? @db.Timestamptz(3)
+  error       String?
+
+  @@unique([tenantId, updateId])
+  @@index([receivedAt])
+}
+
+/// School-wide notification rules (T-91…T-93). Minutes are from midnight, school time zone.
+model NotificationSettings {
+  tenantId                String   @id @db.Uuid
+  tenant                  Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  isEnabled               Boolean  @default(true)
+  arrivalEnabled          Boolean  @default(true)
+  departureEnabled        Boolean  @default(true)
+  lowAttendanceEnabled    Boolean  @default(true)
+  dailyDigestEnabled      Boolean  @default(true)
+  testResultsEnabled      Boolean  @default(true)
+  departureDelayMinutes   Int      @default(10)
+  digestMinute            Int      @default(1140)
+  lowAttendanceThreshold  Decimal  @default(80) @db.Decimal(5, 2)
+  lowAttendanceWindowDays Int      @default(30)
+  quietStartMinute        Int      @default(1320)
+  quietEndMinute          Int      @default(420)
+  maxPerGuardianPerHour   Int      @default(10)
+  linkCodeTtlHours        Int      @default(72)
+  smsFallbackEnabled      Boolean  @default(false)
+  updatedAt               DateTime @updatedAt @db.Timestamptz(3)
+
+  // SQL: NotificationSettings_check
+}
+
+/// A guardian's own choices. No row = everything on, the school's quiet hours.
+model NotificationPreference {
+  guardianId       String   @id @db.Uuid
+  tenantId         String   @db.Uuid
+  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  guardian         Guardian @relation(fields: [guardianId], references: [id], onDelete: Restrict)
+  arrival          Boolean  @default(true)
+  departure        Boolean  @default(true)
+  lowAttendance    Boolean  @default(true)
+  dailyDigest      Boolean  @default(true)
+  testResults      Boolean  @default(true)
+  // null = the school's quiet hours; quietHoursOff = never quiet
+  quietStartMinute Int?
+  quietEndMinute   Int?
+  quietHoursOff    Boolean  @default(false)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+
+  @@index([tenantId])
+}
+
+/// One message to one guardian. (tenant, guardian, dedupeKey) makes an event produce at most one message.
+/// A delivery log: its status moves forward (PENDING → SENT/FAILED/SKIPPED), it is never deleted.
+model Notification {
+  id          String              @id @default(uuid(7)) @db.Uuid
+  tenantId    String              @db.Uuid
+  tenant      Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  guardianId  String              @db.Uuid
+  guardian    Guardian            @relation(fields: [guardianId], references: [id], onDelete: Restrict)
+  studentId   String?             @db.Uuid
+  broadcastId String?             @db.Uuid
+  broadcast   Broadcast?          @relation(fields: [broadcastId], references: [id], onDelete: Restrict)
+  kind        NotificationKind
+  dedupeKey   String
+  params      Json
+  channel     NotificationChannel @default(TELEGRAM)
+  status      NotificationStatus  @default(PENDING)
+  skipReason  String?
+  scheduledAt DateTime            @default(now()) @db.Timestamptz(3)
+  sentAt      DateTime?           @db.Timestamptz(3)
+  attempts    Int                 @default(0)
+  lastError   String?
+  createdAt   DateTime            @default(now()) @db.Timestamptz(3)
+
+  @@unique([tenantId, guardianId, dedupeKey])
+  @@index([tenantId, guardianId, sentAt])
+  @@index([tenantId, broadcastId, status])
+  @@index([tenantId, createdAt])
+}
+
+/// A message to the guardians of selected classes (T-94).
+model Broadcast {
+  id             String         @id @default(uuid(7)) @db.Uuid
+  tenantId       String         @db.Uuid
+  tenant         Tenant         @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  text           String
+  classGroupIds  String[]       @db.Uuid
+  recipientCount Int
+  createdById    String         @db.Uuid
+  createdAt      DateTime       @default(now()) @db.Timestamptz(3)
+  notifications  Notification[]
+
+  @@index([tenantId, createdAt])
 }

@@ -3,7 +3,9 @@ import type { Env } from "./config/env";
 import type { AppDeps } from "./deps";
 import { createQueues } from "./infra/queue";
 import { createRedis, type RedisClient } from "./infra/redis";
+import { noSmsProvider } from "./infra/sms";
 import { createStorage } from "./infra/storage";
+import { HttpTelegramClient } from "./infra/telegram";
 import { configurePasswordHashing } from "./modules/auth/password";
 import { createLogger } from "./logger";
 import { AuthStateStore } from "./modules/access/auth-state";
@@ -34,6 +36,8 @@ export function buildDeps(env: Env, logger = createLogger(env.LOG_LEVEL)): AppDe
     queues,
     closeQueues,
     authState: new AuthStateStore(root, redis, env.ACCESS_TOKEN_TTL_SECONDS),
+    telegram: new HttpTelegramClient(env.TELEGRAM_BOT_TOKEN, env.TELEGRAM_API_URL),
+    sms: noSmsProvider,
     readiness: {
       db: async () => {
         await root.$queryRaw`SELECT 1`;

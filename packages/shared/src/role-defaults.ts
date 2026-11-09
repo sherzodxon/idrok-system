@@ -89,6 +89,9 @@ export const ROLE_DEFAULT_PERMISSIONS: Record<SystemRoleCode, readonly Permissio
     // M6: school attendance journal and manual marks; devices, faces and settings stay with the admin
     "attendance.view",
     "attendance.mark",
+    // M7: guardians' Telegram links and broadcasts (T-94)
+    "telegram.manage",
+    "notifications.broadcast",
   ],
   METHODIST: [
     ...STRUCTURE_VIEW,

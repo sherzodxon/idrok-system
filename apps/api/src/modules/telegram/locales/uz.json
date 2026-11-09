@@ -1,0 +1,31 @@
+{
+  "bot": {
+    "welcome": "Assalomu alaykum! Bu {school} maktabining rasmiy boti. Bu yerda farzandingizning davomati, natijalari va maktab xabarlarini olasiz.",
+    "askContact": "Bog'lanish uchun pastdagi tugma bilan telefon raqamingizni yuboring. Raqam maktabdagi raqamingiz bilan bir xil bo'lishi kerak. Yoki maktab bergan kodni yuboring.",
+    "contactButton": "📱 Telefon raqamni yuborish",
+    "linked": "✅ Bog'landi: {name}. Endi farzandingiz haqidagi xabarlar shu yerga keladi.",
+    "alreadyLinked": "Siz {name} sifatida bog'langansiz.",
+    "openApp": "Kabinetni ochish",
+    "notFound": "Bu raqam maktab ro'yxatida topilmadi. Maktabdan bog'lash kodini so'rang va uni shu yerga yuboring.",
+    "ambiguous": "Bu raqam bir nechta yozuvga to'g'ri keldi. Maktabdan bog'lash kodini so'rang va uni shu yerga yuboring.",
+    "notOwnContact": "Iltimos, o'zingizning kontaktingizni pastdagi tugma orqali yuboring.",
+    "codeInvalid": "Kod noto'g'ri yoki muddati o'tgan. Maktabdan yangi kod so'rang.",
+    "rateLimited": "Juda ko'p urinish. Birozdan keyin qayta urinib ko'ring.",
+    "unlinked": "Bog'lanish uzildi. Xabarlar endi yuborilmaydi. Qayta bog'lanish uchun /start yuboring.",
+    "notLinked": "Siz hali bog'lanmagansiz. /start yuboring.",
+    "help": "Buyruqlar:\n/start — bog'lanish va kabinet\n/unlink — bog'lanishni uzish\n/help — yordam\n\nXabar sozlamalari kabinetdagi \"Profil\" bo'limida.",
+    "unknown": "Tushunmadim. /help yuboring."
+  },
+  "notify": {
+    "arrival": "✅ {student} maktabga keldi — {time}.",
+    "arrivalLate": "⏰ {student} maktabga {time} da keldi ({late} daqiqa kechikdi).",
+    "departure": "🏠 {student} maktabdan chiqdi — {time}.",
+    "lowAttendance": "⚠️ {student}: so'nggi {days} kunda davomat {rate}% ({attended} / {expected} kun).",
+    "digestTitle": "📊 {student} — {date}",
+    "digestScores": "Ballar: {count} ta, jami {total}",
+    "digestSubject": "• {subject}: {total}",
+    "digestCoins": "Coin: {delta} (balans: {balance})",
+    "testResult": "📝 {student}: «{test}» ({subject}) — {score} / {max} ball ({percent}%).",
+    "broadcast": "📢 {school}\n\n{text}"
+  }
+}

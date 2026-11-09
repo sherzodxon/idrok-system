@@ -75,6 +75,8 @@
 | `attendance.settings.manage` | attendance | ✓ | ✓ |  |  |  |  |  |  |  |
 | `devices.manage` | attendance | ✓ | ✓ |  |  |  |  |  |  |  |
 | `face.manage` | attendance | ✓ | ✓ |  |  |  |  |  |  |  |
+| `telegram.manage` | notifications | ✓ | ✓ |  | ✓ |  |  |  |  |  |
+| `notifications.broadcast` | notifications | ✓ | ✓ |  | ✓ |  |  |  |  |  |
 | `portal.student` | portal |  |  |  |  |  |  |  | ✓ |  |
 | `portal.guardian` | portal |  |  |  |  |  |  |  |  | ✓ |
 

@@ -59,8 +59,9 @@ export class AuthService {
     tenantId: string,
     sessionId: string,
     refreshToken?: string,
+    telegram = false,
   ): Promise<IssuedTokens> {
-    const accessToken = await this.deps.tokens.signAccess({ userId, tenantId, sessionId });
+    const accessToken = await this.deps.tokens.signAccess({ userId, tenantId, sessionId, telegram });
     return {
       accessToken,
       accessTokenExpiresIn: this.deps.tokens.accessTtlSeconds,
@@ -139,6 +140,49 @@ export class AuthService {
     };
   }
 
+  /**
+   * Telegram Mini App login (T-90): the caller already verified initData and resolved the link. Opens a TELEGRAM
+   * session tied to that link (unlinking revokes it); tokens go in the body.
+   */
+  async loginTelegram(input: {
+    tenantId: string;
+    userId: string;
+    telegramLinkId: string;
+    userAgent?: string;
+  }): Promise<LoginResult> {
+    const refreshToken = newRefreshToken();
+    const session = await this.repo.transaction(async (tx) => {
+      const s = await tx.authSession.create({
+        data: {
+          tenantId: input.tenantId,
+          userId: input.userId,
+          clientType: "TELEGRAM",
+          refreshTokenHash: hashToken(refreshToken),
+          expiresAt: this.refreshExpiry(),
+          telegramLinkId: input.telegramLinkId,
+          ...(input.userAgent ? { userAgent: input.userAgent.slice(0, 300) } : {}),
+        },
+        select: { id: true },
+      });
+      await this.repo.markLogin(tx, input.userId);
+      await writeAudit(tx, {
+        tenantId: input.tenantId,
+        actorUserId: input.userId,
+        action: "auth.login",
+        entityType: "AuthSession",
+        entityId: s.id,
+        after: { clientType: "TELEGRAM", via: "mini_app" },
+      });
+      return s;
+    });
+    return {
+      userId: input.userId,
+      tenantId: input.tenantId,
+      sessionId: session.id,
+      tokens: await this.issue(input.userId, input.tenantId, session.id, refreshToken, true),
+    };
+  }
+
   /** Refresh rotation with reuse detection (architecture.md §4). */
   async refresh(refreshToken: string): Promise<LoginResult> {
     const presented = hashToken(refreshToken);
@@ -182,6 +226,7 @@ export class AuthService {
       session.tenantId,
       session.id,
       outcome.kind === "rotated" ? outcome.next : undefined,
+      session.telegramLinkId !== null,
     );
     return { userId: session.userId, tenantId: session.tenantId, sessionId: session.id, tokens };
   }

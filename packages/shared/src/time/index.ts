@@ -127,6 +127,12 @@ export function toSchoolDate(instant: Date, tz: string = DEFAULT_SCHOOL_TZ): Sch
   return `${w.y}-${String(w.m).padStart(2, "0")}-${String(w.d).padStart(2, "0")}` as SchoolDate;
 }
 
+/** Wall-clock minute of the day (0..1439) of an instant in the school's time zone. */
+export function schoolMinuteOfDay(instant: Date, tz: string = DEFAULT_SCHOOL_TZ): number {
+  const w = wallClock(instant, tz);
+  return (w.h % 24) * 60 + w.min;
+}
+
 export function schoolToday(tz: string = DEFAULT_SCHOOL_TZ, now: Date = new Date()): SchoolDate {
   return toSchoolDate(now, tz);
 }

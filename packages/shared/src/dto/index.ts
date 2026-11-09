@@ -13,3 +13,4 @@ export * from "./scores";
 export * from "./tests";
 export * from "./coins";
 export * from "./attendance";
+export * from "./notifications";

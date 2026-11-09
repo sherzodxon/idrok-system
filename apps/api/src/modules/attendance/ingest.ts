@@ -10,6 +10,8 @@ import {
   type DeviceDirection,
 } from "../../domain/attendance";
 import { eventKey, parseHikEvent, withinClockSkew } from "../../domain/hikvision";
+import { emitAttendanceEvents } from "../notifications/sources";
+import { notificationSettings } from "../notifications/settings";
 import { schoolClock } from "../access/school-clock";
 import { activeBands, attendanceSettings } from "./attendance-config.service";
 import { studentDays } from "./school-day";
@@ -109,7 +111,12 @@ const lockDay = (tx: DbTransaction, studentId: string, date: SchoolDate) =>
 
 /** Recomputes the device part of one student's day from all of its events; a manual mark is kept as it is. */
 export async function recomputeDay(db: Db, studentId: string, date: SchoolDate): Promise<void> {
-  const [settings, bands, { timezone }] = await Promise.all([attendanceSettings(db), activeBands(db), schoolClock(db)]);
+  const [settings, bands, { timezone, today }, notify] = await Promise.all([
+    attendanceSettings(db),
+    activeBands(db),
+    schoolClock(db),
+    notificationSettings(db),
+  ]);
   await db.$transaction(async (tx) => {
     await lockDay(tx, studentId, date);
     const d = schoolDateToDb(date);
@@ -143,16 +150,26 @@ export async function recomputeDay(db: Db, studentId: string, date: SchoolDate):
     };
     const existing = await tx.attendanceRecord.findUnique({
       where: { tenantId_studentId_schoolDate: { tenantId: requireTenantId(), studentId, schoolDate: d } },
-      select: { id: true, manualStatus: true },
+      select: { id: true, manualStatus: true, firstInAt: true, lastOutAt: true },
     });
     if (!device.deviceStatus && !existing) return;
     if (existing && !device.deviceStatus && !existing.manualStatus) {
       await tx.attendanceRecord.delete({ where: { id: existing.id } });
+      return;
     } else if (existing) {
       await tx.attendanceRecord.update({ where: { id: existing.id }, data: device });
     } else {
       await tx.attendanceRecord.create({ data: { tenantId: requireTenantId(), studentId, schoolDate: d, ...device } });
     }
+    // M7: guardians hear about today's arrival and departure (the worker applies their settings).
+    await emitAttendanceEvents(tx, {
+      studentId,
+      date,
+      today,
+      departureDelayMinutes: notify.departureDelayMinutes,
+      before: existing,
+      after: device,
+    });
   });
 }
 
