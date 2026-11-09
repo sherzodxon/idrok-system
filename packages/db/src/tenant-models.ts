@@ -77,6 +77,7 @@ export const TENANT_SCOPED_MODELS = [
   "AccessEvent",
   "AttendanceRecord",
   "FaceProfile",
+  "FaceConsent",
   "FaceSyncJob",
   "BridgeJob",
 ] as const;

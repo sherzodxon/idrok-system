@@ -6,11 +6,11 @@ import { useQuery } from "@tanstack/react-query";
 import { BookOpen, UserRound, Users } from "lucide-react";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
-import type { AttendanceSummaryDto, CoinOverviewDto, Me, MissingScoresRowDto, Page } from "@idrok/shared";
+import type { AttendanceSummaryDto, CoinOverviewDto, DeviceDto, Me, MissingScoresRowDto, Page } from "@idrok/shared";
 import { addSchoolDays, schoolToday } from "@idrok/shared/time";
 import { useApi } from "@/components/providers/app-providers";
 import { useShellBranding } from "@/components/shell/branding-context";
-import { useAttendanceFeature } from "@/components/attendance/common";
+import { ConnectionBadge, useAttendanceFeature } from "@/components/attendance/common";
 import { TodayLessonsCard, useTeacherDay } from "@/components/lessons/lessons-pages";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader } from "@/components/ui/card";
@@ -186,8 +186,9 @@ function SchoolOverview({ me }: { me: Me }) {
               </Link>
             </Card>
           )}
+          {attendanceOn && can(me, "devices.manage") && <DevicesCard />}
           {attendanceOn && (
-            <Card className="min-w-0 lg:col-span-3">
+            <Card className={can(me, "devices.manage") ? "min-w-0 lg:col-span-2" : "min-w-0 lg:col-span-3"}>
               <CardHeader title={t("byClass")} />
               <div className="p-5 pt-3">
                 <QueryBoundary
@@ -211,6 +212,61 @@ function SchoolOverview({ me }: { me: Me }) {
         </div>
       )}
     </>
+  );
+}
+
+/** Face ID terminals at a glance (devices.manage): offline ones first, with a warning. */
+function DevicesCard() {
+  const t = useTranslations("dashboard");
+  const ta = useTranslations("attendance");
+  const api = useApi();
+  const devices = useQuery({
+    queryKey: ["devices"],
+    queryFn: () => api.get<DeviceDto[]>("/devices"),
+    refetchInterval: 60_000,
+  });
+  const rank = { OFFLINE: 0, UNKNOWN: 1, ONLINE: 2 } as const;
+  return (
+    <Card className="min-w-0">
+      <CardHeader title={t("devicesTitle")} />
+      <QueryBoundary
+        query={devices}
+        isEmpty={(list) => !list.some((d) => d.isActive && !d.archived)}
+        empty={<EmptyState text={t("devicesEmpty")} />}
+      >
+        {(list) => {
+          const active = list
+            .filter((d) => d.isActive && !d.archived)
+            .sort((a, b) => rank[a.connection] - rank[b.connection] || a.name.localeCompare(b.name));
+          const offline = active.filter((d) => d.connection === "OFFLINE").length;
+          return (
+            <div className="flex flex-col gap-3 px-5 pb-4" data-testid="dashboard-devices">
+              {offline > 0 && (
+                <p role="alert" className="rounded-button bg-danger-soft px-3 py-2 text-sm font-medium text-danger">
+                  {t("devicesOffline", { n: offline })}
+                </p>
+              )}
+              <ul className="divide-y divide-border">
+                {active.map((d) => (
+                  <li key={d.id} className="flex items-center gap-3 py-2.5 text-sm">
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-medium">{d.name}</span>
+                      <span className="block truncate text-xs text-muted">
+                        {`${ta(`direction.${d.direction}`)} · ${t("eventsToday", { n: d.eventsToday })}`}
+                      </span>
+                    </span>
+                    <ConnectionBadge value={d.connection} />
+                  </li>
+                ))}
+              </ul>
+              <Link href="/admin/attendance" className="text-sm font-medium text-primary hover:underline">
+                {t("openAttendance")}
+              </Link>
+            </div>
+          );
+        }}
+      </QueryBoundary>
+    </Card>
   );
 }
 

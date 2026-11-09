@@ -160,7 +160,9 @@
       "ARCHIVED": "Arxivlangan yozuvni o'zgartirib bo'lmaydi",
       "DUPLICATE": "Bunday yozuv allaqachon bor",
       "GUARDIAN_LOGIN_IS_PHONE": "Vasiy logini — telefon raqami; uni vasiy kartasida o'zgartiring",
-      "ACCOUNT_HAS_PERSON": "Bu hisob allaqachon kartaga bog'langan"
+      "ACCOUNT_HAS_PERSON": "Bu hisob allaqachon kartaga bog'langan",
+      "FACE_CONSENT_REQUIRED": "Avval vasiy roziligini qayd eting",
+      "CONSENT_EXISTS": "Bu o'quvchida amaldagi rozilik allaqachon bor"
     },
     "SCORE_LIMIT_EXCEEDED": "Ball limiti oshib ketadi",
     "COIN_LIMIT_EXCEEDED": "Coin limiti oshib ketadi",
@@ -196,7 +198,8 @@
       "invalid_username": "Login noto'g'ri: kichik lotin harflari, raqam, nuqta, chiziqcha; 3–50 belgi",
       "above_criterion_max": "Bu mezon bo'yicha bir baho ko'pi bilan {limit} ball",
       "below_criterion_min": "Bu mezon bo'yicha bir baho kamida {limit} ball",
-      "min_above_max": "Minimal ball maksimaldan katta bo'lishi mumkin emas"
+      "min_above_max": "Minimal ball maksimaldan katta bo'lishi mumkin emas",
+      "in_future": "Sana kelajakda bo'lishi mumkin emas"
     }
   },
   "states": {
@@ -322,7 +325,12 @@
       "allTests": "Barchasi",
       "noTests": "Hozircha ochiq yoki rejalashtirilgan test yo'q"
     },
-    "myClassToday": "Sinfim bugun"
+    "myClassToday": "Sinfim bugun",
+    "devicesTitle": "Face ID terminallari",
+    "devicesEmpty": "Terminal qo'shilmagan",
+    "devicesOffline": "{n} ta terminal javob bermayapti — o'tishlar qayd etilmayapti",
+    "eventsToday": "bugun {n} ta o'tish",
+    "openAttendance": "Davomatni ochish"
   },
   "profile": {
     "title": "Profil",
@@ -2107,7 +2115,20 @@
       "upsert": "Yuklash",
       "syncedAt": "oxirgi sinxron: {at}",
       "onDevice": "qurilmada bor",
-      "notOnDevice": "qurilmada yo'q"
+      "notOnDevice": "qurilmada yo'q",
+      "consent": {
+        "given": "Rozilik bor",
+        "givenBy": "{name}, {date}",
+        "revoke": "Rozilikni bekor qilish",
+        "revokeText": "Yuz rasmi serverdan va barcha terminallardan o'chiriladi. Rozilik tarixda qoladi.",
+        "reason": "Sabab",
+        "missing": "Vasiy roziligi qayd etilmagan. Yuz rasmini yuklashdan oldin qayd eting",
+        "guardian": "Kim rozilik berdi",
+        "otherPerson": "Boshqa shaxs",
+        "givenByLabel": "Rozilik bergan shaxs (F.I.)",
+        "date": "Rozilik sanasi",
+        "record": "Rozilikni qayd etish"
+      }
     },
     "monitoring": {
       "devices": "Qurilmalar onlayn",
@@ -2208,7 +2229,8 @@
       "age": "Eng eski hodisa (kun)",
       "ageHint": "Bundan eski hodisalar qabul qilinmaydi",
       "stale": "Oflayn deb hisoblash (soniya)",
-      "staleHint": "Qurilma yoki Bridge shuncha vaqt javob bermasa, oflayn ko'rsatiladi"
+      "staleHint": "Qurilma yoki Bridge shuncha vaqt javob bermasa, oflayn ko'rsatiladi",
+      "faceConsentRequired": "Yuz rasmi uchun vasiy roziligi majburiy"
     },
     "bands": {
       "title": "Kechikish oraliqlari",

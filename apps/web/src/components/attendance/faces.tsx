@@ -6,17 +6,20 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { RefreshCw, ScanFace, Search, Trash2, Upload } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { FaceProfileDto } from "@idrok/shared";
+import type { FaceProfileDto, StudentDetail } from "@idrok/shared";
+import { schoolToday } from "@idrok/shared/time";
 import { useApi } from "@/components/providers/app-providers";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { DataTable, Pagination } from "@/components/ui/data-table";
+import { Input, Select } from "@/components/ui/field";
 import { Modal } from "@/components/ui/modal";
 import { EmptyState, QueryBoundary } from "@/components/ui/states";
 import { FilterSelect, SearchInput, Tabs, Toolbar } from "@/components/ui/toolbar";
 import { useActiveYear, useClassGroups } from "@/lib/queries";
 import { useSave } from "@/lib/use-save";
-import { FaceBadge, formatDateTime } from "./common";
+import { FaceBadge, formatDateTime, useFormatDay } from "./common";
 
 type Overall = FaceProfileDto["overall"];
 const OVERALL: Overall[] = ["NONE", "PENDING", "FAILED", "SYNCED"];
@@ -159,6 +162,137 @@ export function FaceCheck() {
   );
 }
 
+/** T-75: the guardian's consent in force, a form to record one, and revoking it (which removes the face). */
+function ConsentSection({ profile }: { profile: FaceProfileDto }) {
+  const t = useTranslations("attendance.faces.consent");
+  const tc = useTranslations("common");
+  const api = useApi();
+  const qc = useQueryClient();
+  const day = useFormatDay();
+  const keys = ["face-profile", "face-profiles", "attendance-monitoring"];
+  const student = useQuery({
+    queryKey: ["student", profile.studentId],
+    queryFn: () => api.get<StudentDetail>(`/students/${profile.studentId}`),
+    enabled: !profile.consent,
+  });
+  const [form, setForm] = useState({ guardianId: "", givenBy: "", givenOn: schoolToday() });
+  const [revoking, setRevoking] = useState(false);
+  const [reason, setReason] = useState("");
+  const record = useSave(
+    () =>
+      api.post(`/face/students/${profile.studentId}/consents`, {
+        guardianId: form.guardianId || null,
+        givenBy: form.givenBy,
+        givenOn: form.givenOn,
+      }),
+    keys,
+  );
+  const revoke = useSave(
+    () => api.post(`/face/students/${profile.studentId}/consents/revoke`, { reason }),
+    keys,
+    () => {
+      setRevoking(false);
+      setReason("");
+      void qc.invalidateQueries({ queryKey: ["face-photo", profile.studentId] });
+    },
+  );
+  if (profile.consent)
+    return (
+      <div
+        className="flex flex-wrap items-center gap-3 rounded-card border border-border p-3"
+        data-testid="face-consent"
+      >
+        <Badge tone="success">{t("given")}</Badge>
+        <span className="min-w-0 flex-1 text-sm">
+          {t("givenBy", { name: profile.consent.givenBy, date: day(profile.consent.givenOn) })}
+        </span>
+        <Button size="sm" variant="ghost" onClick={() => setRevoking(true)}>
+          {t("revoke")}
+        </Button>
+        <Modal
+          open={revoking}
+          onClose={() => setRevoking(false)}
+          title={t("revoke")}
+          footer={
+            <>
+              <Button variant="secondary" onClick={() => setRevoking(false)}>
+                {tc("cancel")}
+              </Button>
+              <Button
+                variant="danger"
+                disabled={reason.trim().length < 3}
+                loading={revoke.isPending}
+                onClick={() => revoke.mutate(undefined)}
+                data-testid="revoke-consent"
+              >
+                {t("revoke")}
+              </Button>
+            </>
+          }
+        >
+          <div className="flex flex-col gap-3">
+            <p className="text-sm text-muted">{t("revokeText")}</p>
+            <Input
+              aria-label={t("reason")}
+              placeholder={t("reason")}
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+            />
+          </div>
+        </Modal>
+      </div>
+    );
+  const guardians = student.data?.guardians ?? [];
+  return (
+    <div
+      className="flex flex-col gap-3 rounded-card border border-warning bg-warning-soft p-3"
+      data-testid="face-consent"
+    >
+      <p className="text-sm font-medium text-warning">{t("missing")}</p>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {guardians.length > 0 && (
+          <Select
+            aria-label={t("guardian")}
+            value={form.guardianId}
+            onChange={(e) => setForm({ ...form, guardianId: e.target.value })}
+          >
+            <option value="">{t("otherPerson")}</option>
+            {guardians.map((g) => (
+              <option key={g.guardianId} value={g.guardianId}>{`${g.lastName} ${g.firstName}`}</option>
+            ))}
+          </Select>
+        )}
+        {!form.guardianId && (
+          <Input
+            aria-label={t("givenByLabel")}
+            placeholder={t("givenByLabel")}
+            value={form.givenBy}
+            onChange={(e) => setForm({ ...form, givenBy: e.target.value })}
+          />
+        )}
+        <Input
+          type="date"
+          aria-label={t("date")}
+          value={form.givenOn}
+          max={schoolToday()}
+          onChange={(e) => setForm({ ...form, givenOn: e.target.value as typeof form.givenOn })}
+        />
+      </div>
+      <div>
+        <Button
+          size="sm"
+          disabled={!form.guardianId && !form.givenBy.trim()}
+          loading={record.isPending}
+          onClick={() => record.mutate(undefined)}
+          data-testid="record-consent"
+        >
+          {t("record")}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function FaceDialog({ studentId, onClose }: { studentId: string; onClose: () => void }) {
   const t = useTranslations("attendance");
   const locale = useLocale();
@@ -193,6 +327,7 @@ function FaceDialog({ studentId, onClose }: { studentId: string; onClose: () => 
                 {p.className ? ` · ${p.className}` : ""}
               </p>
             </div>
+            <ConsentSection profile={p} />
             {p.hasPhoto ? (
               <FacePhoto
                 studentId={p.studentId}

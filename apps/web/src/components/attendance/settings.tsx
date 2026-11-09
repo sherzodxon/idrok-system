@@ -43,6 +43,7 @@ function SettingsForm({ initial }: { initial: AttendanceSettingsDto }) {
     maxClockSkewSeconds: String(initial.maxClockSkewSeconds),
     maxEventAgeDays: String(initial.maxEventAgeDays),
     deviceStaleSeconds: String(initial.deviceStaleSeconds),
+    faceConsentRequired: initial.faceConsentRequired,
   });
   const set = (patch: Partial<typeof d>) => setD((x) => ({ ...x, ...patch }));
   const save = useSave(
@@ -59,6 +60,7 @@ function SettingsForm({ initial }: { initial: AttendanceSettingsDto }) {
         maxClockSkewSeconds: Number(d.maxClockSkewSeconds),
         maxEventAgeDays: Number(d.maxEventAgeDays),
         deviceStaleSeconds: Number(d.deviceStaleSeconds),
+        faceConsentRequired: d.faceConsentRequired,
       }),
     ["attendance-settings", "attendance-status"],
   );
@@ -85,6 +87,11 @@ function SettingsForm({ initial }: { initial: AttendanceSettingsDto }) {
           <p className="rounded-button bg-warning-soft px-3 py-2 text-sm">{t("settings.noEncryption")}</p>
         )}
         <Check label={t("settings.isEnabled")} checked={d.isEnabled} onChange={(v) => set({ isEnabled: v })} />
+        <Check
+          label={t("settings.faceConsentRequired")}
+          checked={d.faceConsentRequired}
+          onChange={(v) => set({ faceConsentRequired: v })}
+        />
         <p className="text-sm text-muted">{t("settings.shiftHint")}</p>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <Field label={t("settings.start")}>

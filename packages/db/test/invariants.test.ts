@@ -19,6 +19,7 @@ const INDEXES = [
   "PeriodResult_one_current",
   "TestAttempt_one_in_progress",
   "OfflineResult_one_current",
+  "FaceConsent_one_active",
 ];
 const CONSTRAINTS = [
   "AcademicYear_dates_check",
@@ -43,6 +44,7 @@ const CONSTRAINTS = [
   "ScoreEntry_kind_check",
   "ScoreLimitRule_scope_check",
   "ScoreCriterion_points_check",
+  "FaceConsent_revoke_check",
   "ScoreSettings_values_check",
   "GradeScaleBand_range_check",
   "ManualAssessmentScore_points_check",

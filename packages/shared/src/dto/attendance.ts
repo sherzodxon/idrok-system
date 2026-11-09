@@ -15,6 +15,8 @@ export const AttendanceSettingsSchema = z.object({
   maxClockSkewSeconds: z.number().int().min(0).max(3600),
   maxEventAgeDays: z.number().int().min(1).max(60),
   deviceStaleSeconds: z.number().int().min(30).max(86_400),
+  /** T-75: a student's face is stored only with a recorded guardian consent. */
+  faceConsentRequired: z.boolean(),
   /** Read-only: the server can encrypt device passwords and face photos (DATA_ENCRYPTION_KEY set). */
   encryptionConfigured: z.boolean(),
 });
@@ -141,6 +143,32 @@ export const FaceDeviceStateSchema = z.object({
 });
 export type FaceDeviceStateDto = z.infer<typeof FaceDeviceStateSchema>;
 
+/** A guardian's consent to keep the student's face (T-75); a revoked one stays as history. */
+export const FaceConsentSchema = z.object({
+  id: z.uuid(),
+  guardianId: z.uuid().nullable(),
+  givenBy: z.string(),
+  givenOn: SchoolDateSchema,
+  note: z.string().nullable(),
+  createdAt: z.iso.datetime(),
+  revokedAt: z.iso.datetime().nullable(),
+  revokeReason: z.string().nullable(),
+});
+export type FaceConsentDto = z.infer<typeof FaceConsentSchema>;
+
+export const RecordFaceConsentSchema = z
+  .object({
+    /** A linked guardian; their name is used when `givenBy` is empty. */
+    guardianId: z.uuid().nullable().default(null),
+    givenBy: z.string().trim().max(200).default(""),
+    givenOn: SchoolDateSchema,
+    note: z.string().trim().max(500).nullable().optional(),
+  })
+  .strict()
+  .refine((v) => v.guardianId !== null || v.givenBy.length > 0, { message: "required", path: ["givenBy"] });
+
+export const RevokeFaceConsentSchema = z.object({ reason: z.string().trim().min(3).max(500) }).strict();
+
 export const FaceProfileSchema = z.object({
   studentId: z.uuid(),
   studentCode: z.string(),
@@ -153,6 +181,8 @@ export const FaceProfileSchema = z.object({
   /** Worst state across devices: NONE when the student has no photo. */
   overall: z.enum(["NONE", "SYNCED", "PENDING", "FAILED"]),
   devices: z.array(FaceDeviceStateSchema),
+  /** The consent in force, or null. */
+  consent: z.object({ givenBy: z.string(), givenOn: SchoolDateSchema }).nullable(),
 });
 export type FaceProfileDto = z.infer<typeof FaceProfileSchema>;
 

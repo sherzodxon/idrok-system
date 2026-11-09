@@ -4,7 +4,7 @@
 import { deflateSync } from "node:zlib";
 import { expect, test, type Page } from "@playwright/test";
 import { addSchoolDays, isoWeekday, schoolToday } from "@idrok/shared/time";
-import { expectNoHorizontalScroll, login, loginToDashboard } from "../support/login";
+import { choose, expectNoHorizontalScroll, login, loginToDashboard } from "../support/login";
 import { API_URL, USERS } from "../support/users";
 
 test.describe.configure({ mode: "serial" });
@@ -106,12 +106,19 @@ test("a terminal push shows up in the journal as late", async ({ page }) => {
   await expect(row).toContainText("08:35");
 });
 
-test("a face photo is uploaded in Face Check", async ({ page }) => {
+test("a guardian's consent, then a face photo in Face Check", async ({ page }) => {
   await loginToDashboard(page, USERS.coinAdmin);
   await openAttendance(page, "Face Check");
   await page.getByTestId("face-profiles").locator("tr", { hasText: "Farzand Demo" }).click();
   const dialog = page.getByTestId("face-dialog");
   await expect(dialog).toContainText("Yuz rasmi yuklanmagan");
+  // T-75: no face without a recorded consent.
+  const consent = dialog.getByTestId("face-consent");
+  await expect(consent).toContainText("Vasiy roziligi qayd etilmagan");
+  await choose(consent.getByRole("combobox", { name: "Kim rozilik berdi" }), "Ona Demo");
+  await consent.getByTestId("record-consent").click();
+  await expect(consent).toContainText("Rozilik bor");
+  await expect(consent).toContainText("Ona Demo");
   await dialog.getByTestId("face-file").setInputFiles({ name: "face.png", mimeType: "image/png", buffer: png() });
   await expect(dialog.getByRole("img", { name: "O'quvchining yuz rasmi" })).toBeVisible();
   await expect(dialog.getByTestId("face-devices")).toContainText("E2E kirish");

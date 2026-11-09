@@ -24,6 +24,7 @@ export const ATTENDANCE_SETTINGS_DEFAULTS: Settings = {
   maxClockSkewSeconds: 300,
   maxEventAgeDays: 7,
   deviceStaleSeconds: 180,
+  faceConsentRequired: true,
 };
 
 export async function attendanceSettings(db: Db | DbTransaction): Promise<Settings> {

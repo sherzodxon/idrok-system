@@ -5,13 +5,22 @@
 import { createHash, randomUUID } from "node:crypto";
 import sharp from "sharp";
 import { requireTenantId, type Db, type DbTransaction, type Prisma } from "@idrok/db";
-import type { FaceDeviceStateDto, FaceProfileDto, FaceProfileQuerySchema } from "@idrok/shared";
+import type {
+  FaceConsentDto,
+  FaceDeviceStateDto,
+  FaceProfileDto,
+  FaceProfileQuerySchema,
+  RecordFaceConsentSchema,
+} from "@idrok/shared";
+import { schoolDateFromDb, schoolDateToDb } from "@idrok/shared/time";
 import type { z } from "zod";
 import type { RequestAuth } from "../../http/auth";
 import { AppError, notFound } from "../../http/errors";
 import type { DataCipher } from "../../infra/crypto";
 import { storageKey, type StorageProvider } from "../../infra/storage";
+import { schoolClock } from "../access/school-clock";
 import { writeAudit } from "../audit/audit.service";
+import { attendanceSettings } from "./attendance-config.service";
 import { imageType } from "../question-bank/question-bank.service";
 import { enqueueDeviceJob, type JobDevice } from "./device-jobs";
 
@@ -97,6 +106,35 @@ async function syncStudent(
 
 const studentSelect = { id: true, studentCode: true, firstName: true, lastName: true, status: true } as const;
 
+/** Serialises photo uploads and consent changes of one student (a revoke cannot lose to an upload in flight). */
+const lockFace = (tx: DbTransaction, studentId: string) =>
+  tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`face:${requireTenantId()}:${studentId}`}, 0))`;
+
+const activeConsent = (tx: DbTransaction | Db, studentId: string) =>
+  tx.faceConsent.findFirst({ where: { studentId, revokedAt: null } });
+
+const consentRequired = () => new AppError("CONFLICT", 409, { reason: "FACE_CONSENT_REQUIRED" });
+
+const consentDto = (c: {
+  id: string;
+  guardianId: string | null;
+  givenBy: string;
+  givenOn: Date;
+  note: string | null;
+  createdAt: Date;
+  revokedAt: Date | null;
+  revokeReason: string | null;
+}): FaceConsentDto => ({
+  id: c.id,
+  guardianId: c.guardianId,
+  givenBy: c.givenBy,
+  givenOn: schoolDateFromDb(c.givenOn),
+  note: c.note,
+  createdAt: c.createdAt.toISOString(),
+  revokedAt: c.revokedAt?.toISOString() ?? null,
+  revokeReason: c.revokeReason,
+});
+
 export class FaceService {
   constructor(
     private readonly db: Db,
@@ -114,12 +152,17 @@ export class FaceService {
     if (!this.cipher.configured) throw new AppError("CONFLICT", 409, { reason: "ENCRYPTION_NOT_CONFIGURED" });
     const student = await this.student(studentId);
     if (student.status !== "ACTIVE") throw new AppError("CONFLICT", 409, { reason: "STUDENT_NOT_ACTIVE" });
+    const { faceConsentRequired } = await attendanceSettings(this.db);
+    if (faceConsentRequired && !(await activeConsent(this.db, studentId))) throw consentRequired();
     const jpeg = await normalizeFacePhoto(file.buffer);
     const tenantId = requireTenantId();
     const assetId = randomUUID();
     const key = storageKey(tenantId, "FACE_PHOTO", assetId, "bin");
     await this.storage.put(key, this.cipher.encrypt(jpeg), { contentType: "application/octet-stream" });
     const oldKey = await this.db.$transaction(async (tx) => {
+      // Checked again under the lock: the consent may have been revoked while the photo was processed.
+      await lockFace(tx, studentId);
+      if (faceConsentRequired && !(await activeConsent(tx, studentId))) throw consentRequired();
       await tx.fileAsset.create({
         data: {
           id: assetId,
@@ -160,6 +203,79 @@ export class FaceService {
       return before?.photoAsset?.storageKey ?? null;
     });
     // Biometric data is not kept once replaced (best effort; the row is already marked DELETED).
+    if (oldKey) await this.storage.delete(oldKey).catch(() => undefined);
+    return this.profile(studentId);
+  }
+
+  // ---------------------------------------------------------------- consent (T-75)
+
+  async consents(studentId: string): Promise<FaceConsentDto[]> {
+    await this.student(studentId);
+    const rows = await this.db.faceConsent.findMany({ where: { studentId }, orderBy: { createdAt: "desc" } });
+    return rows.map(consentDto);
+  }
+
+  async recordConsent(
+    auth: RequestAuth,
+    studentId: string,
+    input: z.infer<typeof RecordFaceConsentSchema>,
+  ): Promise<FaceConsentDto> {
+    await this.student(studentId);
+    const { today } = await schoolClock(this.db);
+    if (input.givenOn > today)
+      throw new AppError("VALIDATION_ERROR", 400, { fields: [{ path: "givenOn", code: "in_future" }] });
+    let givenBy = input.givenBy;
+    if (input.guardianId) {
+      const link = await this.db.studentGuardian.findFirst({
+        where: { studentId, guardianId: input.guardianId, revokedAt: null },
+        select: { guardian: { select: { firstName: true, lastName: true } } },
+      });
+      if (!link) throw new AppError("VALIDATION_ERROR", 400, { fields: [{ path: "guardianId", code: "invalid" }] });
+      givenBy ||= `${link.guardian.lastName} ${link.guardian.firstName}`;
+    }
+    return this.db.$transaction(async (tx) => {
+      await lockFace(tx, studentId);
+      if (await activeConsent(tx, studentId)) throw new AppError("CONFLICT", 409, { reason: "CONSENT_EXISTS" });
+      const row = await tx.faceConsent.create({
+        data: {
+          tenantId: requireTenantId(),
+          studentId,
+          guardianId: input.guardianId,
+          givenBy,
+          givenOn: schoolDateToDb(input.givenOn),
+          note: input.note ?? null,
+          recordedById: auth.userId,
+        },
+      });
+      await writeAudit(tx, {
+        action: "face.consent.record",
+        entityType: "FaceConsent",
+        entityId: row.id,
+        after: { studentId, guardianId: input.guardianId, givenOn: input.givenOn },
+      });
+      return consentDto(row);
+    });
+  }
+
+  /** Revoking removes the face from the server and every device, in the same transaction as the revocation. */
+  async revokeConsent(auth: RequestAuth, studentId: string, reason: string): Promise<FaceProfileDto> {
+    const student = await this.student(studentId);
+    const oldKey = await this.db.$transaction(async (tx) => {
+      await lockFace(tx, studentId);
+      const consent = await activeConsent(tx, studentId);
+      if (!consent) throw notFound();
+      await tx.faceConsent.update({
+        where: { id: consent.id },
+        data: { revokedAt: new Date(), revokedById: auth.userId, revokeReason: reason },
+      });
+      await writeAudit(tx, {
+        action: "face.consent.revoke",
+        entityType: "FaceConsent",
+        entityId: consent.id,
+        reason,
+      });
+      return this.clearFace(tx, student);
+    });
     if (oldKey) await this.storage.delete(oldKey).catch(() => undefined);
     return this.profile(studentId);
   }
@@ -299,6 +415,7 @@ export class FaceService {
         lastName: true,
         enrollments: { where: { status: "ACTIVE" }, select: { classGroup: { select: { name: true } } }, take: 1 },
         faceProfile: { select: { version: true, photoAssetId: true, updatedAt: true } },
+        faceConsents: { where: { revokedAt: null }, select: { givenBy: true, givenOn: true }, take: 1 },
         faceSyncJobs: {
           where: { deviceId: { in: devices.map((d) => d.id) } },
           select: {
@@ -351,6 +468,9 @@ export class FaceService {
         updatedAt: hasPhoto ? (p?.updatedAt.toISOString() ?? null) : null,
         overall,
         devices: states,
+        consent: s.faceConsents[0]
+          ? { givenBy: s.faceConsents[0].givenBy, givenOn: schoolDateFromDb(s.faceConsents[0].givenOn) }
+          : null,
       };
     });
   }

@@ -2,10 +2,13 @@ import type { Request, Response, Router } from "express";
 import multer from "multer";
 import { z } from "zod";
 import {
+  FaceConsentSchema,
   FaceProfilePageSchema,
   FaceProfileQuerySchema,
   FaceProfileSchema,
   IdParamsSchema,
+  RecordFaceConsentSchema,
+  RevokeFaceConsentSchema,
   SchoolDateSchema,
 } from "@idrok/shared";
 import { diffSchoolDays } from "@idrok/shared/time";
@@ -96,9 +99,50 @@ export function faceRoutes(router: Router, registry: OpenApiRegistry, deps: AppD
       responses: { 200: { description: "JPEG" } },
     },
     async ({ res, params }) => {
+      const jpeg = await faces.photo(params.id);
+      // Who looked at a child's biometric photo is on record (audit finding, phase 1).
+      await writeAudit(deps.db, { action: "face.photo.view", entityType: "FaceProfile", entityId: params.id });
       res.setHeader("Cache-Control", "no-store");
-      res.type("image/jpeg").send(await faces.photo(params.id));
+      res.type("image/jpeg").send(jpeg);
     },
+  );
+  route(
+    {
+      method: "get",
+      path: "/face/students/:id/consents",
+      summary: "Guardian consents for the student's face (the one in force and the revoked history)",
+      tags,
+      access: "face.manage",
+      params: IdParamsSchema,
+      responses: { 200: { description: "Consents", schema: z.array(FaceConsentSchema) } },
+    },
+    async ({ res, params }) => res.json(await faces.consents(params.id)),
+  );
+  route(
+    {
+      method: "post",
+      path: "/face/students/:id/consents",
+      summary: "Record a guardian's consent (needed before a face photo can be stored)",
+      tags,
+      access: "face.manage",
+      params: IdParamsSchema,
+      body: RecordFaceConsentSchema,
+      responses: { 200: { description: "Consent", schema: FaceConsentSchema } },
+    },
+    async ({ res, auth, params, body }) => res.json(await faces.recordConsent(auth, params.id, body)),
+  );
+  route(
+    {
+      method: "post",
+      path: "/face/students/:id/consents/revoke",
+      summary: "Revoke the consent: the face is removed here and from every terminal",
+      tags,
+      access: "face.manage",
+      params: IdParamsSchema,
+      body: RevokeFaceConsentSchema,
+      responses: { 200: { description: "Profile", schema: FaceProfileSchema } },
+    },
+    async ({ res, auth, params, body }) => res.json(await faces.revokeConsent(auth, params.id, body.reason)),
   );
   route(
     {
