@@ -259,3 +259,17 @@ Audit: https://claude.ai/artifact/NvVRtFeT8jZLW7pgvS4Rb6 (Q1–Q5). Egasi tavsiy
 | # | Savol | Nega muhim | Variantlar | Tavsiya etilgan default | Kim hal qiladi |
 |---|---|---|---|---|---|
 | Q-53 | Mezon "turi" (masalan, jarima mezoni — manfiy ball)? | Hozir ball doim musbat (`ScoreEntry_kind_check`, `PointsSchema`); manfiy ball davr formulalari, foizlar va limitlarni o'zgartiradi | (a) tur yo'q, jarima faqat coin'da; (b) `PENALTY` turi va manfiy ball — alohida spec | (a): jarimalar coin tizimida bor (M5). Ballda jarimaga ehtiyoj bo'lsa, alohida spec bilan | Egasi |
+
+## Audit 5-bosqichi (Face ID: rozilik va xodimlar) — qarorlar va ochiq savollar
+
+| # | Qaror | Asos |
+|---|---|---|
+| T-81 | Rozilik (`FaceConsent`): kim bergan (bog'langan vasiy yoki boshqa shaxs ismi), sana (kelajakda emas), kim qayd etgan. Bir o'quvchida bitta amaldagi rozilik. Bekor qilish sabab bilan; yuz shu transaction'da serverdan o'chadi va terminallardan o'chirish navbatga qo'yiladi. Rozilik qatori o'chirilmaydi — tarix. Yuklash va bekor qilish bitta advisory lock ostida (bekor qilish yuklash bilan "poyga"da yutqazmaydi). Sozlama `faceConsentRequired` (default yoqilgan) | T-75 |
+| T-82 | Yuz rasmini ko'rish (`GET .../photo`) `AuditLog`ga yoziladi (`face.photo.view`) | audit topilmasi (Low) |
+| T-83 | Xodim yuzi: terminaldagi raqam `E-<xodim kodi>`; xodim kodi va xodimning o'z telefoni majburiy, rozilik shart emas (voyaga yetgan). `FaceProfile`/`FaceSyncJob` — o'quvchi yoki xodim (aniq bittasi), `AccessEvent.employeeId`. Ketgan xodimning yuzi har kecha o'chiriladi (o'quvchidagidek) | T-76 |
+| T-84 | Xodim kuni o'qishda hisoblanadi: birinchi IN, oxirgi OUT; kechikish va erta ketish `staffStartMinute`/`staffEndMinute` (default 08:00–17:00) va imtiyozli daqiqalar bo'yicha. Terminal ma'lumoti yo'q kun — "ma'lumot yo'q", kelmadi emas. Ko'rish: `employees.view` | T-76 |
+
+| # | Savol | Nega muhim | Variantlar | Tavsiya etilgan default | Kim hal qiladi |
+|---|---|---|---|---|---|
+| Q-54 | T-75'dan oldin yuklangan o'quvchi yuzlari (roziliksiz) nima bo'ladi? | Hozir ular saqlanib qoladi va terminalda ishlaydi; faqat yangi yuklash rozilik so'raydi | (a) qoldirish va ro'yxatda "rozilik yo'q" deb ko'rsatish; (b) muddat berib, roziliksizlarini avtomatik o'chirish | (b) haqiqiy ma'lumotga o'tishdan oldin: 30 kun muddat, keyin o'chirish (Face Check'da "rozilik yo'q" filtri bilan) | Egasi |
+| Q-55 | Xodimlar uchun dam olish kunlari va ish jadvali | Hozir dam olish kunida o'tish bo'lmasa "ma'lumot yo'q" chiqadi; smenali xodimlar uchun bitta ish kuni yetmaydi | (a) maktab kalendaridan olish; (b) xodim smenasi | (a) birinchi navbatda, (b) ish haqi bilan birga | Egasi |

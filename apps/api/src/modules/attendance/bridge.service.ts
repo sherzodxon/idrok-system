@@ -48,11 +48,15 @@ export async function jobPhoto(
     where: { id: jobId, status: "LEASED", type: "FACE_UPSERT", bridgeAgentId: owner.bridgeAgentId },
     select: {
       faceSync: {
-        select: { student: { select: { faceProfile: { select: { photoAsset: { select: { storageKey: true } } } } } } },
+        select: {
+          student: { select: { faceProfile: { select: { photoAsset: { select: { storageKey: true } } } } } },
+          employee: { select: { faceProfile: { select: { photoAsset: { select: { storageKey: true } } } } } },
+        },
       },
     },
   });
-  const key = job?.faceSync?.student.faceProfile[0]?.photoAsset?.storageKey;
+  const owner_ = job?.faceSync?.student ?? job?.faceSync?.employee;
+  const key = owner_?.faceProfile[0]?.photoAsset?.storageKey;
   if (!key) throw notFound();
   return cipher.decrypt(await storage.get(key));
 }

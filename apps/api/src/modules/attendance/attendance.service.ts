@@ -370,7 +370,7 @@ export class AttendanceService {
     const where: Prisma.AccessEventWhereInput = {
       schoolDate: schoolDateToDb(q.date ?? today),
       ...(q.deviceId ? { deviceId: q.deviceId } : {}),
-      ...(q.unmatched === "true" ? { studentId: null } : {}),
+      ...(q.unmatched === "true" ? { studentId: null, employeeId: null } : {}),
       ...(q.q ? { employeeNo: { contains: q.q, mode: "insensitive" as const } } : {}),
     };
     const [rows, total] = await Promise.all([
@@ -387,6 +387,8 @@ export class AttendanceService {
           employeeNo: true,
           studentId: true,
           student: { select: { firstName: true, lastName: true } },
+          employeeId: true,
+          employee: { select: { firstName: true, lastName: true } },
           direction: true,
           source: true,
         },
@@ -401,6 +403,8 @@ export class AttendanceService {
       employeeNo: e.employeeNo,
       studentId: e.studentId,
       studentName: e.student ? `${e.student.lastName} ${e.student.firstName}` : null,
+      employeeId: e.employeeId,
+      employeeName: e.employee ? `${e.employee.lastName} ${e.employee.firstName}` : null,
       direction: e.direction,
       source: e.source,
     }));
@@ -415,10 +419,10 @@ export class AttendanceService {
         this.db.device.findMany({ where: { archivedAt: null, isActive: true }, select: { lastSeenAt: true } }),
         this.db.bridgeAgent.findMany({ where: { isActive: true }, select: { lastSeenAt: true } }),
         this.db.accessEvent.count({ where: { schoolDate: d } }),
-        this.db.accessEvent.count({ where: { schoolDate: d, studentId: null } }),
+        this.db.accessEvent.count({ where: { schoolDate: d, studentId: null, employeeId: null } }),
         this.db.faceSyncJob.groupBy({
           by: ["studentId", "status"],
-          where: { action: "UPSERT", device: { archivedAt: null, isActive: true } },
+          where: { action: "UPSERT", studentId: { not: null }, device: { archivedAt: null, isActive: true } },
         }),
         this.db.student.count({ where: { status: "ACTIVE" } }),
         this.db.faceProfile.count({ where: { photoAssetId: { not: null }, student: { status: "ACTIVE" } } }),
@@ -436,6 +440,7 @@ export class AttendanceService {
     const worst = new Map<string, string>();
     const rank = { FAILED: 3, PENDING: 2, IN_PROGRESS: 2, SYNCED: 1 } as const;
     for (const f of faceStates) {
+      if (!f.studentId) continue;
       const prev = worst.get(f.studentId);
       if (!prev || rank[f.status] > rank[prev as keyof typeof rank]) worst.set(f.studentId, f.status);
     }

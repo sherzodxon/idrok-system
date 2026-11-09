@@ -3,7 +3,12 @@
 import { Prisma, requireTenantId, type Db, type DbTransaction } from "@idrok/db";
 import type { IngestResultDto } from "@idrok/shared";
 import { schoolDateFromDb, schoolDateToDb, toSchoolDate, type SchoolDate } from "@idrok/shared/time";
-import { dailyAttendance, eventDirection, type DeviceDirection } from "../../domain/attendance";
+import {
+  dailyAttendance,
+  eventDirection,
+  STAFF_EMPLOYEE_NO_PREFIX,
+  type DeviceDirection,
+} from "../../domain/attendance";
 import { eventKey, parseHikEvent, withinClockSkew } from "../../domain/hikvision";
 import { schoolClock } from "../access/school-clock";
 import { activeBands, attendanceSettings } from "./attendance-config.service";
@@ -28,7 +33,7 @@ export async function ingestEvents(
   const { timezone } = await schoolClock(db);
   const result = { accepted: 0, duplicates: 0, ignored: 0, unmatched: 0, lastEventAt: null as Date | null };
   const touched = new Map<string, { studentId: string; date: SchoolDate }>();
-  const studentByCode = new Map<string, string | null>();
+  const personByNo = new Map<string, { studentId: string | null; employeeId: string | null }>();
 
   for (const raw of raws) {
     let parsed;
@@ -49,11 +54,8 @@ export async function ingestEvents(
       result.ignored++;
       continue;
     }
-    if (!studentByCode.has(parsed.employeeNo)) {
-      const s = await db.student.findFirst({ where: { studentCode: parsed.employeeNo }, select: { id: true } });
-      studentByCode.set(parsed.employeeNo, s?.id ?? null);
-    }
-    const studentId = studentByCode.get(parsed.employeeNo) ?? null;
+    if (!personByNo.has(parsed.employeeNo)) personByNo.set(parsed.employeeNo, await personOf(db, parsed.employeeNo));
+    const { studentId, employeeId } = personByNo.get(parsed.employeeNo)!;
     const date = toSchoolDate(parsed.occurredAt, timezone);
     try {
       await db.accessEvent.create({
@@ -65,6 +67,7 @@ export async function ingestEvents(
           schoolDate: schoolDateToDb(date),
           employeeNo: parsed.employeeNo,
           studentId,
+          employeeId,
           direction: eventDirection(device.direction, parsed.attendanceStatus),
           attendanceStatus: parsed.attendanceStatus,
           majorEventType: parsed.majorEventType,
@@ -79,12 +82,26 @@ export async function ingestEvents(
     }
     result.accepted++;
     if (!result.lastEventAt || parsed.occurredAt > result.lastEventAt) result.lastEventAt = parsed.occurredAt;
+    // Staff days are worked out on read (staff-attendance.service); only student days are stored.
     if (studentId) touched.set(`${studentId}:${date}`, { studentId, date });
-    else result.unmatched++;
+    else if (!employeeId) result.unmatched++;
   }
 
   for (const t of touched.values()) await recomputeDay(db, t.studentId, t.date);
   return result;
+}
+
+/** Terminal number → person: "E-<employee code>" is an employee (T-76), anything else a student code. */
+async function personOf(db: Db, employeeNo: string) {
+  if (employeeNo.startsWith(STAFF_EMPLOYEE_NO_PREFIX)) {
+    const e = await db.employee.findFirst({
+      where: { employeeCode: employeeNo.slice(STAFF_EMPLOYEE_NO_PREFIX.length) },
+      select: { id: true },
+    });
+    if (e) return { studentId: null, employeeId: e.id };
+  }
+  const s = await db.student.findFirst({ where: { studentCode: employeeNo }, select: { id: true } });
+  return { studentId: s?.id ?? null, employeeId: null };
 }
 
 const lockDay = (tx: DbTransaction, studentId: string, date: SchoolDate) =>

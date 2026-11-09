@@ -99,6 +99,7 @@ describe("bridge agent", () => {
     const raw = await sharp({ create: { width: 400, height: 500, channels: 3, background: "#a08070" } })
       .png()
       .toBuffer();
+    await s.a.post(`/face/students/${s.s7a.id}/consents`, { givenBy: "Demo vasiy", givenOn: "2026-09-01" });
     await request(t.app)
       .put(`/api/v1/face/students/${s.s7a.id}/photo`)
       .set(s.adminAuthHeaders)

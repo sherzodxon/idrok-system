@@ -185,3 +185,7 @@ export function attendanceRate(counts: Partial<Record<string, number>>): string 
   const r = ratio(arrived, arrived + (counts.ABSENT ?? 0) + (counts.NOT_ARRIVED ?? 0));
   return r === null ? null : toDecimalString(roundTo(r.times(100), { mode: "HALF_UP", decimals: 1 }), 1);
 }
+
+/** Terminal number of an employee (T-76): "E-" + employee code, so it never collides with a student code. */
+export const STAFF_EMPLOYEE_NO_PREFIX = "E-";
+export const staffEmployeeNo = (employeeCode: string) => `${STAFF_EMPLOYEE_NO_PREFIX}${employeeCode}`;

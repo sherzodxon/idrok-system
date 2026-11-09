@@ -24,6 +24,10 @@ export const ATTENDANCE_SETTINGS_DEFAULTS: Settings = {
   maxClockSkewSeconds: 300,
   maxEventAgeDays: 7,
   deviceStaleSeconds: 180,
+  faceConsentRequired: true,
+  staffStartMinute: 8 * 60,
+  staffEndMinute: 17 * 60,
+  staffGraceMinutes: 0,
 };
 
 export async function attendanceSettings(db: Db | DbTransaction): Promise<Settings> {
@@ -73,6 +77,7 @@ export class AttendanceConfigService {
       const before = await attendanceSettings(tx);
       const next = { ...before, ...input };
       if (next.defaultEndMinute <= next.defaultStartMinute) throw invalid("defaultEndMinute", "before_start");
+      if (next.staffEndMinute <= next.staffStartMinute) throw invalid("staffEndMinute", "before_start");
       next.acceptedSubEvents = [...new Set(next.acceptedSubEvents)].sort((a, b) => a - b);
       await tx.attendanceSettings.upsert({
         where: { tenantId: requireTenantId() },

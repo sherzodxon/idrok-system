@@ -20,8 +20,9 @@ import { DevicesTab } from "./devices";
 import { FaceCheck } from "./faces";
 import { AttendanceJournal } from "./journal";
 import { AttendanceSettingsTab } from "./settings";
+import { StaffAttendance } from "./staff";
 
-type Tab = "journal" | "faces" | "devices" | "settings";
+type Tab = "journal" | "staff" | "faces" | "devices" | "settings";
 
 export function AdminAttendancePage() {
   const t = useTranslations("attendance");
@@ -30,6 +31,7 @@ export function AdminAttendancePage() {
   const tabs = (
     [
       ["journal", "attendance.view"],
+      ["staff", "employees.view"],
       ["faces", "face.manage"],
       ["devices", "devices.manage"],
       ["settings", "attendance.settings.manage"],
@@ -48,6 +50,7 @@ export function AdminAttendancePage() {
       )}
       <Tabs tabs={tabs} value={tab} onChange={setTab} />
       {tab === "journal" && <AttendanceJournal />}
+      {tab === "staff" && <StaffAttendance />}
       {tab === "faces" && <FaceCheck />}
       {tab === "devices" && <DevicesTab />}
       {tab === "settings" && <AttendanceSettingsTab />}

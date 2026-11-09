@@ -92,6 +92,9 @@ beforeAll(async () => {
   t = await createTestApp({ ARGON2_MEMORY_KIB: "1024" });
   s = await buildSchool(t, t.defaultTenant);
   await s.a.put("/attendance/settings", { isEnabled: true });
+  // T-75: faces are stored only with a guardian consent on record.
+  for (const st of [s.s7a, s.s7b, s.s4a])
+    await s.a.post(`/face/students/${st.id}/consents`, { givenBy: "Demo vasiy", givenOn: "2026-09-01" });
   const addrA = await simA.start();
   const addrB = await simB.start();
   const created = await s.a.post("/bridge-agents", { name: "Maktab kompyuteri" });

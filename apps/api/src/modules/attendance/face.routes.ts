@@ -2,11 +2,17 @@ import type { Request, Response, Router } from "express";
 import multer from "multer";
 import { z } from "zod";
 import {
+  FaceConsentSchema,
   FaceProfilePageSchema,
   FaceProfileQuerySchema,
   FaceProfileSchema,
   IdParamsSchema,
+  RecordFaceConsentSchema,
+  RevokeFaceConsentSchema,
   SchoolDateSchema,
+  StaffFacePageSchema,
+  StaffFaceQuerySchema,
+  StaffFaceSchema,
 } from "@idrok/shared";
 import { diffSchoolDays } from "@idrok/shared/time";
 import type { AppDeps } from "../../deps";
@@ -96,9 +102,50 @@ export function faceRoutes(router: Router, registry: OpenApiRegistry, deps: AppD
       responses: { 200: { description: "JPEG" } },
     },
     async ({ res, params }) => {
+      const jpeg = await faces.photo(params.id);
+      // Who looked at a child's biometric photo is on record (audit finding, phase 1).
+      await writeAudit(deps.db, { action: "face.photo.view", entityType: "FaceProfile", entityId: params.id });
       res.setHeader("Cache-Control", "no-store");
-      res.type("image/jpeg").send(await faces.photo(params.id));
+      res.type("image/jpeg").send(jpeg);
     },
+  );
+  route(
+    {
+      method: "get",
+      path: "/face/students/:id/consents",
+      summary: "Guardian consents for the student's face (the one in force and the revoked history)",
+      tags,
+      access: "face.manage",
+      params: IdParamsSchema,
+      responses: { 200: { description: "Consents", schema: z.array(FaceConsentSchema) } },
+    },
+    async ({ res, params }) => res.json(await faces.consents(params.id)),
+  );
+  route(
+    {
+      method: "post",
+      path: "/face/students/:id/consents",
+      summary: "Record a guardian's consent (needed before a face photo can be stored)",
+      tags,
+      access: "face.manage",
+      params: IdParamsSchema,
+      body: RecordFaceConsentSchema,
+      responses: { 200: { description: "Consent", schema: FaceConsentSchema } },
+    },
+    async ({ res, auth, params, body }) => res.json(await faces.recordConsent(auth, params.id, body)),
+  );
+  route(
+    {
+      method: "post",
+      path: "/face/students/:id/consents/revoke",
+      summary: "Revoke the consent: the face is removed here and from every terminal",
+      tags,
+      access: "face.manage",
+      params: IdParamsSchema,
+      body: RevokeFaceConsentSchema,
+      responses: { 200: { description: "Profile", schema: FaceProfileSchema } },
+    },
+    async ({ res, auth, params, body }) => res.json(await faces.revokeConsent(auth, params.id, body.reason)),
   );
   route(
     {
@@ -136,6 +183,99 @@ export function faceRoutes(router: Router, registry: OpenApiRegistry, deps: AppD
       responses: { 200: { description: "Profile", schema: FaceProfileSchema } },
     },
     async ({ res, params }) => res.json(await faces.check(params.id)),
+  );
+
+  // ---- staff faces (T-76): the same flow; the employee needs a phone and an employee code
+  route(
+    {
+      method: "get",
+      path: "/face/employees",
+      summary: "Face Check for staff: every active employee with their state on each terminal",
+      tags,
+      access: "face.manage",
+      query: StaffFaceQuerySchema,
+      responses: { 200: { description: "Profiles", schema: StaffFacePageSchema } },
+    },
+    async ({ res, query }) => res.json(await faces.staffList(query)),
+  );
+  route(
+    {
+      method: "get",
+      path: "/face/employees/:id",
+      summary: "One employee's face and its state on each terminal",
+      tags,
+      access: "face.manage",
+      params: IdParamsSchema,
+      responses: { 200: { description: "Profile", schema: StaffFaceSchema } },
+    },
+    async ({ res, params }) => res.json(await faces.staffProfile(params.id)),
+  );
+  route(
+    {
+      method: "put",
+      path: "/face/employees/:id/photo",
+      summary: "Set an employee's face photo (multipart file; needs their phone and employee code)",
+      tags,
+      access: "face.manage",
+      params: IdParamsSchema,
+      responses: { 200: { description: "Profile", schema: StaffFaceSchema } },
+    },
+    async ({ req, res, auth, params }) =>
+      res.json(await faces.setStaffPhoto(auth, params.id, await receivePhoto(req, res))),
+  );
+  route(
+    {
+      method: "get",
+      path: "/face/employees/:id/photo",
+      summary: "An employee's face photo on the server (JPEG)",
+      tags,
+      access: "face.manage",
+      params: IdParamsSchema,
+      responses: { 200: { description: "JPEG" } },
+    },
+    async ({ res, params }) => {
+      const jpeg = await faces.staffPhoto(params.id);
+      await writeAudit(deps.db, { action: "face.photo.view", entityType: "FaceProfile", entityId: params.id });
+      res.setHeader("Cache-Control", "no-store");
+      res.type("image/jpeg").send(jpeg);
+    },
+  );
+  route(
+    {
+      method: "delete",
+      path: "/face/employees/:id/photo",
+      summary: "Remove an employee's face here and from every terminal",
+      tags,
+      access: "face.manage",
+      params: IdParamsSchema,
+      responses: { 200: { description: "Profile", schema: StaffFaceSchema } },
+    },
+    async ({ res, params }) => res.json(await faces.removeStaffPhoto(params.id)),
+  );
+  route(
+    {
+      method: "post",
+      path: "/face/employees/:id/resync",
+      summary: "Send an employee's face again (all terminals, or one)",
+      tags,
+      access: "face.manage",
+      params: IdParamsSchema,
+      body: z.object({ deviceId: z.uuid().optional() }).strict(),
+      responses: { 200: { description: "Profile", schema: StaffFaceSchema } },
+    },
+    async ({ res, params, body }) => res.json(await faces.resyncStaff(params.id, body.deviceId)),
+  );
+  route(
+    {
+      method: "post",
+      path: "/face/employees/:id/check",
+      summary: "Ask the terminals whether they hold the employee's face",
+      tags,
+      access: "face.manage",
+      params: IdParamsSchema,
+      responses: { 200: { description: "Profile", schema: StaffFaceSchema } },
+    },
+    async ({ res, params }) => res.json(await faces.checkStaff(params.id)),
   );
 
   // ---- device actions
