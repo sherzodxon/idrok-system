@@ -108,6 +108,34 @@ export async function studentDays(
   return out;
 }
 
+/**
+ * Q-55 (T-86): whether the staff work on `date`, from the school calendar of the academic year holding the date —
+ * its working weekdays and the school-wide marks (a mark for some grades only does not stop the staff). Student
+ * vacations are working days for the staff. Outside any academic year the default working week applies.
+ */
+export async function staffWorkingDay(db: Db | DbTransaction, date: SchoolDate): Promise<boolean> {
+  const d = schoolDateToDb(date);
+  const year = await db.academicYear.findFirst({
+    where: { startDate: { lte: d }, endDate: { gte: d } },
+    orderBy: { startDate: "desc" },
+    select: {
+      id: true,
+      schoolWeek: { select: { workingWeekdays: true } },
+      calendarDays: {
+        where: { date: d, appliesToAll: true },
+        select: { date: true, kind: true, followsWeekday: true },
+      },
+    },
+  });
+  const working = new Set(year?.schoolWeek?.workingWeekdays ?? DEFAULT_WORKING_WEEKDAYS);
+  const marks = new Map<string, CalendarDayInput>(
+    (year?.calendarDays ?? [])
+      .filter((m) => m.kind !== "VACATION")
+      .map((m) => [date, { date, kind: m.kind, followsWeekday: m.followsWeekday, gradeIds: null }]),
+  );
+  return lessonWeekday(date, null, working, marks) !== null;
+}
+
 /** "+05:00": the school time zone's UTC offset on a day (terminals take local times with an offset). */
 export function offsetOf(day: SchoolDate, tz: string): string {
   const minutes = Math.round((schoolDateToDb(day).getTime() - atSchoolTime(day, 0, tz).getTime()) / 60_000);

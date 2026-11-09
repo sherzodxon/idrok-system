@@ -28,6 +28,7 @@ Sana: 2026-11-11. Qarorlar: `open-questions.md` T-75, T-76, T-81…T-84; ochiq s
 | Xodim yuzi: kod va telefon majburiy, terminalga `E-<kod>` | ✅ API test |
 | Xodim o'tishi xodimga bog'lanadi; kechikish / erta ketish xodim ish kuni bo'yicha; ma'lumotsiz kun ≠ kelmadi | ✅ API test |
 | Xodimlar kunini faqat `employees.view` ko'radi | ✅ API test |
+| Xodimlarning dam olish kuni maktab kalendaridan; ta'til ish kuni; bayramda kelmaganlar kelmadi emas (T-86) | ✅ API test |
 | Mavjud Face ID oqimi (bridge, to'g'ridan-to'g'ri qurilma, sinxron, o'chirish) | ✅ mavjud testlar (rozilik qo'shilgan holda) |
 | UI: rozilik → yuz yuklash; xodimlar yorliqlari | ✅ e2e `attendance.spec.ts`, ko'zdan |
 | Haqiqiy DS-K1T343MWX bilan pilot | ❌ qurilma yo'q (M6 #17 dan beri ochiq) |
@@ -36,9 +37,9 @@ Sana: 2026-11-11. Qarorlar: `open-questions.md` T-75, T-76, T-81…T-84; ochiq s
 
 ## Tekshiruvlar
 
-`pnpm lint`, `pnpm typecheck`, `pnpm build` — o'tdi. Testlar (T-85 bilan): api 437, db 44, shared 36, config 12, web 27, hikvision 9, bridge 5; e2e 42 — hammasi o'tdi.
+`pnpm lint`, `pnpm typecheck`, `pnpm build` — o'tdi. Testlar (T-85, T-86 bilan): api 439, db 44, shared 36, config 12, web 27, hikvision 9, bridge 5; e2e 42 — hammasi o'tdi.
 
 ## Qolgan muammolar
 
-- Xodimlar uchun dam olish kunlari modellashtirilmagan (Q-55): o'tish bo'lmagan dam olish kuni "ma'lumot yo'q" bo'ladi.
+- Smenali xodimlar uchun alohida ish jadvali yo'q: hamma xodim bitta ish kuni bo'yicha (T-86 — maktab kalendari).
 - Xodimlar kuni o'qishda hisoblanadi va kichik ro'yxat uchun xotirada sahifalanadi (xodimlar soni ~50).

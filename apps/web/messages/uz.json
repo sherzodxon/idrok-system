@@ -2283,7 +2283,9 @@
     "staff": {
       "workday": "Ish kuni: {start}–{end}",
       "empty": "Bu kunda Face ID'ga ulangan xodim yoki o'tish yo'q",
-      "noFace": "Yuz yo'q"
+      "noFace": "Yuz yo'q",
+      "dayOff": "Xodimlar uchun dam olish kuni (maktab kalendari): kelmaganlar hisobga olinmaydi",
+      "dayOffEmpty": "Dam olish kuni — hech kim kelmagan"
     }
   },
   "userPage": {

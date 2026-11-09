@@ -140,3 +140,26 @@ describe("staff attendance", () => {
     );
   });
 });
+
+describe("staff days off from the school calendar (T-86)", () => {
+  const yearPath = () => `/academic-years/${s.year.id}`;
+
+  it("a school holiday: only those who came are listed, without lateness; nobody is absent", async () => {
+    await s.a.post(`${yearPath()}/calendar-days`, { date: DAY, kind: "HOLIDAY", title: "Bayram" });
+    const day = await s.a.get(`/attendance/staff/day?date=${DAY}`);
+    expect(day.workingDay).toBe(false);
+    expect(day.items.map((r: { employeeId: string }) => r.employeeId)).toEqual([s.emp1.id]);
+    expect(day.items[0]).toMatchObject({ status: "PRESENT", lateMinutes: 0, earlyLeaveMinutes: 0 });
+    expect(day.counts.ABSENT).toBe(0);
+  });
+
+  it("student vacations are working days for the staff; Sunday is not", async () => {
+    let other = addSchoolDays(DAY, -1);
+    while (isoWeekday(other) === 7) other = addSchoolDays(other, -1);
+    await s.a.post(`${yearPath()}/calendar-days`, { date: other, kind: "VACATION", title: "Ta'til" });
+    expect((await s.a.get(`/attendance/staff/day?date=${other}`)).workingDay).toBe(true);
+    let sunday = DAY;
+    while (isoWeekday(sunday) !== 7) sunday = addSchoolDays(sunday, -1);
+    expect((await s.a.get(`/attendance/staff/day?date=${sunday}`)).workingDay).toBe(false);
+  });
+});

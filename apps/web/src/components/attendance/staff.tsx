@@ -59,8 +59,10 @@ export function StaffAttendance() {
         </Toolbar>
       </Card>
       {day.data && (
-        <p className="mb-3 text-sm text-muted">
-          {t("staff.workday", { start: hhmm(day.data.startMinute), end: hhmm(day.data.endMinute) })}
+        <p className="mb-3 text-sm text-muted" data-testid="staff-workday">
+          {day.data.workingDay
+            ? t("staff.workday", { start: hhmm(day.data.startMinute), end: hhmm(day.data.endMinute) })
+            : t("staff.dayOff")}
         </p>
       )}
       <Tabs

@@ -1,7 +1,7 @@
 // Staff attendance (T-76): an employee's day is worked out on read from their terminal passes — first IN, last OUT —
 // against the staff working day in the settings. Raw events are never changed. A day with no terminal data at all is
-// NO_DATA, never an absence (same rule as for students). Days off are not modelled yet: on a day off nobody passes,
-// so the day reads NO_DATA.
+// NO_DATA, never an absence (same rule as for students). On a day off of the school calendar (T-86) nobody is absent:
+// only the employees who came are listed, without lateness.
 import type { z } from "zod";
 import type { Db } from "@idrok/db";
 import type { StaffAttendanceDayDto, StaffAttendanceQuerySchema } from "@idrok/shared";
@@ -9,6 +9,7 @@ import { schoolDateToDb } from "@idrok/shared/time";
 import { dailyAttendance, isDayOver, type DayRules } from "../../domain/attendance";
 import { schoolClock } from "../access/school-clock";
 import { attendanceSettings } from "./attendance-config.service";
+import { staffWorkingDay } from "./school-day";
 
 const STATUSES = ["PRESENT", "LATE", "ABSENT", "NOT_ARRIVED", "EXCUSED", "NO_DATA"] as const;
 
@@ -19,7 +20,7 @@ export class StaffAttendanceService {
     const [settings, clock] = await Promise.all([attendanceSettings(this.db), schoolClock(this.db)]);
     const date = q.date ?? clock.today;
     const d = schoolDateToDb(date);
-    const [employees, events, anyEvent] = await Promise.all([
+    const [employees, events, anyEvent, workingDay] = await Promise.all([
       this.db.employee.findMany({
         where: {
           OR: [
@@ -42,6 +43,7 @@ export class StaffAttendanceService {
         select: { employeeId: true, occurredAt: true, direction: true },
       }),
       this.db.accessEvent.findFirst({ where: { schoolDate: d }, select: { id: true } }),
+      staffWorkingDay(this.db, date),
     ]);
     const rules: DayRules = {
       schoolDate: date,
@@ -57,7 +59,9 @@ export class StaffAttendanceService {
       const mine = events
         .filter((x) => x.employeeId === e.id)
         .map((x) => ({ at: x.occurredAt, direction: x.direction }));
-      const r = dailyAttendance(mine, rules, dayOver);
+      const worked = dailyAttendance(mine, rules, dayOver);
+      // A day off: whoever came is simply present, with no lateness or early leave.
+      const r = workingDay ? worked : { ...worked, status: "PRESENT" as const, lateMinutes: 0, earlyLeaveMinutes: 0 };
       return {
         employeeId: e.id,
         firstName: e.firstName,
@@ -71,6 +75,7 @@ export class StaffAttendanceService {
         earlyLeaveMinutes: r.earlyLeaveMinutes,
       };
     });
+    if (!workingDay) rows = rows.filter((r) => r.firstInAt);
     const text = q.q?.toLowerCase();
     if (text) rows = rows.filter((r) => `${r.lastName} ${r.firstName}`.toLowerCase().includes(text));
     const counts = Object.fromEntries(STATUSES.map((s) => [s, rows.filter((r) => r.status === s).length]));
@@ -78,6 +83,7 @@ export class StaffAttendanceService {
     const start = (q.page - 1) * q.pageSize;
     return {
       date,
+      workingDay,
       startMinute: rules.startMinute,
       endMinute: rules.endMinute,
       items: rows.slice(start, start + q.pageSize),

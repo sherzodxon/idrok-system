@@ -332,6 +332,8 @@ export const StaffAttendanceRowSchema = z.object({
 });
 export const StaffAttendanceDaySchema = z.object({
   date: SchoolDateSchema,
+  /** false = a day off for the staff (school calendar, T-86): only those who came are listed, nobody is absent. */
+  workingDay: z.boolean(),
   startMinute: z.number().int(),
   endMinute: z.number().int(),
   items: z.array(StaffAttendanceRowSchema),
