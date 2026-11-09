@@ -278,3 +278,9 @@ Audit: https://claude.ai/artifact/NvVRtFeT8jZLW7pgvS4Rb6 (Q1–Q5). Egasi tavsiy
 |---|---|---|
 | T-85 | **Q-54 hal qilindi (egasi, 2026-11-11: "Ha, shunday").** Rozilik qoidasidan oldin saqlangan o'quvchi yuzlari uchun 30 kun: mavjud maktablarda `faceConsentGraceEndsOn` = migratsiya kuni (Asia/Tashkent) + 30. Muddat o'tgach, tungi tozalash amaldagi roziligi yo'q o'quvchi yuzini serverdan va terminallardan o'chiradi (`face.consent.expired` audit). Shu payt qayd etilgan rozilik (lock ostida tekshiriladi) yuzni saqlab qoladi. Qoida o'chirilgan bo'lsa hech narsa o'chmaydi. Face Check'da "rozilik yo'q" belgisi, filtr va muddat ogohlantirishi; muddatni sozlamalar API'si orqali o'zgartirish mumkin | Q-54 |
 | T-86 | **Q-55 hal qilindi (egasi, 2026-11-11: "Ha, kalendardan").** Xodimlarning ish kuni sanani o'z ichiga olgan o'quv yili kalendaridan: ish haftasi kunlari va butun maktabga tegishli belgilar (bayram, ishlamaydigan kun, ish kuni almashtirish). Faqat ayrim parallellarga belgilangan kun xodimlar uchun oddiy ish kuni. O'quvchilar ta'tili (VACATION) xodimlar uchun ish kuni. O'quv yilidan tashqarida — standart ish haftasi. Dam olish kunida kelmaganlar ro'yxatda yo'q, kelganlar kechikishsiz "keldi" | Q-55 |
+
+## Hosting o'zgarishi
+
+| # | Qaror | Asos |
+|---|---|---|
+| T-87 | **Frontend Vercel'ga (egasi, 2026-11-09: "Ha, tayyorla").** `apps/web` — Vercel (Root Directory `apps/web`, `apps/web/vercel.json`, region `fra1`). API va worker Render'da qoladi, `render.yaml`dan `idrok-web` olib tashlandi. Login uchun `app.<domen>` (Vercel) va `api.<domen>` (Render) bitta domen ostida bo'lishi shart (`COOKIE_DOMAIN`); `*.vercel.app` preview'larda login ishlamaydi. Kod o'zgarmadi: API manzili runtime env'dan (`API_PUBLIC_URL`). Haqiqiy ma'lumot baribir faqat VPS'da | `docs/DEPLOY.md` §2b |
