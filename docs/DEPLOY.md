@@ -247,3 +247,18 @@ Bridge orqali ulangan terminallar topshiriqlarini Bridge o'zi oladi (har 10 soni
 - Bridge protokoli: `/api/v1/bridge/*` (bearer token, faqat chiquvchi HTTPS). O'rnatish: `apps/bridge/README.md`.
 - Haqiqiy yuz rasmlari (biometrika) faqat VPS'ga ko'chgandan keyin (Q-30, Q-47). Render/Supabase'da faqat sinov rasmlari.
 
+
+## Telegram bot va Mini App (M7)
+
+1. @BotFather'da bot yarating → token. Bot nomini (`@` siz) ham yozib oling.
+2. `idrok-api` va `idrok-worker` env'iga: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET` (`openssl rand -hex 32`), `TELEGRAM_BOT_USERNAME`, `TELEGRAM_MINI_APP_URL=https://<web>/tg`. Token va sir faqat env'da; ikkalasi birga bo'lmasa API ishga tushmaydi.
+3. Webhook'ni bir marta ro'yxatdan o'tkazing (token terminal tarixida qolmasligi uchun env'dan o'qing):
+
+```bash
+curl -s "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/setWebhook" -d "url=https://<api>/api/v1/telegram/webhook" -d "secret_token=$TELEGRAM_WEBHOOK_SECRET" -d 'allowed_updates=["message"]'
+```
+
+4. Menyu tugmasi (Mini App): BotFather → Bot Settings → Menu Button → URL `https://<web>/tg`.
+5. Tekshiruv: botga `/start` → "telefon raqamingizni yuboring" javobi; admin `/admin/telegram` → "Sozlamalar" tabida "Bot: Sozlangan".
+
+Bot javoblari va bildirishnomalar faqat worker orqali yuboriladi (serverless emas). Haqiqiy vasiy ma'lumoti VPS'ga o'tgandan keyin (Q-30).

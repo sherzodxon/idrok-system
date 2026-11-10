@@ -56,14 +56,16 @@ export function readLaunchParams(hash: string): {
 } {
   const params = new URLSearchParams(hash.startsWith("#") ? hash.slice(1) : hash);
   const initData = params.get("tgWebAppData");
-  let themeParams: Record<string, string> | null = null;
+  return { initData: initData || null, themeParams: parseThemeParams(params.get("tgWebAppThemeParams")) };
+}
+
+function parseThemeParams(raw: string | null): Record<string, string> | null {
+  if (!raw) return null;
   try {
-    const raw = params.get("tgWebAppThemeParams");
-    themeParams = raw ? (JSON.parse(raw) as Record<string, string>) : null;
+    return JSON.parse(raw) as Record<string, string>;
   } catch {
-    themeParams = null;
+    return null;
   }
-  return { initData: initData || null, themeParams };
 }
 
 /** Telegram's background colour decides light or dark (its theme follows the user's Telegram app). */

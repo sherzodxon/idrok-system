@@ -14,8 +14,17 @@ export const USERS = {
   guardian: "+998900000001",
   student: "e2e.oquvchi",
   coinAdmin: "e2e.coin",
+  telegramAdmin: "e2e.telegram",
 } as const;
 
-export const PORTS = { api: 4310, web: 3310 } as const;
+export const PORTS = { api: 4310, web: 3310, telegram: 4320 } as const;
 export const WEB_URL = `http://localhost:${PORTS.web}`;
 export const API_URL = `http://localhost:${PORTS.api}/api/v1`;
+
+// M7: a fake Bot API (support/telegram.ts) stands in for api.telegram.org. Not secrets: fixed values for e2e only.
+export const TELEGRAM = {
+  botToken: "424242:e2e-only-bot-token-not-a-secret-000000",
+  webhookSecret: "e2e-only-webhook-secret-0123456789abcdef",
+  botUsername: "idrok_e2e_bot",
+  apiUrl: `http://localhost:${PORTS.telegram}`,
+} as const;

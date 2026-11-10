@@ -53,7 +53,9 @@ export function MiniAppEntry() {
   }, [api, qc, router]);
 
   useEffect(() => {
-    void start();
+    // After the first paint: the page shows its loading state while Telegram's data is checked.
+    const id = setTimeout(() => void start(), 0);
+    return () => clearTimeout(id);
   }, [start]);
 
   return (

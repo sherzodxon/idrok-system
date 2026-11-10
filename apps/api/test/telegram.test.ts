@@ -8,7 +8,7 @@ import { schoolDateToDb, schoolMinuteOfDay, schoolToday } from "@idrok/shared/ti
 import { signInitData } from "../src/domain/telegram";
 import { FakeTelegramClient, TelegramApiError } from "../src/infra/telegram";
 import { deliverNotification } from "../src/modules/notifications/deliver";
-import { processArrival } from "../src/modules/notifications/sources";
+import { emitAttendanceEvents, processArrival, sendDailyDigests } from "../src/modules/notifications/sources";
 import { processTelegramUpdate } from "../src/modules/telegram/bot";
 import { createTestApp } from "./support/app";
 import { api, buildSchool } from "./support/school";
@@ -357,6 +357,26 @@ describe("broadcasts (TG-06)", () => {
   });
 });
 
+describe("daily digest", () => {
+  it("today's coins reach the guardian once, after the digest time", async () => {
+    await s.a.put("/telegram/settings", { digestMinute: 0, quietStartMinute: 0, quietEndMinute: 0 });
+    await t.deps.root.notification.deleteMany({ where: { tenantId: tenantA } });
+    await s.a.post("/coins/adjustments", {
+      studentId: s.s7b.id,
+      amount: 15,
+      reason: "Olimpiada",
+      idempotencyKey: crypto.randomUUID(),
+    });
+    expect(await inA(() => sendDailyDigests(t.deps.db))).toBe(1);
+    expect(await inA(() => sendDailyDigests(t.deps.db))).toBe(0);
+    fake.sent.length = 0;
+    await deliverPending();
+    expect(fake.sent[0]?.text).toContain("Coin: +15");
+    await s.a.put("/telegram/settings", { digestMinute: 23 * 60 + 59 });
+    expect(await inA(() => sendDailyDigests(t.deps.db))).toBe(0);
+  });
+});
+
 describe("unlinking (TG-05)", () => {
   it("/unlink ends the link and its Mini App sessions; messages stop", async () => {
     const login = await miniLogin(initData(7002));
@@ -377,5 +397,33 @@ describe("unlinking (TG-05)", () => {
     expect((await s.a.raw("delete", `/telegram/guardians/${s.guardianId}/link`)).status).toBe(204);
     expect((await s.a.raw("delete", `/telegram/guardians/${s.guardianId}/link`)).status).toBe(404);
     expect((await s.a.get("/telegram/summary")).linked).toBe(0);
+  });
+});
+
+describe("attendance events", () => {
+  it("today's first arrival and a new exit become outbox events; other days and repeats do not", async () => {
+    const today = schoolToday();
+    const at = new Date();
+    const count = (type: string) => t.deps.root.outboxEvent.count({ where: { tenantId: tenantA, type } });
+    const [arrivals, departures] = [await count("notify.arrival"), await count("notify.departure")];
+    const emit = (
+      input: Omit<Parameters<typeof emitAttendanceEvents>[1], "studentId" | "today" | "departureDelayMinutes">,
+    ) =>
+      inA(() =>
+        t.deps.db.$transaction((tx) =>
+          emitAttendanceEvents(tx, { studentId: s.s7b.id, today, departureDelayMinutes: 10, ...input }),
+        ),
+      );
+    await emit({ date: today, before: null, after: { firstInAt: at, lastOutAt: null } });
+    await emit({ date: today, before: { firstInAt: at, lastOutAt: null }, after: { firstInAt: at, lastOutAt: null } });
+    await emit({ date: "2026-09-01" as typeof today, before: null, after: { firstInAt: at, lastOutAt: at } });
+    await emit({ date: today, before: { firstInAt: at, lastOutAt: null }, after: { firstInAt: at, lastOutAt: at } });
+    expect(await count("notify.arrival")).toBe(arrivals + 1);
+    expect(await count("notify.departure")).toBe(departures + 1);
+    const dep = await t.deps.root.outboxEvent.findFirstOrThrow({
+      where: { tenantId: tenantA, type: "notify.departure" },
+      orderBy: { createdAt: "desc" },
+    });
+    expect(dep.availableAt.getTime()).toBeGreaterThanOrEqual(at.getTime() + 9 * 60_000);
   });
 });
