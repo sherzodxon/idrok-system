@@ -9,7 +9,11 @@ export function renderNotification(kind: NotificationKind, params: Params, local
   switch (kind) {
     case "ARRIVAL":
       return Number(params.late) > 0
-        ? notifyText(locale, "arrivalLate", { student: str(params.student), time: str(params.time), late: str(params.late) })
+        ? notifyText(locale, "arrivalLate", {
+            student: str(params.student),
+            time: str(params.time),
+            late: str(params.late),
+          })
         : notifyText(locale, "arrival", { student: str(params.student), time: str(params.time) });
     case "DEPARTURE":
       return notifyText(locale, "departure", { student: str(params.student), time: str(params.time) });
@@ -33,7 +37,9 @@ export function renderNotification(kind: NotificationKind, params: Params, local
     case "DAILY_DIGEST": {
       const lines = [notifyText(locale, "digestTitle", { student: str(params.student), date: str(params.date) })];
       if (Number(params.scoreCount) > 0) {
-        lines.push(notifyText(locale, "digestScores", { count: str(params.scoreCount), total: str(params.scoreTotal) }));
+        lines.push(
+          notifyText(locale, "digestScores", { count: str(params.scoreCount), total: str(params.scoreTotal) }),
+        );
         for (const s of Array.isArray(params.subjects) ? (params.subjects as Params[]) : [])
           lines.push(notifyText(locale, "digestSubject", { subject: str(s.name), total: str(s.total) }));
       }

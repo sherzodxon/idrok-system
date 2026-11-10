@@ -17,6 +17,15 @@ export interface ApiClientDeps {
   readCookie: (name: string) => string | undefined;
   /** Called when the session cannot be refreshed (go to the login page). */
   onSessionLost: () => void;
+  /**
+   * Telegram Mini App (M7): bearer tokens instead of cookies. `relogin` gets a new session from Telegram's initData
+   * when the refresh token is gone.
+   */
+  bearer?: {
+    get: () => { accessToken: string; refreshToken?: string } | null;
+    set: (tokens: { accessToken: string; refreshToken?: string }) => void;
+    relogin?: () => Promise<boolean>;
+  };
 }
 
 const UNSAFE = new Set(["POST", "PUT", "PATCH", "DELETE"]);
@@ -28,8 +37,10 @@ export function createApiClient(deps: ApiClientDeps) {
   async function send(method: string, path: string, body?: unknown, extraHeaders: Record<string, string> = {}) {
     const headers: Record<string, string> = { Accept: "application/json", ...extraHeaders };
     if (body !== undefined && !(body instanceof FormData)) headers["Content-Type"] = "application/json";
+    const bearer = deps.bearer?.get();
+    if (bearer) headers.Authorization = `Bearer ${bearer.accessToken}`;
     const csrf = deps.readCookie("idrok_csrf");
-    if (UNSAFE.has(method) && csrf) headers["X-CSRF-Token"] = csrf;
+    if (!bearer && UNSAFE.has(method) && csrf) headers["X-CSRF-Token"] = csrf;
     try {
       return await deps.fetch(`${deps.baseUrl}${path}`, {
         method,
@@ -43,9 +54,23 @@ export function createApiClient(deps: ApiClientDeps) {
   }
 
   /** Single-flight: parallel 401s share one refresh request. */
+  async function refreshBearer(): Promise<boolean> {
+    const current = deps.bearer?.get();
+    if (current?.refreshToken) {
+      const res = await send("POST", "/auth/refresh", { refreshToken: current.refreshToken });
+      if (res.ok) {
+        const body = (await res.json()) as { tokens?: { accessToken: string; refreshToken?: string } };
+        if (body.tokens) {
+          deps.bearer!.set(body.tokens);
+          return true;
+        }
+      }
+    }
+    return (await deps.bearer?.relogin?.()) ?? false;
+  }
+
   function refresh(): Promise<boolean> {
-    refreshing ??= send("POST", "/auth/refresh", {})
-      .then((r) => r.ok)
+    refreshing ??= (deps.bearer?.get() ? refreshBearer() : send("POST", "/auth/refresh", {}).then((r) => r.ok))
       .catch(() => false)
       .finally(() => {
         refreshing = null;

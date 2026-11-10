@@ -92,7 +92,9 @@ async function handle(deps: BotDeps, update: TgUpdate | null): Promise<void> {
   const locale: BotLocale = botLocale(current?.guardian.user?.preference?.locale, who.languageCode);
   const send = (text: string, options?: SendMessageOptions) => deps.telegram.sendMessage(who.chatId, text, options);
   const openApp = (): SendMessageOptions | undefined =>
-    deps.miniAppUrl ? { buttons: [{ text: botText(locale, "openApp"), web_app: { url: deps.miniAppUrl } }] } : undefined;
+    deps.miniAppUrl
+      ? { buttons: [{ text: botText(locale, "openApp"), web_app: { url: deps.miniAppUrl } }] }
+      : undefined;
   const askContact = async () => {
     const school = await schoolName(db);
     await send(`${botText(locale, "welcome", { school })}\n\n${botText(locale, "askContact")}`, {

@@ -36,7 +36,12 @@ async function say(from: number, message: Record<string, unknown>) {
   const id = ++updateId;
   const res = await hook({
     update_id: id,
-    message: { message_id: id, chat: { id: from, type: "private" }, from: { id: from, language_code: "uz" }, ...message },
+    message: {
+      message_id: id,
+      chat: { id: from, type: "private" },
+      from: { id: from, language_code: "uz" },
+      ...message,
+    },
   });
   expect(res.status).toBe(200);
   const row = await t.deps.root.telegramUpdate.findFirstOrThrow({ where: { tenantId: tenantA, updateId: BigInt(id) } });
@@ -58,7 +63,11 @@ async function say(from: number, message: Record<string, unknown>) {
 
 const initData = (userId: number, authDate = Math.floor(Date.now() / 1000)) =>
   signInitData(
-    { auth_date: String(authDate), query_id: "AAE", user: JSON.stringify({ id: userId, first_name: "Demo", language_code: "uz" }) },
+    {
+      auth_date: String(authDate),
+      query_id: "AAE",
+      user: JSON.stringify({ id: userId, first_name: "Demo", language_code: "uz" }),
+    },
     BOT_TOKEN,
   );
 const miniLogin = (data: string) => request(t.app).post("/api/v1/auth/telegram").send({ initData: data });
@@ -144,7 +153,11 @@ describe("linking", () => {
     const stored = await t.deps.root.telegramLinkCode.findFirstOrThrow({ where: { tenantId: tenantA } });
     expect(stored.codeHash).not.toContain(issued.code);
     const list = await s.a.get("/telegram/guardians?status=LINKED");
-    expect(list.items[0]).toMatchObject({ guardianId: s.guardianId, status: "LINKED", pendingCodeExpiresAt: issued.expiresAt });
+    expect(list.items[0]).toMatchObject({
+      guardianId: s.guardianId,
+      status: "LINKED",
+      pendingCodeExpiresAt: issued.expiresAt,
+    });
 
     expect(await say(7002, { text: `/start ${issued.code}` })).toContain("Bog'landi");
     const active = await t.deps.root.telegramLink.findMany({ where: { tenantId: tenantA, revokedAt: null } });
@@ -179,12 +192,18 @@ describe("Mini App login", () => {
     const kids = await request(t.app).get("/api/v1/me/children").set(bearer);
     expect(kids.status).toBe(200);
     expect(kids.body.map((k: { id: string }) => k.id)).toEqual([s.s7b.id]);
-    const session = await t.deps.root.authSession.findFirstOrThrow({ where: { clientType: "TELEGRAM", revokedAt: null } });
+    const session = await t.deps.root.authSession.findFirstOrThrow({
+      where: { clientType: "TELEGRAM", revokedAt: null },
+    });
     expect(session.telegramLinkId).not.toBeNull();
     // Refresh keeps it a Telegram session.
-    const refreshed = await request(t.app).post("/api/v1/auth/refresh").send({ refreshToken: res.body.tokens.refreshToken });
+    const refreshed = await request(t.app)
+      .post("/api/v1/auth/refresh")
+      .send({ refreshToken: res.body.tokens.refreshToken });
     expect(refreshed.status).toBe(200);
-    const me = await request(t.app).get("/api/v1/me").set({ Authorization: `Bearer ${refreshed.body.tokens.accessToken}` });
+    const me = await request(t.app)
+      .get("/api/v1/me")
+      .set({ Authorization: `Bearer ${refreshed.body.tokens.accessToken}` });
     expect(me.body.mustChangePassword).toBe(false);
   });
 
@@ -216,7 +235,13 @@ describe("notifications", () => {
   const arrive = async (studentId: string, at = new Date()) => {
     await t.deps.root.attendanceRecord.upsert({
       where: { tenantId_studentId_schoolDate: { tenantId: tenantA, studentId, schoolDate: schoolDateToDb(today) } },
-      create: { tenantId: tenantA, studentId, schoolDate: schoolDateToDb(today), firstInAt: at, deviceStatus: "PRESENT" },
+      create: {
+        tenantId: tenantA,
+        studentId,
+        schoolDate: schoolDateToDb(today),
+        firstInAt: at,
+        deviceStatus: "PRESENT",
+      },
       update: { firstInAt: at, deviceStatus: "PRESENT" },
     });
     return inA(() => processArrival(t.deps.db, studentId, today));
@@ -260,7 +285,10 @@ describe("notifications", () => {
       })),
     });
     await deliverPending();
-    const rows = await t.deps.root.notification.findMany({ where: { tenantId: tenantA }, orderBy: { dedupeKey: "asc" } });
+    const rows = await t.deps.root.notification.findMany({
+      where: { tenantId: tenantA },
+      orderBy: { dedupeKey: "asc" },
+    });
     expect(rows.map((r) => [r.status, r.skipReason])).toEqual([
       ["SENT", null],
       ["SKIPPED", "RATE_LIMITED"],
@@ -289,9 +317,7 @@ describe("notifications", () => {
     expect(mine.telegram).toMatchObject({ status: "LINKED", botUsername: "idrok_demo_bot" });
     expect(mine.preferences.arrival).toBe(true);
     expect((await s.a.raw("get", "/portal/notifications")).status).toBe(403);
-    expect(
-      (await api(t, s.guardian).raw("put", "/portal/notifications", { quietStartMinute: 60 })).status,
-    ).toBe(400);
+    expect((await api(t, s.guardian).raw("put", "/portal/notifications", { quietStartMinute: 60 })).status).toBe(400);
   });
 });
 
@@ -306,18 +332,25 @@ describe("broadcasts (TG-06)", () => {
     await t.deps.root.notification.deleteMany({ where: { tenantId: tenantA } });
     const none = await s.a.post("/telegram/broadcasts", { classGroupIds: [s.c7a.id], text: "7-A uchun" });
     expect(none.recipientCount).toBe(0);
-    const sent = await s.a.post("/telegram/broadcasts", { classGroupIds: [s.c7b.id], text: "Ertaga ota-onalar majlisi" });
+    const sent = await s.a.post("/telegram/broadcasts", {
+      classGroupIds: [s.c7b.id],
+      text: "Ertaga ota-onalar majlisi",
+    });
     expect(sent).toMatchObject({ recipientCount: 1, pending: 1, classGroups: [s.c7b.name] });
     fake.sent.length = 0;
     await deliverPending();
     expect(fake.sent.map((m) => m.text)).toEqual([expect.stringContaining("Ertaga ota-onalar majlisi")]);
     const history = await s.a.get("/telegram/broadcasts");
     expect(history.items[0]).toMatchObject({ id: sent.id, sent: 1, pending: 0 });
-    expect(await t.deps.root.auditLog.count({ where: { tenantId: tenantA, action: "notifications.broadcast" } })).toBe(2);
+    expect(await t.deps.root.auditLog.count({ where: { tenantId: tenantA, action: "notifications.broadcast" } })).toBe(
+      2,
+    );
   });
 
   it("needs notifications.broadcast; another school's classes are refused", async () => {
-    expect((await api(t, s.teacher1).raw("post", "/telegram/broadcasts", { classGroupIds: [s.c7b.id], text: "x" })).status).toBe(403);
+    expect(
+      (await api(t, s.teacher1).raw("post", "/telegram/broadcasts", { classGroupIds: [s.c7b.id], text: "x" })).status,
+    ).toBe(403);
     expect((await api(t, s.guardian).raw("get", "/telegram/broadcasts")).status).toBe(403);
     expect((await b.a.raw("post", "/telegram/broadcasts/preview", { classGroupIds: [s.c7b.id] })).status).toBe(400);
     expect((await b.a.get("/telegram/broadcasts")).total).toBe(0);

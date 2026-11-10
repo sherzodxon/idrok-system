@@ -140,9 +140,17 @@ export class TelegramLinkingService {
   /** From the bot (/unlink): the Telegram user ends their own link. */
   async unlinkTelegramUser(telegramUserId: bigint): Promise<boolean> {
     const revoked = await this.db.$transaction(async (tx) => {
-      const links = await tx.telegramLink.findMany({ where: { telegramUserId, revokedAt: null }, select: { id: true } });
+      const links = await tx.telegramLink.findMany({
+        where: { telegramUserId, revokedAt: null },
+        select: { id: true },
+      });
       if (!links.length) return null;
-      return this.revoke(tx, links.map((l) => l.id), "USER", null);
+      return this.revoke(
+        tx,
+        links.map((l) => l.id),
+        "USER",
+        null,
+      );
     });
     if (revoked) await this.authState.markRevoked(revoked);
     return revoked !== null;
@@ -153,7 +161,12 @@ export class TelegramLinkingService {
     const revoked = await this.db.$transaction(async (tx) => {
       const links = await tx.telegramLink.findMany({ where: { guardianId, revokedAt: null }, select: { id: true } });
       if (!links.length) throw notFound();
-      return this.revoke(tx, links.map((l) => l.id), reason, byUserId);
+      return this.revoke(
+        tx,
+        links.map((l) => l.id),
+        reason,
+        byUserId,
+      );
     });
     await this.authState.markRevoked(revoked);
   }

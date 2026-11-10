@@ -269,9 +269,7 @@ export async function startWorker(env: Env, logger?: Logger) {
     deps,
     async stop() {
       clearInterval(relayTimer);
-      await Promise.all(
-        [imports, housekeeping, tests, devices, telegram, notifications].map((w) => w.close()),
-      );
+      await Promise.all([imports, housekeeping, tests, devices, telegram, notifications].map((w) => w.close()));
       await closeDeps(deps);
     },
   };

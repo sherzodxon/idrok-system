@@ -1,7 +1,13 @@
 // Admin side of M7: guardians' link status, broadcasts to classes (T-96). Codes and unlinking live in the linking
 // service. Everything here runs on the tenant-scoped client.
 import { requireTenantId, type Db, type Prisma } from "@idrok/db";
-import type { BroadcastDto, BroadcastPreviewDto, ListQuery, TelegramGuardianDto, TelegramLinkStatus } from "@idrok/shared";
+import type {
+  BroadcastDto,
+  BroadcastPreviewDto,
+  ListQuery,
+  TelegramGuardianDto,
+  TelegramLinkStatus,
+} from "@idrok/shared";
 import { AppError } from "../../http/errors";
 import { page, skipTake } from "../../http/pagination";
 import { schoolClock } from "../access/school-clock";

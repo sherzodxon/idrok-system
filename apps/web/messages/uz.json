@@ -203,7 +203,10 @@
       "below_criterion_min": "Bu mezon bo'yicha bir baho kamida {limit} ball",
       "min_above_max": "Minimal ball maksimaldan katta bo'lishi mumkin emas",
       "in_future": "Sana kelajakda bo'lishi mumkin emas"
-    }
+    },
+    "TELEGRAM_NOT_CONFIGURED": "Telegram bot sozlanmagan",
+    "TELEGRAM_INVALID_INIT_DATA": "Telegram kirish ma'lumoti noto'g'ri yoki eskirgan",
+    "TELEGRAM_NOT_LINKED": "Telegram akkaunt vasiyga bog'lanmagan"
   },
   "states": {
     "emptyTitle": "Hozircha ma'lumot yo'q",
@@ -255,7 +258,8 @@
       "lesson": "Dars",
       "prep": "Tayyorgarlik"
     },
-    "reports": "Hisobotlar"
+    "reports": "Hisobotlar",
+    "telegram": "Telegram"
   },
   "shell": {
     "context": "Ish rejimi",
@@ -739,7 +743,8 @@
       "coins": "Coin",
       "attendance": "Davomat va Face ID",
       "assessment": "Ballar va baholash",
-      "tests": "Testlar"
+      "tests": "Testlar",
+      "notifications": "Telegram va bildirishnomalar"
     },
     "codes": {
       "users_view": "Ko'rish",
@@ -811,7 +816,9 @@
       "tests_reopen": "Qayta topshirish va urinishni qayta ochish",
       "tests_results_view": "Test natijalarini ko'rish",
       "tests_results_enter": "Offline natijalarni kiritish",
-      "test_types_manage": "Test turlari"
+      "test_types_manage": "Test turlari",
+      "telegram_manage": "Telegram bog'lanishlari, kodlar va sozlamalar",
+      "notifications_broadcast": "Ommaviy xabar yuborish"
     }
   },
   "audit": {
@@ -2447,6 +2454,139 @@
         "title": "Coin",
         "text": "Coin daftaridagi barcha yozuvlar: mukofot, jarima, xarid, tuzatish"
       }
+    }
+  },
+  "telegram": {
+    "title": "Telegram va xabarlar",
+    "subtitle": "Vasiylarning Telegram bog'lanishi, ommaviy xabarlar va bildirishnoma sozlamalari",
+    "tabs": {
+      "guardians": "Vasiylar",
+      "broadcast": "Ommaviy xabar",
+      "settings": "Sozlamalar"
+    },
+    "status": {
+      "LINKED": "Bog'langan",
+      "BLOCKED": "Botni bloklagan",
+      "NOT_LINKED": "Bog'lanmagan"
+    },
+    "method": {
+      "CONTACT": "Telefon orqali",
+      "CODE": "Kod orqali"
+    },
+    "summary": {
+      "guardians": "Vasiylar",
+      "linked": "Telegram'da bog'langan",
+      "blocked": "Botni bloklagan"
+    },
+    "guardians": {
+      "search": "Ism yoki telefon",
+      "status": "Holat",
+      "allStatuses": "Barcha holatlar",
+      "class": "Sinf",
+      "allClasses": "Barcha sinflar",
+      "empty": "Vasiy topilmadi",
+      "guardian": "Vasiy",
+      "children": "Farzandlari",
+      "lastSent": "Oxirgi xabar",
+      "issueCode": "Kod berish",
+      "unlink": "Uzish",
+      "codeUntil": "Kod {at} gacha amal qiladi",
+      "unlinkTitle": "Telegram bog'lanishini uzish",
+      "unlinkText": "{name} Telegram'dan uziladi: xabarlar to'xtaydi, Mini App qayta kirishni so'raydi."
+    },
+    "code": {
+      "title": "Bog'lash kodi",
+      "for": "Vasiy: {name}",
+      "link": "Havola:",
+      "noBotUsername": "Bot nomi sozlanmagan: vasiy kodni botga o'zi yuboradi.",
+      "expires": "Amal qilish muddati: {at}",
+      "once": "Kod faqat hozir ko'rinadi va bir marta ishlaydi. Yangi kod eskisini bekor qiladi."
+    },
+    "broadcast": {
+      "new": "Yangi xabar",
+      "classes": "Sinflar",
+      "noClasses": "Joriy o'quv yilida sinf yo'q",
+      "all": "Hammasini tanlash",
+      "none": "Tanlovni tozalash",
+      "text": "Matn",
+      "textHint": "{n} / {max} belgi",
+      "preview": "Ko'rib chiqish",
+      "confirmTitle": "Yuborishni tasdiqlang",
+      "back": "Orqaga",
+      "send": "Yuborish",
+      "counts": "O'quvchilar: {students}. Vasiylar: {guardians}. Telegram'da hozir oladiganlar: {reachable}.",
+      "unreachable": "Ba'zi vasiylar Telegram'da bog'lanmagan — ular bu xabarni olmaydi.",
+      "history": "Yuborish tarixi",
+      "empty": "Hali ommaviy xabar yuborilmagan",
+      "delivery": "Yetkazish",
+      "deliveryCounts": "Yuborildi: {sent} · navbatda: {pending} · xato: {failed} · o'tkazildi: {skipped}",
+      "when": "Qachon, kim"
+    },
+    "settings": {
+      "bot": "Bot:",
+      "botOn": "Sozlangan",
+      "botOff": "Sozlanmagan",
+      "botOffHint": "Serverda TELEGRAM_BOT_TOKEN va TELEGRAM_WEBHOOK_SECRET sozlanmagan — bot ishlamaydi.",
+      "title": "Bildirishnoma sozlamalari",
+      "isEnabled": "Bildirishnomalar yoqilgan",
+      "arrivalEnabled": "Maktabga kelish",
+      "departureEnabled": "Maktabdan ketish",
+      "dailyDigestEnabled": "Kunlik xulosa (ballar va coin)",
+      "testResultsEnabled": "Test natijalari",
+      "lowAttendanceEnabled": "Past davomat (haftasiga bir marta)",
+      "quietStart": "Tinch soat boshlanishi",
+      "quietEnd": "Tinch soat tugashi",
+      "quietHint": "Bu vaqtdagi xabarlar tinch soat tugaganda yuboriladi",
+      "digest": "Kunlik xulosa vaqti",
+      "departureDelay": "Ketish xabari kechikishi (daqiqa)",
+      "lowThreshold": "Past davomat chegarasi (%)",
+      "lowWindow": "Davomat davri (kun)",
+      "perHour": "Bitta vasiyga soatiga ko'pi bilan",
+      "codeTtl": "Kod amal qilish muddati (soat)",
+      "smsFallback": "Telegram ishlamasa SMS yuborish",
+      "noSmsProvider": "SMS provayder hali ulanmagan — SMS yuborilmaydi.",
+      "save": "Saqlash"
+    },
+    "miniApp": {
+      "retry": "Qayta urinish",
+      "outside": {
+        "title": "Telegram orqali oching",
+        "text": "Bu sahifa maktab botidagi \"Kabinet\" tugmasi orqali ochiladi."
+      },
+      "notLinked": {
+        "title": "Akkaunt bog'lanmagan",
+        "text": "Botga /start yuboring va telefon raqamingizni ulashing yoki maktab bergan kodni yuboring."
+      },
+      "invalid": {
+        "title": "Kirish ma'lumoti eskirgan",
+        "text": "Mini App'ni yoping va botdan qayta oching."
+      },
+      "error": {
+        "title": "Xatolik yuz berdi",
+        "text": "Internetni tekshirib, qayta urinib ko'ring."
+      }
+    },
+    "portal": {
+      "title": "Bildirishnomalar",
+      "telegram": "Telegram:",
+      "openBot": "@{bot} ni ochish",
+      "unlink": "Uzish",
+      "linkHint": "Botga telefon raqamingizni yuboring — farzandingiz haqidagi xabarlar Telegram'ga keladi.",
+      "kinds": {
+        "arrival": "Maktabga keldi",
+        "departure": "Maktabdan ketdi",
+        "dailyDigest": "Kunlik xulosa (ballar va coin)",
+        "testResults": "Test natijalari",
+        "lowAttendance": "Past davomat ogohlantirishi"
+      },
+      "quietOff": "Tinch soatlarsiz (har doim yuborish)",
+      "ownQuiet": "O'z tinch soatlarim",
+      "quietStart": "Boshlanishi",
+      "quietEnd": "Tugashi",
+      "schoolQuiet": "Maktab tinch soatlari: {from} – {to}",
+      "save": "Saqlash",
+      "unlinkTitle": "Telegram'ni uzish",
+      "unlinkText": "Telegram'ga xabarlar kelmay qoladi. Qayta bog'lash uchun botga /start yuboring."
     }
   }
 }

@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { atSchoolTime, parseSchoolDate } from "@idrok/shared/time";
-import { attendanceRate, deferForQuietHours, effectiveQuietHours, isBelowThreshold, isQuietMinute } from "./notifications";
+import {
+  attendanceRate,
+  deferForQuietHours,
+  effectiveQuietHours,
+  isBelowThreshold,
+  isQuietMinute,
+} from "./notifications";
 
 const TZ = "Asia/Tashkent";
 const day = parseSchoolDate("2026-11-10");
@@ -26,7 +32,9 @@ describe("quiet hours", () => {
 
   it("the guardian's own window or none wins over the school's", () => {
     expect(effectiveQuietHours(night, null)).toBe(night);
-    expect(effectiveQuietHours(night, { quietStartMinute: null, quietEndMinute: null, quietHoursOff: true })).toBeNull();
+    expect(
+      effectiveQuietHours(night, { quietStartMinute: null, quietEndMinute: null, quietHoursOff: true }),
+    ).toBeNull();
     expect(effectiveQuietHours(night, { quietStartMinute: 60, quietEndMinute: 120, quietHoursOff: false })).toEqual({
       startMinute: 60,
       endMinute: 120,

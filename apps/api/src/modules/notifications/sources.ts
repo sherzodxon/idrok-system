@@ -43,7 +43,8 @@ export async function emitAttendanceEvents(
   const tenantId = requireTenantId();
   const payload = { tenantId, studentId: input.studentId, schoolDate: input.date };
   const events: { type: string; availableAt: Date }[] = [];
-  if (input.after.firstInAt && !input.before?.firstInAt) events.push({ type: "notify.arrival", availableAt: new Date() });
+  if (input.after.firstInAt && !input.before?.firstInAt)
+    events.push({ type: "notify.arrival", availableAt: new Date() });
   const out = input.after.lastOutAt;
   if (out && out.getTime() !== input.before?.lastOutAt?.getTime())
     events.push({
@@ -72,7 +73,9 @@ export async function processArrival(db: Db, studentId: string, date: SchoolDate
   const [settings, { timezone }] = await Promise.all([notificationSettings(db), schoolClock(db)]);
   if (!schoolAllows(settings, "ARRIVAL")) return 0;
   const record = await db.attendanceRecord.findUnique({
-    where: { tenantId_studentId_schoolDate: { tenantId: requireTenantId(), studentId, schoolDate: schoolDateToDb(date) } },
+    where: {
+      tenantId_studentId_schoolDate: { tenantId: requireTenantId(), studentId, schoolDate: schoolDateToDb(date) },
+    },
     select: { firstInAt: true, lateMinutes: true, deviceStatus: true },
   });
   const student = await studentName(db, studentId);
@@ -98,7 +101,9 @@ export async function processDeparture(db: Db, studentId: string, date: SchoolDa
   const [settings, { timezone }] = await Promise.all([notificationSettings(db), schoolClock(db)]);
   if (!schoolAllows(settings, "DEPARTURE")) return 0;
   const record = await db.attendanceRecord.findUnique({
-    where: { tenantId_studentId_schoolDate: { tenantId: requireTenantId(), studentId, schoolDate: schoolDateToDb(date) } },
+    where: {
+      tenantId_studentId_schoolDate: { tenantId: requireTenantId(), studentId, schoolDate: schoolDateToDb(date) },
+    },
     select: { lastOutAt: true },
   });
   const student = await studentName(db, studentId);
@@ -198,7 +203,11 @@ export async function sendLowAttendanceAlerts(db: Db, now = new Date()): Promise
   if (isoWeekday(today) !== 1 || schoolMinuteOfDay(now, timezone) < 9 * 60) return 0;
   const to = addSchoolDays(today, -1);
   const from = addSchoolDays(today, -settings.lowAttendanceWindowDays);
-  const days = await studentDaysRange(db, from, to, { settings: attendance, bands: await activeBands(db), tz: timezone });
+  const days = await studentDaysRange(db, from, to, {
+    settings: attendance,
+    bands: await activeBands(db),
+    tz: timezone,
+  });
   const expected = new Map<string, number>();
   const expectedDays = new Map<string, Set<string>>();
   for (const [date, byStudent] of days)
@@ -219,7 +228,10 @@ export async function sendLowAttendanceAlerts(db: Db, now = new Date()): Promise
   const attended = new Map<string, number>();
   for (const r of records) {
     const status = r.manualStatus ?? r.deviceStatus;
-    if ((status === "PRESENT" || status === "LATE") && expectedDays.get(r.studentId)?.has(schoolDateFromDb(r.schoolDate)))
+    if (
+      (status === "PRESENT" || status === "LATE") &&
+      expectedDays.get(r.studentId)?.has(schoolDateFromDb(r.schoolDate))
+    )
       attended.set(r.studentId, (attended.get(r.studentId) ?? 0) + 1);
   }
   const low = [...expected.entries()].filter(
@@ -296,7 +308,8 @@ export async function notifyTestResults(db: Db, testId: string, now = new Date()
   const chosen = new Map<string, (typeof attempts)[number]>();
   for (const a of attempts) {
     const prev = chosen.get(a.studentId);
-    const better = !prev || test.retakePolicy !== "BEST" || D(a.percent?.toString() ?? 0).gt(prev.percent?.toString() ?? 0);
+    const better =
+      !prev || test.retakePolicy !== "BEST" || D(a.percent?.toString() ?? 0).gt(prev.percent?.toString() ?? 0);
     if (better) chosen.set(a.studentId, a);
   }
   let created = 0;

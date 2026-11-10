@@ -35,7 +35,12 @@ import { writeAudit } from "../audit/audit.service";
 import { AuthService } from "../auth/auth.service";
 import { generateTemporaryPassword, hashPassword } from "../auth/password";
 import { MeService } from "../me/me.service";
-import { notificationSettings, preferenceOf, updateNotificationSettings, updatePreference } from "../notifications/settings";
+import {
+  notificationSettings,
+  preferenceOf,
+  updateNotificationSettings,
+  updatePreference,
+} from "../notifications/settings";
 import { TelegramLinkingService } from "./linking.service";
 import { TelegramAdminService } from "./telegram.service";
 
@@ -92,7 +97,10 @@ export function telegramRoutes(router: Router, registry: OpenApiRegistry, deps: 
   const botConfigured = !!(env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_WEBHOOK_SECRET);
 
   const defaultTenant = async () => {
-    const t = await deps.root.tenant.findUnique({ where: { slug: env.DEFAULT_TENANT_SLUG }, select: { id: true, status: true } });
+    const t = await deps.root.tenant.findUnique({
+      where: { slug: env.DEFAULT_TENANT_SLUG },
+      select: { id: true, status: true },
+    });
     return t?.status === "ACTIVE" ? t.id : null;
   };
 
@@ -104,7 +112,11 @@ export function telegramRoutes(router: Router, registry: OpenApiRegistry, deps: 
       summary: "Telegram bot webhook (X-Telegram-Bot-Api-Secret-Token)",
       tags,
       access: "public",
-      responses: { 200: { description: "Accepted" }, 401: { description: "Bad secret" }, 404: { description: "Bot off" } },
+      responses: {
+        200: { description: "Accepted" },
+        401: { description: "Bad secret" },
+        404: { description: "Bot off" },
+      },
     },
     async ({ req, res }) => {
       if (!botConfigured) throw notFound();
@@ -158,7 +170,8 @@ export function telegramRoutes(router: Router, registry: OpenApiRegistry, deps: 
       if (!env.TELEGRAM_BOT_TOKEN) throw new AppError("TELEGRAM_NOT_CONFIGURED", 404);
       const ipKey = `rl:tg-login:ip:${req.ip ?? "unknown"}`;
       const state = await ipWindow.state(ipKey);
-      if (state.count >= MAX_LOGINS_PER_IP) throw new AppError("AUTH_RATE_LIMITED", 429, { retryAfterSec: state.retryAfterSec });
+      if (state.count >= MAX_LOGINS_PER_IP)
+        throw new AppError("AUTH_RATE_LIMITED", 429, { retryAfterSec: state.retryAfterSec });
       await ipWindow.hit(ipKey);
       const verified = verifyInitData(body.initData, env.TELEGRAM_BOT_TOKEN);
       if (!verified) throw new AppError("TELEGRAM_INVALID_INIT_DATA", 401);

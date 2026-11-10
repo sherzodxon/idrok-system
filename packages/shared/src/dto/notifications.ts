@@ -98,9 +98,7 @@ export type LinkCodeIssuedDto = z.infer<typeof LinkCodeIssuedSchema>;
 
 // ---- broadcasts
 
-export const BroadcastTargetSchema = z
-  .object({ classGroupIds: z.array(z.uuid()).min(1).max(200) })
-  .strict();
+export const BroadcastTargetSchema = z.object({ classGroupIds: z.array(z.uuid()).min(1).max(200) }).strict();
 
 export const BroadcastPreviewSchema = z.object({
   students: z.number().int(),
