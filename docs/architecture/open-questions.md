@@ -307,3 +307,7 @@ Reja va oqimlar: `docs/architecture/m7-telegram.md`.
 | Q-56 | Ball va coin xabarlari: har biri darhol yoki kunlik xulosa? | Har bahoga xabar — kuniga o'nlab xabar, vasiy botni o'chirib qo'yishi mumkin | (a) kunlik xulosa; (b) har bir baho/coin darhol; (c) ikkalasi, vasiy tanlaydi | (a) — hozir shunday qilindi (`digestMinute` sozlamasi) | Egasi |
 | Q-57 | SMS provayder (Eskiz, Play Mobile va h.k.) | SMS zaxira kanal faqat provayder bilan ishlaydi; narx | provayder tanlash va shartnoma | Hozir faqat interfeys (`SmsProvider`) va sozlama (`smsFallbackEnabled`, default o'chirilgan) | Egasi |
 | Q-58 | Ommaviy xabar doirasi: faqat sinflar yetarlimi? | Spec: o'quv yili, sinf, guruh, kanal | (a) sinflar (+ "butun maktab" = barcha sinflar); (b) + o'quv guruhlari, Telegram kanali | (a) hozir; (b) keyin | Egasi |
+
+| # | Qaror | Asos |
+|---|---|---|
+| T-99 | **Telegram hozircha o'chiq; vasiylar saytdan PWA sifatida (egasi, 2026-11-10).** Tizim to'liq sinovdan o'tguncha bot ulanmaydi. Kod qoladi: kalitlar bo'sh bo'lsa Telegram butunlay o'chiq (webhook va Mini App 404, UI'da yashirin, `/me.features.telegram`). Sayt o'rnatiladigan PWA (manifest, ikonkalar; offline kesh yo'q — shaxsiy ma'lumot). Keyin: zarur bo'lsa bot yoqiladi yoki PWA Capacitor bilan ilovaga o'raladi | egasi |

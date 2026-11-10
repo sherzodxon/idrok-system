@@ -24,6 +24,7 @@ import {
   pageOf,
   type MyNotificationsDto,
 } from "@idrok/shared";
+import { telegramEnabled } from "../../config/env";
 import type { AppDeps } from "../../deps";
 import { verifyInitData } from "../../domain/telegram";
 import type { RequestAuth } from "../../http/auth";
@@ -91,10 +92,10 @@ export function telegramRoutes(router: Router, registry: OpenApiRegistry, deps: 
   const admin = new TelegramAdminService(deps.db);
   const linking = new TelegramLinkingService(deps.db, deps.authState);
   const auth = new AuthService(deps);
-  const me = new MeService(deps.db);
+  const me = new MeService(deps.db, { telegram: telegramEnabled(deps.env) });
   const ipWindow = new SlidingWindow(deps.redis, LOGIN_WINDOW_MS);
   const env = deps.env;
-  const botConfigured = !!(env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_WEBHOOK_SECRET);
+  const botConfigured = telegramEnabled(env);
 
   const defaultTenant = async () => {
     const t = await deps.root.tenant.findUnique({

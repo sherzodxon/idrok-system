@@ -13,13 +13,22 @@ import "./globals.css";
 
 export async function generateMetadata(): Promise<Metadata> {
   const b = await getBranding();
-  return { title: b ? `${b.schoolName} · ${b.platformName}` : PLATFORM_NAME };
+  const title = b ? `${b.schoolName} · ${b.platformName}` : PLATFORM_NAME;
+  return {
+    title,
+    // Home-screen app on iPhone (Android reads app/manifest.ts).
+    appleWebApp: { capable: true, title: b?.schoolName ?? PLATFORM_NAME, statusBarStyle: "default" },
+    icons: { apple: "/icons/apple-touch-icon.png" },
+  };
 }
 
 // Self-hosted at build time (no request to Google from the browser; CSP font-src 'self'). Cyrillic for Russian.
 const manrope = Manrope({ subsets: ["latin", "cyrillic"], display: "swap", variable: "--font-manrope" });
 
-export const viewport: Viewport = { width: "device-width", initialScale: 1 };
+export async function generateViewport(): Promise<Viewport> {
+  const b = await getBranding();
+  return { width: "device-width", initialScale: 1, ...(b ? { themeColor: b.primaryColor } : {}) };
+}
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const [branding, locale] = await Promise.all([getBranding(), getLocale()]);

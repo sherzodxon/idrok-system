@@ -68,6 +68,10 @@ const EnvSchema = z.object({
 
 export type Env = z.infer<typeof EnvSchema>;
 
+/** Telegram (M7) is on only with both the bot token and the webhook secret; otherwise the whole feature is off. */
+export const telegramEnabled = (env: Pick<Env, "TELEGRAM_BOT_TOKEN" | "TELEGRAM_WEBHOOK_SECRET">) =>
+  !!(env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_WEBHOOK_SECRET);
+
 /** The bot works only with both the token and the webhook secret. */
 const telegramPair = (env: Env) => !!env.TELEGRAM_BOT_TOKEN === !!env.TELEGRAM_WEBHOOK_SECRET;
 

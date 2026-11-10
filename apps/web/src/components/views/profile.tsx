@@ -98,7 +98,9 @@ export function ProfileView() {
         </div>
       </Card>
 
-      {user.profiles.guardianId && can(user, "portal.guardian") && <PortalNotificationsCard />}
+      {user.features.telegram && user.profiles.guardianId && can(user, "portal.guardian") && (
+        <PortalNotificationsCard />
+      )}
       <Card>
         <CardHeader
           title={t("profile.sessions")}

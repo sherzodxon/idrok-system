@@ -30,6 +30,8 @@ describe("login", () => {
     const me = await request(t.app).get("/api/v1/me").set("Authorization", `Bearer ${res.body.tokens.accessToken}`);
     expect(me.status).toBe(200);
     expect(me.body.id).toBe(user.id);
+    // Without a bot token and webhook secret the Telegram feature is off and the UI hides it.
+    expect(me.body.features).toEqual({ telegram: false });
   });
 
   it("cookie mode sets httpOnly access/refresh cookies and a readable CSRF cookie", async () => {

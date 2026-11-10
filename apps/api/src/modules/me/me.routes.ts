@@ -1,12 +1,13 @@
 import type { Router } from "express";
 import { MeSchema, PreferencesSchema, UpdatePreferencesSchema } from "@idrok/shared";
+import { telegramEnabled } from "../../config/env";
 import type { AppDeps } from "../../deps";
 import { defineRoute } from "../../http/route";
 import type { OpenApiRegistry } from "../../openapi/registry";
 import { MeService } from "./me.service";
 
 export function meRoutes(router: Router, registry: OpenApiRegistry, deps: AppDeps) {
-  const service = new MeService(deps.db);
+  const service = new MeService(deps.db, { telegram: telegramEnabled(deps.env) });
 
   defineRoute(
     router,
