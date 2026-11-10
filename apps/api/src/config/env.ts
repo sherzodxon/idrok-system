@@ -72,7 +72,10 @@ export type Env = z.infer<typeof EnvSchema>;
 const telegramPair = (env: Env) => !!env.TELEGRAM_BOT_TOKEN === !!env.TELEGRAM_WEBHOOK_SECRET;
 
 export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
-  const parsed = EnvSchema.safeParse(source);
+  // An empty value (KEY= in a .env file, or a field left blank in the Render dashboard) means "not set": optional
+  // features (alerts, Telegram, Face ID keys) stay off instead of failing their format check.
+  const set = Object.fromEntries(Object.entries(source).filter(([, v]) => v !== undefined && v.trim() !== ""));
+  const parsed = EnvSchema.safeParse(set);
   if (!parsed.success) {
     // Only variable names are reported, never their values.
     const fields = parsed.error.issues.map((i) => i.path.join(".")).join(", ");

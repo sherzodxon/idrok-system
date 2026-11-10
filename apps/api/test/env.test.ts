@@ -20,6 +20,21 @@ describe("environment", () => {
     expect(() => loadEnv(env)).toThrow(key);
   });
 
+  it("blank optional values (a field left empty in the host's dashboard) mean not set", () => {
+    const env = loadEnv({
+      ...VALID,
+      ALERT_WEBHOOK_URL: "",
+      DATA_ENCRYPTION_KEY: " ",
+      TELEGRAM_BOT_TOKEN: "",
+      TELEGRAM_WEBHOOK_SECRET: "",
+      TELEGRAM_MINI_APP_URL: "",
+    });
+    expect(env.ALERT_WEBHOOK_URL).toBeUndefined();
+    expect(env.TELEGRAM_BOT_TOKEN).toBeUndefined();
+    // A blank required secret is still missing.
+    expect(() => loadEnv({ ...VALID, JWT_SECRET: "" })).toThrow("JWT_SECRET");
+  });
+
   it("rejects a short JWT secret", () => {
     expect(() => loadEnv({ ...VALID, JWT_SECRET: "short" })).toThrow("JWT_SECRET");
   });
