@@ -1,4 +1,4 @@
-// School notification settings and a guardian's own preferences (T-92, T-93). Settings changes are audited.
+// School notification settings and a guardian's own preferences (T-94, T-95). Settings changes are audited.
 import type { z } from "zod";
 import { requireTenantId, type Db, type DbTransaction } from "@idrok/db";
 import type {

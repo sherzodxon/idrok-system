@@ -1,4 +1,4 @@
-// Linking a Telegram account to a guardian (T-89): the user's own contact matched to exactly one guardian phone, or
+// Linking a Telegram account to a guardian (T-91): the user's own contact matched to exactly one guardian phone, or
 // a one-time code issued by an admin. One active link per guardian and per Telegram user; a new link replaces both
 // old ones. Every link and unlink is audited in the same transaction; unlinking revokes the link's Mini App sessions.
 import { currentTenantContext, requireTenantId, type Db, type DbTransaction } from "@idrok/db";

@@ -1,6 +1,6 @@
 # M7 — Vasiy portali va Telegram: reja
 
-Qarorlar: `open-questions.md` T-87…T-95, ochiq savollar Q-56…Q-58.
+Qarorlar: `open-questions.md` T-89…T-97, ochiq savollar Q-56…Q-58.
 
 ## Komponentlar
 

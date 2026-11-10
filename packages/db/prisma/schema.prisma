@@ -420,7 +420,7 @@ model AuthSession {
   revokedAt         DateTime?  @db.Timestamptz(3)
   revokeReason      String?
   createdAt         DateTime   @default(now()) @db.Timestamptz(3)
-  // M7 (T-90): a Telegram Mini App session, opened with initData of this link; unlinking revokes it
+  // M7 (T-92): a Telegram Mini App session, opened with initData of this link; unlinking revokes it
   telegramLinkId    String?    @db.Uuid
 
   @@index([tenantId, userId, revokedAt])
@@ -2626,7 +2626,7 @@ model BridgeJob {
 }
 
 // =====================================================================================================================
-// M7: TELEGRAM AND NOTIFICATIONS (docs/architecture/m7-telegram.md, T-87…T-95)
+// M7: TELEGRAM AND NOTIFICATIONS (docs/architecture/m7-telegram.md, T-89…T-97)
 // =====================================================================================================================
 
 enum NotificationKind {
@@ -2707,7 +2707,7 @@ model TelegramUpdate {
   @@index([receivedAt])
 }
 
-/// School-wide notification rules (T-91…T-93). Minutes are from midnight, school time zone.
+/// School-wide notification rules (T-93…T-95). Minutes are from midnight, school time zone.
 model NotificationSettings {
   tenantId                String   @id @db.Uuid
   tenant                  Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
@@ -2780,7 +2780,7 @@ model Notification {
   @@index([tenantId, createdAt])
 }
 
-/// A message to the guardians of selected classes (T-94).
+/// A message to the guardians of selected classes (T-96).
 model Broadcast {
   id             String         @id @default(uuid(7)) @db.Uuid
   tenantId       String         @db.Uuid

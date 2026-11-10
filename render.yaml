@@ -1,4 +1,6 @@
 # Render Blueprint — staging (demo data only, Q-30). Step-by-step: docs/DEPLOY.md.
+# All services here for staging (T-88): web (apps/web), API, worker, Redis. Vercel is an alternative for the web app
+# (apps/web/vercel.json, docs/DEPLOY.md §2b) — then remove idrok-web below.
 # Secrets are never written here: every `sync: false` value is entered by the owner in the Render dashboard.
 # Region: Frankfurt (closest to Tashkent; create the Supabase project in eu-central-1 as well).
 # Builds install devDependencies explicitly (NODE_ENV=development): NODE_ENV=production is visible at build time too,

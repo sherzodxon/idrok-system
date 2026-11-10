@@ -10,7 +10,7 @@ import { AppError } from "./errors";
 export interface RequestAuth extends AuthState {
   sessionId: string;
   via: "cookie" | "bearer";
-  /** Telegram Mini App session (T-90). */
+  /** Telegram Mini App session (T-92). */
   telegram?: boolean;
 }
 
@@ -53,7 +53,7 @@ export function authenticate(deps: AppDeps): RequestHandler {
       req.authFailure = "revoked";
       return next();
     }
-    // A Telegram session is proven by Telegram: the temporary-password gate does not apply (T-90).
+    // A Telegram session is proven by Telegram: the temporary-password gate does not apply (T-92).
     req.auth = claims.telegram
       ? { ...state, mustChangePassword: false, sessionId: claims.sessionId, via: found.via, telegram: true }
       : { ...state, sessionId: claims.sessionId, via: found.via };

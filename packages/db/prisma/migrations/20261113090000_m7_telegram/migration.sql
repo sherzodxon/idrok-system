@@ -207,7 +207,7 @@ ALTER TABLE "Notification" ADD CONSTRAINT "Notification_broadcastId_fkey" FOREIG
 ALTER TABLE "Broadcast" ADD CONSTRAINT "Broadcast_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 
--- One active Telegram account per guardian and one guardian per Telegram account (T-89); revoked links stay.
+-- One active Telegram account per guardian and one guardian per Telegram account (T-91); revoked links stay.
 CREATE UNIQUE INDEX "TelegramLink_one_active_guardian" ON "TelegramLink" ("tenantId", "guardianId") WHERE "revokedAt" IS NULL;
 CREATE UNIQUE INDEX "TelegramLink_one_active_user" ON "TelegramLink" ("tenantId", "telegramUserId") WHERE "revokedAt" IS NULL;
 ALTER TABLE "TelegramLink" ADD CONSTRAINT "TelegramLink_method_check" CHECK ("method" IN ('CONTACT', 'CODE'));

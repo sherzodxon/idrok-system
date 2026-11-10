@@ -1,4 +1,4 @@
-// One event → one Notification per eligible guardian (T-91). (guardian, dedupeKey) is unique, so producing the same
+// One event → one Notification per eligible guardian (T-93). (guardian, dedupeKey) is unique, so producing the same
 // event twice creates nothing new; each new row gets an outbox event delivered at its (quiet-hours adjusted) time.
 import { requireTenantId, type DbTransaction, type NotificationKind, type Prisma } from "@idrok/db";
 import type { NotificationPreferenceDto, NotificationSettingsDto } from "@idrok/shared";

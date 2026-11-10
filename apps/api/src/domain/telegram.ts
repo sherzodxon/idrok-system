@@ -8,7 +8,7 @@ export interface TelegramWebAppUser {
   languageCode: string | null;
 }
 
-/** initData older than this is refused (a stolen link stops working; T-90). */
+/** initData older than this is refused (a stolen link stops working; T-92). */
 export const INIT_DATA_MAX_AGE_SEC = 24 * 3600;
 
 /**

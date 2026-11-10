@@ -141,7 +141,7 @@ export class AuthService {
   }
 
   /**
-   * Telegram Mini App login (T-90): the caller already verified initData and resolved the link. Opens a TELEGRAM
+   * Telegram Mini App login (T-92): the caller already verified initData and resolved the link. Opens a TELEGRAM
    * session tied to that link (unlinking revokes it); tokens go in the body.
    */
   async loginTelegram(input: {

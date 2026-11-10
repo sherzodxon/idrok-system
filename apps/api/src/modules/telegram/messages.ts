@@ -1,4 +1,4 @@
-// Bot and notification texts (T-95): uz/ru dictionaries in ./locales, `{name}` placeholders. Values are inserted as
+// Bot and notification texts (T-97): uz/ru dictionaries in ./locales, `{name}` placeholders. Values are inserted as
 // plain text (messages are sent without parse_mode, so nothing a user typed can turn into markup).
 import ru from "./locales/ru.json";
 import uz from "./locales/uz.json";

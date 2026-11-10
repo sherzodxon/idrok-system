@@ -1,4 +1,4 @@
-// Pure notification rules (M7, T-92/T-93): quiet hours and the attendance rate. No DB access.
+// Pure notification rules (M7, T-94/T-95): quiet hours and the attendance rate. No DB access.
 import { D, type Decimal } from "@idrok/shared/decimal";
 import { atSchoolTime, schoolMinuteOfDay, toSchoolDate, addSchoolDays } from "@idrok/shared/time";
 

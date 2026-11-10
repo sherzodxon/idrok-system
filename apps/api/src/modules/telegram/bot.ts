@@ -1,6 +1,6 @@
 // The guardians' bot (worker, `telegram` queue): one stored update → replies. Private chats only.
 //   /start [code] — link by code, or ask for the contact; /unlink; /help; a contact message; a code typed alone.
-// The stored payload is cleared once processed (it may hold a phone number, T-88).
+// The stored payload is cleared once processed (it may hold a phone number, T-90).
 import { Prisma, type Db } from "@idrok/db";
 import type { Logger } from "pino";
 import { botLocale, looksLikeLinkCode } from "../../domain/telegram";

@@ -81,7 +81,7 @@ export async function deliverNotification(deps: DeliveryDeps, id: string, now = 
     } catch (err) {
       if (!(err instanceof TelegramApiError)) throw err;
       if (err.chatGone) {
-        // The guardian blocked the bot: stop writing until they come back (T-93); try the fallback below.
+        // The guardian blocked the bot: stop writing until they come back (T-95); try the fallback below.
         await db.telegramLink.updateMany({ where: { id: link.id, blockedAt: null }, data: { blockedAt: now } });
       } else if (n.attempts + 1 < MAX_DELIVERY_ATTEMPTS) {
         throw new RetryDelivery(err.message);

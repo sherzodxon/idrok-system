@@ -5,7 +5,7 @@ export interface AccessClaims {
   userId: string;
   tenantId: string;
   sessionId: string;
-  /** A Telegram Mini App session (T-90): identity proven by Telegram, no temporary-password gate. */
+  /** A Telegram Mini App session (T-92): identity proven by Telegram, no temporary-password gate. */
   telegram?: boolean;
 }
 

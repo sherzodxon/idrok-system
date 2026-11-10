@@ -1,4 +1,4 @@
-// What produces guardian notifications (T-92): school arrival/departure, the daily digest of scores and coins, low
+// What produces guardian notifications (T-94): school arrival/departure, the daily digest of scores and coins, low
 // attendance and closed tests. Every producer is idempotent through the notification's dedupeKey.
 import { requireTenantId, type Db, type DbTransaction } from "@idrok/db";
 import { D, roundTo, toDecimalString } from "@idrok/shared/decimal";
