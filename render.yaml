@@ -37,6 +37,26 @@ envVarGroups:
         sync: false
       - key: SUPABASE_STORAGE_BUCKET
         value: idrok-files
+      # SECRET. AES-256-GCM key for face photos and device passwords: `openssl rand -base64 32`. Keep a copy in a
+      # password manager — without it stored faces cannot be read. Blank = Face ID photos cannot be stored.
+      - key: DATA_ENCRYPTION_KEY
+        sync: false
+      # Optional: errors of the API and the worker are POSTed here as short JSON alerts (blank = logs only)
+      - key: ALERT_WEBHOOK_URL
+        sync: false
+      # Telegram (M7), used by the API (webhook, Mini App login) and the worker (messages).
+      # SECRET. Token from @BotFather. Token and webhook secret go together; both blank = bot off.
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      # SECRET. 32-256 characters A-Z a-z 0-9 _ - ; the same value is given to setWebhook as secret_token
+      - key: TELEGRAM_WEBHOOK_SECRET
+        sync: false
+      # Bot username without @
+      - key: TELEGRAM_BOT_USERNAME
+        sync: false
+      # https://app.<domain>/tg
+      - key: TELEGRAM_MINI_APP_URL
+        sync: false
 
 services:
   - type: keyvalue
@@ -76,6 +96,9 @@ services:
         sync: false
       - key: COOKIE_SECURE
         value: "true"
+      # Optional: https://api.<domain>/api/v1 — shown in the terminal webhook URLs (Face ID)
+      - key: DEVICE_PUBLIC_API_URL
+        sync: false
 
   - type: worker
     name: idrok-worker

@@ -76,10 +76,18 @@ Har servis alohida build va deploy bo'ladi (frontend o'zgarsa, backend qayta qur
 | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | `idrok-server` | 1-bo'lim, 4-band |
 | `CORS_ORIGINS` | `idrok-api` | `https://app.<domen>` |
 | `COOKIE_DOMAIN` | `idrok-api` | `<domen>` (masalan `staging.idrok.uz`, agar `app.staging.idrok.uz` / `api.staging.idrok.uz`) |
+| `DATA_ENCRYPTION_KEY` | `idrok-server` | `openssl rand -base64 32`; nusxasini parol menejerida saqlang (yo'qolsa saqlangan yuzlar o'qilmaydi). Bo'sh — yuz rasmlarini saqlab bo'lmaydi |
+| `ALERT_WEBHOOK_URL` | `idrok-server` | Ixtiyoriy: xatolar haqida xabar boradigan manzil. Bo'sh — faqat log |
+| `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET` | `idrok-server` | Ikkalasi birga yoki ikkalasi bo'sh (bot o'chiq). Secret — 32–256 belgi `A-Z a-z 0-9 _ -` |
+| `TELEGRAM_BOT_USERNAME`, `TELEGRAM_MINI_APP_URL` | `idrok-server` | Bot nomi (`@`siz) va `https://app.<domen>/tg` |
+| `DEVICE_PUBLIC_API_URL` | `idrok-api` | Ixtiyoriy: `https://api.<domen>/api/v1` (Face ID terminallari uchun webhook manzili) |
 | `API_PUBLIC_URL` | `idrok-web` | `https://api.<domen>/api/v1` |
 | `API_INTERNAL_URL` | `idrok-web` | `http://idrok-api:10000/api/v1` (Render private network; port — `idrok-api` servisidagi `PORT`, default `10000`). Bo'sh qolsa `API_PUBLIC_URL` ishlatiladi |
 
 `JWT_SECRET` Render tomonidan tasodifiy yaratiladi (`generateValue`) va API hamda worker'da bir xil bo'ladi.
+Ixtiyoriy kalitni bo'sh qoldirish mumkin: bo'sh qiymat "o'rnatilmagan" deb olinadi va o'sha imkoniyat o'chiq turadi.
+
+Telegram yoqilgan bo'lsa, deploy'dan keyin webhook'ni bir marta ro'yxatdan o'tkazing: [Telegram bo'limi](#telegram-bot-va-mini-app-m7).
 Qolgan qiymatlar (`TRUST_PROXY=1`, `COOKIE_SECURE=true`, `STORAGE_DRIVER=supabase`, ...) `render.yaml`da.
 To'liq ro'yxat va tavsif: `.env.example`.
 
