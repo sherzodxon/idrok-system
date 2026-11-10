@@ -42,8 +42,10 @@ export async function enqueueNotifications(
   })[],
 ): Promise<number> {
   if (!rows.length) return 0;
+  const tenantId = requireTenantId();
   const created = await tx.notification.createManyAndReturn({
     data: rows.map((r) => ({
+      tenantId,
       guardianId: r.guardianId,
       kind: r.kind,
       dedupeKey: r.dedupeKey,
@@ -56,7 +58,6 @@ export async function enqueueNotifications(
     select: { id: true, scheduledAt: true },
   });
   if (!created.length) return 0;
-  const tenantId = requireTenantId();
   await tx.outboxEvent.createMany({
     data: created.map((n) => ({
       tenantId,

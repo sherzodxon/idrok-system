@@ -21,6 +21,11 @@ export const PUBLIC_ROUTES = [
   "POST /bridge/jobs/:id/result",
   "POST /bridge/events",
   "POST /bridge/token/rotate",
+  // M7: Telegram bot webhook. No user token: the X-Telegram-Bot-Api-Secret-Token header must match
+  // TELEGRAM_WEBHOOK_SECRET (timing-safe); the tenant is the deployment's school (T-89, T-90).
+  "POST /telegram/webhook",
+  // M7: Mini App login. initData is verified with the bot token (HMAC), rate limited per IP (T-92).
+  "POST /auth/telegram",
 ] as const;
 
 /** Any logged-in user, no permission: the user's own account and session only. */

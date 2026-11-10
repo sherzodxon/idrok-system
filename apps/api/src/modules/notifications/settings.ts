@@ -56,7 +56,7 @@ export async function updateNotificationSettings(
     const data = { ...next, lowAttendanceThreshold: D(next.lowAttendanceThreshold).toFixed(2) };
     await tx.notificationSettings.upsert({
       where: { tenantId: requireTenantId() },
-      create: data,
+      create: { ...data, tenantId: requireTenantId() },
       update: data,
     });
     await writeAudit(tx, {
@@ -96,7 +96,7 @@ export async function updatePreference(
   const next = { ...(await preferenceOf(db, guardianId)), ...input };
   const row = await db.notificationPreference.upsert({
     where: { guardianId },
-    create: { ...next, guardianId },
+    create: { ...next, guardianId, tenantId: requireTenantId() },
     update: next,
   });
   return pickPreference(row);

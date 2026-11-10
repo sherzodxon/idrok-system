@@ -77,6 +77,7 @@ export class TelegramLinkingService {
       }
       const created = await tx.telegramLink.create({
         data: {
+          tenantId: requireTenantId(),
           guardianId: guardian.id,
           telegramUserId: who.telegramUserId,
           chatId: who.chatId,
@@ -188,6 +189,7 @@ export class TelegramLinkingService {
       const expiresAt = new Date(now.getTime() + settings.linkCodeTtlHours * 3_600_000);
       const row = await tx.telegramLinkCode.create({
         data: {
+          tenantId: requireTenantId(),
           guardianId,
           codeHash: hashLinkCode(code),
           expiresAt,

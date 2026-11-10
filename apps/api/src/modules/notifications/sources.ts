@@ -301,7 +301,8 @@ export async function notifyTestResults(db: Db, testId: string, now = new Date()
   }
   let created = 0;
   for (const [studentId, a] of chosen) {
-    if (a.score === null || a.maxScore === null) continue;
+    const { score, maxScore } = a;
+    if (score === null || maxScore === null) continue;
     created += await db.$transaction((tx) =>
       notifyStudentGuardians(tx, {
         kind: "TEST_RESULT",
@@ -311,8 +312,8 @@ export async function notifyTestResults(db: Db, testId: string, now = new Date()
           student: fullName(a.student),
           test: test.title,
           subject: test.subject.name,
-          score: toDecimalString(a.score.toString()),
-          max: toDecimalString(a.maxScore.toString()),
+          score: toDecimalString(score.toString()),
+          max: toDecimalString(maxScore.toString()),
           percent: a.percent === null ? "0" : toDecimalString(roundTo(a.percent.toString(), ONE_DECIMAL)),
         },
         settings,
