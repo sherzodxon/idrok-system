@@ -21,7 +21,8 @@ async function sendToBot(request: APIRequestContext, text: string, updateId: num
 
 test("admin code links a guardian, then the Mini App opens the portal", async ({ page, browser, request }) => {
   await loginToDashboard(page, USERS.telegramAdmin);
-  await page.goto("/admin/telegram");
+  // Other specs import hundreds of guardians: find ours by phone.
+  await page.goto("/admin/telegram?q=998900000001");
   const row = page.getByTestId("telegram-guardians").locator("tr", { hasText: "Ona Demo" });
   await expect(row).toContainText("Bog'lanmagan");
   await row.getByRole("button", { name: "Kod berish" }).click();
