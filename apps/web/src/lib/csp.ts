@@ -7,9 +7,11 @@ export interface CspOptions {
   apiUrl: string;
   /** `next dev` needs eval for React's debugging features. */
   dev?: boolean;
+  /** M7: the Mini App pages may be framed by Telegram Web (web.telegram.org); every other page cannot be framed. */
+  telegramFrame?: boolean;
 }
 
-export function buildCsp({ nonce, apiUrl, dev = false }: CspOptions): string {
+export function buildCsp({ nonce, apiUrl, dev = false, telegramFrame = false }: CspOptions): string {
   const api = new URL(apiUrl).origin;
   const directives: Record<string, string[]> = {
     "default-src": ["'self'"],
@@ -22,7 +24,7 @@ export function buildCsp({ nonce, apiUrl, dev = false }: CspOptions): string {
     "object-src": ["'none'"],
     "base-uri": ["'self'"],
     "form-action": ["'self'"],
-    "frame-ancestors": ["'none'"],
+    "frame-ancestors": telegramFrame ? ["'self'", "https://web.telegram.org"] : ["'none'"],
   };
   const policy = Object.entries(directives).map(([name, values]) => `${name} ${values.join(" ")}`);
   if (!dev) policy.push("upgrade-insecure-requests");

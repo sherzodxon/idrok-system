@@ -45,9 +45,31 @@ const EnvSchema = z.object({
   DEVICE_PUBLIC_API_URL: z.string().url().optional(),
   /** Optional: errors are POSTed here as short JSON alerts (infra/alerts.ts). Keep it secret if it carries a token. */
   ALERT_WEBHOOK_URL: z.string().url().optional(),
+  /** M7: bot token from @BotFather. Never logged (it is part of every Bot API URL). Empty = Telegram off. */
+  TELEGRAM_BOT_TOKEN: z
+    .string()
+    .regex(/^\d+:[A-Za-z0-9_-]{30,}$/, { message: "invalid bot token" })
+    .optional(),
+  /** M7: secret_token given to setWebhook; Telegram echoes it in X-Telegram-Bot-Api-Secret-Token. */
+  TELEGRAM_WEBHOOK_SECRET: z
+    .string()
+    .regex(/^[A-Za-z0-9_-]{32,256}$/, { message: "32-256 characters A-Z a-z 0-9 _ -" })
+    .optional(),
+  /** Bot username without @ (deep links t.me/<name>?start=<code>). */
+  TELEGRAM_BOT_USERNAME: z
+    .string()
+    .regex(/^[A-Za-z0-9_]{5,64}$/)
+    .optional(),
+  /** Bot API base URL (tests point it at a fake server). */
+  TELEGRAM_API_URL: z.string().url().default("https://api.telegram.org"),
+  /** Public URL of the Mini App page (the web app's /tg), shown as the bot's button. */
+  TELEGRAM_MINI_APP_URL: z.string().url().optional(),
 });
 
 export type Env = z.infer<typeof EnvSchema>;
+
+/** The bot works only with both the token and the webhook secret. */
+const telegramPair = (env: Env) => !!env.TELEGRAM_BOT_TOKEN === !!env.TELEGRAM_WEBHOOK_SECRET;
 
 export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
   const parsed = EnvSchema.safeParse(source);
@@ -55,6 +77,9 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
     // Only variable names are reported, never their values.
     const fields = parsed.error.issues.map((i) => i.path.join(".")).join(", ");
     throw new Error(`Invalid environment configuration: ${fields}`);
+  }
+  if (!telegramPair(parsed.data)) {
+    throw new Error("Invalid environment configuration: TELEGRAM_BOT_TOKEN and TELEGRAM_WEBHOOK_SECRET go together");
   }
   return parsed.data;
 }

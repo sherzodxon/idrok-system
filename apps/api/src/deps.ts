@@ -4,6 +4,8 @@ import type { Env } from "./config/env";
 import type { ReadinessCheck } from "./http/health";
 import type { Queues } from "./infra/queue";
 import type { RedisClient } from "./infra/redis";
+import type { SmsProvider } from "./infra/sms";
+import type { TelegramClient } from "./infra/telegram";
 import type { StorageProvider } from "./infra/storage";
 import type { AuthStateStore } from "./modules/access/auth-state";
 import type { TokenService } from "./modules/auth/tokens";
@@ -23,5 +25,9 @@ export interface AppDeps {
   queues: Queues;
   closeQueues: () => Promise<void>;
   authState: AuthStateStore;
+  /** M7: outgoing bot messages (worker) — replaced by a fake in tests. */
+  telegram: TelegramClient;
+  /** M7: SMS fallback; no provider yet (Q-57). */
+  sms: SmsProvider;
   readiness: Record<string, ReadinessCheck>;
 }

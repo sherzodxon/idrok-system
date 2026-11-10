@@ -20,6 +20,8 @@ const INDEXES = [
   "TestAttempt_one_in_progress",
   "OfflineResult_one_current",
   "FaceConsent_one_active",
+  "TelegramLink_one_active_guardian",
+  "TelegramLink_one_active_user",
 ];
 const CONSTRAINTS = [
   "AcademicYear_dates_check",
@@ -45,6 +47,9 @@ const CONSTRAINTS = [
   "ScoreLimitRule_scope_check",
   "ScoreCriterion_points_check",
   "FaceConsent_revoke_check",
+  "TelegramLink_method_check",
+  "NotificationSettings_check",
+  "NotificationPreference_quiet_check",
   "FaceProfile_subject_check",
   "FaceSyncJob_subject_check",
   "AccessEvent_subject_check",

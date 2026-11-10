@@ -14,6 +14,8 @@ import {
   bullConnection,
   type DeviceJobPayload,
   type ImportJobPayload,
+  type NotificationJobPayload,
+  type TelegramJobPayload,
   type TestJobPayload,
 } from "../infra/queue";
 import { awardAttendanceCoins } from "../modules/attendance/attendance-coins";
@@ -27,6 +29,16 @@ import { reconcileCoins } from "../modules/coins/ledger";
 import { commitImport, parseImport } from "../modules/imports/imports.processor";
 import { processDeadline } from "../modules/tests/attempt-finish";
 import { refreshTestStatuses } from "../modules/tests/tests.service";
+import { deliverNotification } from "../modules/notifications/deliver";
+import {
+  notifyTestResults,
+  processArrival,
+  processDeparture,
+  sendDailyDigests,
+  sendLowAttendanceAlerts,
+} from "../modules/notifications/sources";
+import { processTelegramUpdate } from "../modules/telegram/bot";
+import { parseSchoolDate } from "@idrok/shared/time";
 
 const RELAY_INTERVAL_MS = 1_000;
 
@@ -48,6 +60,8 @@ async function processTests(deps: AppDeps, job: Job<TestJobPayload>) {
       await refreshTestStatuses(deps.db, { id: testId });
       // The window just closed: final results may earn automatic coins (idempotent).
       await awardTestCoins(deps.db, testId);
+      // M7: guardians hear the result once the student may see it (idempotent through the dedupe key).
+      await notifyTestResults(deps.db, testId);
     } else if (job.name === "deadline" && attemptId) await processDeadline(deps.db, attemptId);
     else if (job.name === "coins" && testId) await awardTestCoins(deps.db, testId);
     else throw new Error(`Unknown tests job ${job.name}`);
@@ -60,6 +74,52 @@ async function processDevices(deps: AppDeps, cipher: DataCipher, job: Job<Device
   await runWithTenant({ tenantId, requestId: `job:${job.id}` }, () =>
     processDirectDevice({ db: deps.db, storage: deps.storage, cipher }, deviceId),
   );
+}
+
+/** M7: bot updates and guardian notifications. */
+async function processTelegram(deps: AppDeps, job: Job<TelegramJobPayload>) {
+  const { tenantId, telegramUpdateId } = job.data;
+  await runWithTenant({ tenantId, requestId: `job:${job.id}` }, () =>
+    processTelegramUpdate(
+      {
+        db: deps.db,
+        redis: deps.redis,
+        telegram: deps.telegram,
+        authState: deps.authState,
+        logger: deps.logger,
+        miniAppUrl: deps.env.TELEGRAM_MINI_APP_URL,
+      },
+      telegramUpdateId,
+    ),
+  );
+}
+
+export async function processNotification(deps: AppDeps, job: Job<NotificationJobPayload>) {
+  const { tenantId, notificationId, studentId, schoolDate, testId } = job.data;
+  await runWithTenant({ tenantId, requestId: `job:${job.id}` }, async () => {
+    if (job.name === "deliver" && notificationId)
+      await deliverNotification(
+        { db: deps.db, telegram: deps.telegram, sms: deps.sms, logger: deps.logger },
+        notificationId,
+      );
+    else if (job.name === "arrival" && studentId && schoolDate)
+      await processArrival(deps.db, studentId, parseSchoolDate(schoolDate));
+    else if (job.name === "departure" && studentId && schoolDate)
+      await processDeparture(deps.db, studentId, parseSchoolDate(schoolDate));
+    else if (job.name === "test-results" && testId) await notifyTestResults(deps.db, testId);
+    else throw new Error(`Unknown notifications job ${job.name}`);
+  });
+}
+
+/** Every 15 minutes: today's digest once its time has come, Monday's low-attendance alerts (both idempotent). */
+export async function notificationTick(deps: AppDeps, now: Date = new Date()) {
+  for (const tenant of await deps.root.tenant.findMany({ where: { status: "ACTIVE" }, select: { id: true } })) {
+    await runWithTenant({ tenantId: tenant.id, requestId: "notification-tick" }, async () => {
+      const digests = await sendDailyDigests(deps.db, now);
+      const low = await sendLowAttendanceAlerts(deps.db, now);
+      if (digests || low) deps.logger.info({ tenantId: tenant.id, digests, low }, "notifications queued");
+    });
+  }
 }
 
 /**
@@ -94,13 +154,18 @@ function workerAlerts(deps: AppDeps): AlertSink {
 }
 
 export async function maintenance(deps: AppDeps) {
-  const [idempotency, outbox] = await Promise.all([
+  const [idempotency, outbox, telegramUpdates] = await Promise.all([
     deps.root.idempotencyRecord.deleteMany({ where: { expiresAt: { lt: new Date() } } }),
     deps.root.outboxEvent.deleteMany({
       where: { status: "PUBLISHED", publishedAt: { lt: new Date(Date.now() - 30 * 86_400_000) } },
     }),
+    // M7 (T-90): webhook dedupe rows are technical; a week covers Telegram's own retries.
+    deps.root.telegramUpdate.deleteMany({ where: { receivedAt: { lt: new Date(Date.now() - 7 * 86_400_000) } } }),
   ]);
-  deps.logger.info({ idempotency: idempotency.count, outbox: outbox.count }, "maintenance done");
+  deps.logger.info(
+    { idempotency: idempotency.count, outbox: outbox.count, telegramUpdates: telegramUpdates.count },
+    "maintenance done",
+  );
   // The cached coin balances must match the ledger; a mismatch is reported, never fixed silently.
   const mismatched = await reconcileCoins(deps.root);
   if (mismatched.length) {
@@ -137,7 +202,12 @@ export async function startWorker(env: Env, logger?: Logger) {
   });
   const housekeeping = new Worker(
     QUEUES.maintenance,
-    (job) => (job.name === "attendance-coins" ? attendanceCoins(deps) : maintenance(deps)),
+    (job) =>
+      job.name === "attendance-coins"
+        ? attendanceCoins(deps)
+        : job.name === "notification-tick"
+          ? notificationTick(deps)
+          : maintenance(deps),
     { connection, concurrency: 1 },
   );
   const tests = new Worker<TestJobPayload>(QUEUES.tests, (job) => processTests(deps, job), {
@@ -154,6 +224,21 @@ export async function startWorker(env: Env, logger?: Logger) {
     { pattern: "*/30 * * * *", tz: "Asia/Tashkent" },
     { name: "attendance-coins" },
   );
+  const telegram = new Worker<TelegramJobPayload>(QUEUES.telegram, (job) => processTelegram(deps, job), {
+    connection,
+    concurrency: 4,
+  });
+  // Telegram allows about 30 messages a second per bot (T-95): stay under it.
+  const notifications = new Worker<NotificationJobPayload>(
+    QUEUES.notifications,
+    (job) => processNotification(deps, job),
+    { connection, concurrency: 5, limiter: { max: 25, duration: 1000 } },
+  );
+  await deps.queues.maintenance.upsertJobScheduler(
+    "notification-tick",
+    { pattern: "*/15 * * * *", tz: "Asia/Tashkent" },
+    { name: "notification-tick" },
+  );
   await deps.queues.maintenance.upsertJobScheduler(
     "daily-cleanup",
     { pattern: "0 3 * * *", tz: "Asia/Tashkent" },
@@ -161,7 +246,7 @@ export async function startWorker(env: Env, logger?: Logger) {
   );
 
   const alerts = workerAlerts(deps);
-  for (const w of [imports, housekeeping, tests, devices]) {
+  for (const w of [imports, housekeeping, tests, devices, telegram, notifications]) {
     w.on("failed", (job, err) => {
       deps.logger.error({ err, jobId: job?.id, queue: w.name, attempts: job?.attemptsMade }, "job failed");
       alerts.notify({ kind: "worker_error", message: alertMessage(err), route: `queue ${w.name}` });
@@ -184,7 +269,7 @@ export async function startWorker(env: Env, logger?: Logger) {
     deps,
     async stop() {
       clearInterval(relayTimer);
-      await Promise.all([imports.close(), housekeeping.close(), tests.close(), devices.close()]);
+      await Promise.all([imports, housekeeping, tests, devices, telegram, notifications].map((w) => w.close()));
       await closeDeps(deps);
     },
   };

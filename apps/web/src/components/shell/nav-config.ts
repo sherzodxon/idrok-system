@@ -1,4 +1,5 @@
 import {
+  Send,
   BookOpen,
   CalendarDays,
   ClipboardCheck,
@@ -52,7 +53,8 @@ export interface NavItem {
     | "coins"
     | "coinShop"
     | "attendance"
-    | "reports";
+    | "reports"
+    | "telegram";
   href: string;
   icon: LucideIcon;
   group: NavGroupKey;
@@ -74,6 +76,13 @@ export const NAV: Record<NavContext, NavItem[]> = {
     },
     { key: "students", href: "/admin/students", icon: Users, group: "people", permission: "students.view" },
     { key: "guardians", href: "/admin/guardians", icon: UsersRound, group: "people", permission: "guardians.view" },
+    {
+      key: "telegram",
+      href: "/admin/telegram",
+      icon: Send,
+      group: "people",
+      anyOf: ["telegram.manage", "notifications.broadcast"],
+    },
     { key: "employees", href: "/admin/employees", icon: UserRound, group: "people", permission: "employees.view" },
     { key: "structure", href: "/admin/structure", icon: BookOpen, group: "teaching", permission: "class_groups.view" },
     { key: "calendar", href: "/admin/calendar", icon: CalendarDays, group: "teaching", permission: "calendar.manage" },

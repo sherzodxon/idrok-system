@@ -2,7 +2,14 @@
 import { Queue, type ConnectionOptions } from "bullmq";
 import { Redis } from "ioredis";
 
-export const QUEUES = { imports: "imports", maintenance: "maintenance", tests: "tests", devices: "devices" } as const;
+export const QUEUES = {
+  imports: "imports",
+  maintenance: "maintenance",
+  tests: "tests",
+  devices: "devices",
+  telegram: "telegram",
+  notifications: "notifications",
+} as const;
 
 export interface ImportJobPayload {
   tenantId: string;
@@ -23,6 +30,21 @@ export interface DeviceJobPayload {
   deviceId: string;
 }
 
+/** A bot update stored by the webhook (M7). */
+export interface TelegramJobPayload {
+  tenantId: string;
+  telegramUpdateId: string;
+}
+
+/** Notification work (M7): fan out an event to guardians, or deliver one message. */
+export interface NotificationJobPayload {
+  tenantId: string;
+  notificationId?: string;
+  studentId?: string;
+  schoolDate?: string;
+  testId?: string;
+}
+
 export type JobRoute = { queue: keyof typeof QUEUES; name: string };
 
 /** Outbox event type → queue job. Events without a route are only recorded (consumers arrive in later stages). */
@@ -33,6 +55,11 @@ export const EVENT_ROUTES: Record<string, JobRoute> = {
   "attempt.deadline_due": { queue: "tests", name: "deadline" },
   "coins.test_results_due": { queue: "tests", name: "coins" },
   "devices.jobs_due": { queue: "devices", name: "run" },
+  "telegram.update_received": { queue: "telegram", name: "update" },
+  "notification.deliver": { queue: "notifications", name: "deliver" },
+  "notify.arrival": { queue: "notifications", name: "arrival" },
+  "notify.departure": { queue: "notifications", name: "departure" },
+  "notify.test_results": { queue: "notifications", name: "test-results" },
 };
 
 export const DEFAULT_JOB_OPTIONS = {
@@ -53,6 +80,8 @@ export function createQueues(url: string) {
     maintenance: new Queue(QUEUES.maintenance, { connection, defaultJobOptions: DEFAULT_JOB_OPTIONS }),
     tests: new Queue(QUEUES.tests, { connection, defaultJobOptions: DEFAULT_JOB_OPTIONS }),
     devices: new Queue(QUEUES.devices, { connection, defaultJobOptions: DEFAULT_JOB_OPTIONS }),
+    telegram: new Queue(QUEUES.telegram, { connection, defaultJobOptions: DEFAULT_JOB_OPTIONS }),
+    notifications: new Queue(QUEUES.notifications, { connection, defaultJobOptions: DEFAULT_JOB_OPTIONS }),
   };
   return {
     queues,

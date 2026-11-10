@@ -10,7 +10,8 @@ import { ensureSystemRoles, syncPermissions } from "@idrok/db/seed";
 import { startTestDatabase } from "@idrok/db/testing";
 import { addSchoolDays, atSchoolTime, parseSchoolDate, schoolDateToDb, schoolToday } from "@idrok/shared/time";
 import { RedisMemoryServer } from "redis-memory-server";
-import { API_URL, PASSWORD, PORTS, TEMP_PASSWORD, USERS, WEB_URL } from "./users";
+import { startFakeTelegram } from "./telegram";
+import { API_URL, PASSWORD, PORTS, TELEGRAM, TEMP_PASSWORD, USERS, WEB_URL } from "./users";
 
 const day = (d: string) => schoolDateToDb(parseSchoolDate(d));
 
@@ -56,7 +57,15 @@ async function seed(url: string) {
       });
     };
     await staff(USERS.firstLogin, true);
-    for (const u of [USERS.theme, USERS.branding, USERS.sidebar, USERS.mobile, USERS.importer, USERS.coinAdmin])
+    for (const u of [
+      USERS.theme,
+      USERS.branding,
+      USERS.sidebar,
+      USERS.mobile,
+      USERS.importer,
+      USERS.coinAdmin,
+      USERS.telegramAdmin,
+    ])
       await staff(u, false);
     // A teacher with no groups yet: sees the teacher menu only, and empty states.
     const teacher = await root.user.create({
@@ -196,7 +205,13 @@ export async function startStack() {
     ARGON2_MEMORY_KIB: "4096",
     // Not a secret: a fixed key for the local stack only.
     DATA_ENCRYPTION_KEY: "dGVzdC1vbmx5LWtleS10ZXN0LW9ubHkta2V5LTEyMzQ=",
+    TELEGRAM_BOT_TOKEN: TELEGRAM.botToken,
+    TELEGRAM_WEBHOOK_SECRET: TELEGRAM.webhookSecret,
+    TELEGRAM_BOT_USERNAME: TELEGRAM.botUsername,
+    TELEGRAM_API_URL: TELEGRAM.apiUrl,
+    TELEGRAM_MINI_APP_URL: `${WEB_URL}/tg`,
   };
+  const telegram = await startFakeTelegram(PORTS.telegram);
   const api = start(
     "api",
     process.execPath,
@@ -222,6 +237,7 @@ export async function startStack() {
 
   return async () => {
     for (const p of [web, worker, api]) p.kill("SIGTERM");
+    await telegram.close();
     await redis?.stop();
     await db.stop();
     rmSync(storageDir, { recursive: true, force: true });

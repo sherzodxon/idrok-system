@@ -79,6 +79,11 @@ applied migration — add a new one.
 | `Device_port_check` | CHECK | ″ | port 1..65535 |
 | `AccessEvent_append_only` | TRIGGER | ″ | raw terminal events are never updated or deleted (attendance is recomputed from them) |
 | `AttendanceRecord_check` | CHECK | ″ | device status ⇔ arrival time; lateness and band only when `LATE`; departure not before arrival; a manual mark has author, time and reason; a row has a device result or a manual mark |
+| `TelegramLink_one_active_guardian` | partial unique | `20261113090000_m7_telegram` | one active Telegram account per guardian |
+| `TelegramLink_one_active_user` | partial unique | ″ | one active guardian per Telegram account |
+| `TelegramLink_method_check` | CHECK | ″ | `method` is `CONTACT` or `CODE` |
+| `NotificationSettings_check` | CHECK | ″ | minutes within a day, threshold 0..100, sane limits |
+| `NotificationPreference_quiet_check` | CHECK | ″ | own quiet hours: both ends or none, within a day |
 
 Checking a new migration does not touch them:
 

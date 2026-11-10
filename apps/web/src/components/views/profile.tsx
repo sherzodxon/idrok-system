@@ -18,7 +18,8 @@ import { LoadingState, QueryBoundary, ErrorState } from "@/components/ui/states"
 import { useToast } from "@/components/ui/toast";
 import { formatDateTime } from "@/lib/format";
 import { useErrorText } from "@/lib/use-error-text";
-import { ME_KEY, useMe } from "@/lib/use-me";
+import { ME_KEY, can, useMe } from "@/lib/use-me";
+import { PortalNotificationsCard } from "@/components/telegram/portal-notifications";
 import { ChangePasswordForm } from "./change-password-form";
 
 export function ProfileView() {
@@ -97,6 +98,7 @@ export function ProfileView() {
         </div>
       </Card>
 
+      {user.profiles.guardianId && can(user, "portal.guardian") && <PortalNotificationsCard />}
       <Card>
         <CardHeader
           title={t("profile.sessions")}

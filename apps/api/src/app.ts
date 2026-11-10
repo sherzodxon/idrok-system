@@ -1,3 +1,4 @@
+import { telegramRoutes } from "./modules/telegram/telegram.routes";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import express from "express";
@@ -119,6 +120,7 @@ export function createApp(deps: AppDeps): express.Express {
   importsRoutes(v1, registry, deps);
   settingsRoutes(v1, registry, deps);
   reportsRoutes(v1, registry, deps);
+  telegramRoutes(v1, registry, deps);
 
   routesFor(v1, registry)(
     {

@@ -5,6 +5,8 @@ export interface AccessClaims {
   userId: string;
   tenantId: string;
   sessionId: string;
+  /** A Telegram Mini App session (T-92): identity proven by Telegram, no temporary-password gate. */
+  telegram?: boolean;
 }
 
 export class TokenService {
@@ -18,7 +20,7 @@ export class TokenService {
   }
 
   async signAccess(claims: AccessClaims): Promise<string> {
-    return new SignJWT({ tid: claims.tenantId, sid: claims.sessionId })
+    return new SignJWT({ tid: claims.tenantId, sid: claims.sessionId, ...(claims.telegram ? { tg: true } : {}) })
       .setProtectedHeader({ alg: "HS256", typ: "JWT" })
       .setSubject(claims.userId)
       .setIssuedAt()
@@ -33,7 +35,12 @@ export class TokenService {
       if (typeof payload.sub !== "string" || typeof payload.tid !== "string" || typeof payload.sid !== "string") {
         return null;
       }
-      return { userId: payload.sub, tenantId: payload.tid, sessionId: payload.sid };
+      return {
+        userId: payload.sub,
+        tenantId: payload.tid,
+        sessionId: payload.sid,
+        ...(payload.tg === true ? { telegram: true } : {}),
+      };
     } catch (err) {
       return err instanceof joseErrors.JWTExpired ? "expired" : null;
     }

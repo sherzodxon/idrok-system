@@ -81,6 +81,9 @@ export const PERMISSIONS = [
   { code: "attendance.settings.manage", module: "attendance" },
   { code: "devices.manage", module: "attendance" },
   { code: "face.manage", module: "attendance" },
+  // guardians in Telegram and notifications (M7)
+  { code: "telegram.manage", module: "notifications" },
+  { code: "notifications.broadcast", module: "notifications" },
   // self-service portals (data is always limited to the user's own child / own record)
   { code: "portal.student", module: "portal" },
   { code: "portal.guardian", module: "portal" },

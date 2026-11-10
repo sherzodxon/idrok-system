@@ -203,7 +203,10 @@
       "below_criterion_min": "По этому критерию одна оценка — не меньше {limit} баллов",
       "min_above_max": "Минимальный балл не может быть больше максимального",
       "in_future": "Дата не может быть в будущем"
-    }
+    },
+    "TELEGRAM_NOT_CONFIGURED": "Telegram-бот не настроен",
+    "TELEGRAM_INVALID_INIT_DATA": "Данные входа Telegram неверны или устарели",
+    "TELEGRAM_NOT_LINKED": "Аккаунт Telegram не подключён к родителю"
   },
   "states": {
     "emptyTitle": "Пока нет данных",
@@ -255,7 +258,8 @@
       "lesson": "Урок",
       "prep": "Подготовка"
     },
-    "reports": "Отчёты"
+    "reports": "Отчёты",
+    "telegram": "Telegram"
   },
   "shell": {
     "context": "Режим работы",
@@ -739,7 +743,8 @@
       "coins": "Коины",
       "attendance": "Посещаемость и Face ID",
       "assessment": "Баллы и оценивание",
-      "tests": "Тесты"
+      "tests": "Тесты",
+      "notifications": "Telegram и уведомления"
     },
     "codes": {
       "users_view": "Просмотр",
@@ -811,7 +816,9 @@
       "tests_reopen": "Пересдача и повторное открытие попытки",
       "tests_results_view": "Просмотр результатов тестов",
       "tests_results_enter": "Ввод офлайн-результатов",
-      "test_types_manage": "Типы тестов"
+      "test_types_manage": "Типы тестов",
+      "telegram_manage": "Подключения Telegram, коды и настройки",
+      "notifications_broadcast": "Отправка рассылок"
     }
   },
   "audit": {
@@ -2447,6 +2454,139 @@
         "title": "Коины",
         "text": "Все записи журнала коинов: награды, штрафы, покупки, корректировки"
       }
+    }
+  },
+  "telegram": {
+    "title": "Telegram и сообщения",
+    "subtitle": "Подключение родителей в Telegram, рассылки и настройки уведомлений",
+    "tabs": {
+      "guardians": "Родители",
+      "broadcast": "Рассылка",
+      "settings": "Настройки"
+    },
+    "status": {
+      "LINKED": "Подключён",
+      "BLOCKED": "Заблокировал бота",
+      "NOT_LINKED": "Не подключён"
+    },
+    "method": {
+      "CONTACT": "По телефону",
+      "CODE": "По коду"
+    },
+    "summary": {
+      "guardians": "Родители",
+      "linked": "Подключены в Telegram",
+      "blocked": "Заблокировали бота"
+    },
+    "guardians": {
+      "search": "Имя или телефон",
+      "status": "Статус",
+      "allStatuses": "Все статусы",
+      "class": "Класс",
+      "allClasses": "Все классы",
+      "empty": "Родители не найдены",
+      "guardian": "Родитель",
+      "children": "Дети",
+      "lastSent": "Последнее сообщение",
+      "issueCode": "Выдать код",
+      "unlink": "Отключить",
+      "codeUntil": "Код действует до {at}",
+      "unlinkTitle": "Отключить Telegram",
+      "unlinkText": "{name} будет отключён от Telegram: сообщения прекратятся, Mini App попросит войти заново."
+    },
+    "code": {
+      "title": "Код подключения",
+      "for": "Родитель: {name}",
+      "link": "Ссылка:",
+      "noBotUsername": "Имя бота не настроено: родитель отправляет код боту сам.",
+      "expires": "Действует до: {at}",
+      "once": "Код показан только сейчас и работает один раз. Новый код отменяет прежний."
+    },
+    "broadcast": {
+      "new": "Новое сообщение",
+      "classes": "Классы",
+      "noClasses": "В текущем учебном году нет классов",
+      "all": "Выбрать все",
+      "none": "Снять выбор",
+      "text": "Текст",
+      "textHint": "{n} / {max} символов",
+      "preview": "Просмотр",
+      "confirmTitle": "Подтвердите отправку",
+      "back": "Назад",
+      "send": "Отправить",
+      "counts": "Учеников: {students}. Родителей: {guardians}. Получат в Telegram сейчас: {reachable}.",
+      "unreachable": "Некоторые родители не подключены в Telegram — они не получат это сообщение.",
+      "history": "История рассылок",
+      "empty": "Рассылок ещё не было",
+      "delivery": "Доставка",
+      "deliveryCounts": "Отправлено: {sent} · в очереди: {pending} · ошибки: {failed} · пропущено: {skipped}",
+      "when": "Когда, кто"
+    },
+    "settings": {
+      "bot": "Бот:",
+      "botOn": "Настроен",
+      "botOff": "Не настроен",
+      "botOffHint": "На сервере не заданы TELEGRAM_BOT_TOKEN и TELEGRAM_WEBHOOK_SECRET — бот не работает.",
+      "title": "Настройки уведомлений",
+      "isEnabled": "Уведомления включены",
+      "arrivalEnabled": "Приход в школу",
+      "departureEnabled": "Уход из школы",
+      "dailyDigestEnabled": "Итог дня (баллы и коины)",
+      "testResultsEnabled": "Результаты тестов",
+      "lowAttendanceEnabled": "Низкая посещаемость (раз в неделю)",
+      "quietStart": "Начало тихих часов",
+      "quietEnd": "Конец тихих часов",
+      "quietHint": "Сообщения в это время отправляются после тихих часов",
+      "digest": "Время итога дня",
+      "departureDelay": "Задержка сообщения об уходе (мин)",
+      "lowThreshold": "Порог низкой посещаемости (%)",
+      "lowWindow": "Период посещаемости (дней)",
+      "perHour": "Не больше в час одному родителю",
+      "codeTtl": "Срок действия кода (часов)",
+      "smsFallback": "Отправлять SMS, если Telegram недоступен",
+      "noSmsProvider": "SMS-провайдер ещё не подключён — SMS не отправляются.",
+      "save": "Сохранить"
+    },
+    "miniApp": {
+      "retry": "Повторить",
+      "outside": {
+        "title": "Откройте через Telegram",
+        "text": "Эта страница открывается кнопкой «Кабинет» в боте школы."
+      },
+      "notLinked": {
+        "title": "Аккаунт не подключён",
+        "text": "Отправьте боту /start и поделитесь номером телефона или отправьте код, выданный школой."
+      },
+      "invalid": {
+        "title": "Данные входа устарели",
+        "text": "Закройте Mini App и откройте его из бота снова."
+      },
+      "error": {
+        "title": "Произошла ошибка",
+        "text": "Проверьте интернет и попробуйте снова."
+      }
+    },
+    "portal": {
+      "title": "Уведомления",
+      "telegram": "Telegram:",
+      "openBot": "Открыть @{bot}",
+      "unlink": "Отключить",
+      "linkHint": "Отправьте боту свой номер телефона — сообщения о ребёнке будут приходить в Telegram.",
+      "kinds": {
+        "arrival": "Пришёл в школу",
+        "departure": "Ушёл из школы",
+        "dailyDigest": "Итог дня (баллы и коины)",
+        "testResults": "Результаты тестов",
+        "lowAttendance": "Предупреждение о низкой посещаемости"
+      },
+      "quietOff": "Без тихих часов (отправлять всегда)",
+      "ownQuiet": "Мои тихие часы",
+      "quietStart": "Начало",
+      "quietEnd": "Конец",
+      "schoolQuiet": "Тихие часы школы: {from} – {to}",
+      "save": "Сохранить",
+      "unlinkTitle": "Отключить Telegram",
+      "unlinkText": "Сообщения в Telegram перестанут приходить. Чтобы подключиться снова, отправьте боту /start."
     }
   }
 }

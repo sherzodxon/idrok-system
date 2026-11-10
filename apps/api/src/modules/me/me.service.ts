@@ -31,7 +31,7 @@ export class MeService {
       id: user.id,
       username: user.username,
       displayName: person ? `${person.firstName} ${person.lastName}` : user.username,
-      mustChangePassword: user.mustChangePassword,
+      mustChangePassword: user.mustChangePassword && !auth.telegram,
       roles: auth.roles,
       permissions: auth.permissions,
       tenant: user.tenant,
