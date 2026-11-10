@@ -51,6 +51,8 @@ export const MeSchema = z.object({
     employeeId: z.uuid().nullable(),
   }),
   preferences: PreferencesSchema,
+  /** Optional features switched on for this server (the UI hides the rest). */
+  features: z.object({ telegram: z.boolean() }),
 });
 export type Me = z.infer<typeof MeSchema>;
 

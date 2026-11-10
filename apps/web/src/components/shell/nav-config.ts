@@ -62,6 +62,8 @@ export interface NavItem {
   permission?: PermissionCode;
   /** Shown with any of these (a page whose parts need different permissions). */
   anyOf?: PermissionCode[];
+  /** Shown only when this optional server feature is on (`Me.features`). */
+  feature?: "telegram";
 }
 
 export const NAV: Record<NavContext, NavItem[]> = {
@@ -82,6 +84,7 @@ export const NAV: Record<NavContext, NavItem[]> = {
       icon: Send,
       group: "people",
       anyOf: ["telegram.manage", "notifications.broadcast"],
+      feature: "telegram",
     },
     { key: "employees", href: "/admin/employees", icon: UserRound, group: "people", permission: "employees.view" },
     { key: "structure", href: "/admin/structure", icon: BookOpen, group: "teaching", permission: "class_groups.view" },

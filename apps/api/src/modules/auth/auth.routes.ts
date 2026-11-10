@@ -9,6 +9,7 @@ import {
   TokenPairSchema,
 } from "@idrok/shared";
 import { runWithTenant } from "@idrok/db";
+import { telegramEnabled } from "../../config/env";
 import type { AppDeps } from "../../deps";
 import { csrfTokensMatch } from "../../http/auth";
 import { REFRESH_COOKIE, clearAuthCookies, setAccessCookie, setRefreshCookies } from "../../http/cookies";
@@ -22,7 +23,7 @@ const IdParams = z.object({ id: z.uuid() });
 
 export function authRoutes(router: Router, registry: OpenApiRegistry, deps: AppDeps) {
   const service = new AuthService(deps);
-  const me = new MeService(deps.db);
+  const me = new MeService(deps.db, { telegram: telegramEnabled(deps.env) });
 
   /** Cookie clients get cookies; bearer clients get the tokens in the body. */
   function deliver(res: Response, result: LoginResult, cookieMode: boolean) {

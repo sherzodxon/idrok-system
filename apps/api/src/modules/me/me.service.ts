@@ -10,7 +10,10 @@ const DEFAULT_PREFERENCES: Preferences = {
 };
 
 export class MeService {
-  constructor(private readonly db: Db) {}
+  constructor(
+    private readonly db: Db,
+    private readonly features: Me["features"] = { telegram: false },
+  ) {}
 
   async get(auth: RequestAuth): Promise<Me> {
     const user = await this.db.user.findUniqueOrThrow({
@@ -41,6 +44,7 @@ export class MeService {
         employeeId: user.employee?.id ?? null,
       },
       preferences: user.preference ?? DEFAULT_PREFERENCES,
+      features: this.features,
     };
   }
 

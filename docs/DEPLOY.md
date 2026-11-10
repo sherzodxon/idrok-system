@@ -256,6 +256,23 @@ Bridge orqali ulangan terminallar topshiriqlarini Bridge o'zi oladi (har 10 soni
 - Haqiqiy yuz rasmlari (biometrika) faqat VPS'ga ko'chgandan keyin (Q-30, Q-47). Render/Supabase'da faqat sinov rasmlari.
 
 
+## Vasiylar uchun ilova (PWA) va Telegram'siz ishlash (T-99)
+
+Hozircha vasiylar saytdan foydalanadi; sayt telefonga **ilova kabi o'rnatiladi** (PWA):
+
+- Android (Chrome): sayt menyusi → **"Ilovani o'rnatish"** / "Bosh ekranga qo'shish".
+- iPhone (Safari): **Ulashish → "Bosh ekranga"**.
+
+Ilova nomi va rangi Sozlamalar → Brending'dan olinadi (`app/manifest.ts`), ikonka — maktab belgisi (`apps/web/public/icons`).
+Offline kesh (service worker) ataylab yo'q: sahifalarda shaxsiy ma'lumot bor va umumiy telefonda saqlanib qolmasligi kerak.
+Kerak bo'lsa keyin PWA'ni Capacitor bilan ilovaga o'rash mumkin (M8).
+
+**Telegram hozir o'chiq.** `TELEGRAM_BOT_TOKEN` va `TELEGRAM_WEBHOOK_SECRET` bo'sh bo'lsa: bot webhook'i 404, Mini App
+kirishi 404, bildirishnoma qatorlari yaratilmaydi (kanal yo'q), saytda "Telegram" menyusi va vasiy profilidagi
+"Telegram'ga ulash" kartasi ko'rinmaydi (`/me` → `features.telegram: false`). API va worker odatdagidek ishlaydi.
+Yoqish: ikki kalitni (va `TELEGRAM_BOT_USERNAME`, `TELEGRAM_MINI_APP_URL`) Render'da kiriting, API va worker'ni qayta
+ishga tushiring, webhook'ni quyidagicha ro'yxatdan o'tkazing.
+
 ## Telegram bot va Mini App (M7)
 
 1. @BotFather'da bot yarating → token. Bot nomini (`@` siz) ham yozib oling.

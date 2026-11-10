@@ -39,7 +39,9 @@ function NavList({
       {groupNav(
         NAV[context].filter(
           (item) =>
-            (!item.permission || can(me, item.permission)) && (!item.anyOf || item.anyOf.some((p) => can(me, p))),
+            (!item.permission || can(me, item.permission)) &&
+            (!item.anyOf || item.anyOf.some((p) => can(me, p))) &&
+            (!item.feature || me.features[item.feature]),
         ),
       ).map(({ group, items }) => (
         <section

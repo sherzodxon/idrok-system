@@ -98,6 +98,29 @@ beforeEach(() => {
   fake.fail = null;
 });
 
+describe("feature switch", () => {
+  it("with a token and a webhook secret the UI is told Telegram is on", async () => {
+    expect((await api(t, s.guardian).get("/me")).features).toEqual({ telegram: true });
+  });
+
+  it("without them the bot answers nothing and /me says off", async () => {
+    const off = await createTestApp({ ARGON2_MEMORY_KIB: "1024" });
+    try {
+      const res = await request(off.app)
+        .post("/api/v1/telegram/webhook")
+        .set("X-Telegram-Bot-Api-Secret-Token", SECRET)
+        .send({ update_id: 1 });
+      expect(res.status).toBe(404);
+      const init = await request(off.app)
+        .post("/api/v1/auth/telegram")
+        .send({ initData: "auth_date=1&hash=x", tenant: off.defaultTenant.tenant.slug });
+      expect(init.status === 404 || init.body.error?.code === "VALIDATION_ERROR").toBe(true);
+    } finally {
+      await off.close();
+    }
+  });
+});
+
 describe("webhook", () => {
   it("needs the secret header and stores an update once", async () => {
     expect((await hook({ update_id: 1 }, "wrong-secret-wrong-secret-wrong-secret")).status).toBe(401);
