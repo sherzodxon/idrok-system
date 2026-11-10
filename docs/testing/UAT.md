@@ -5,7 +5,7 @@ to'liq sinab chiqish. Staging'da **faqat sun'iy (demo) ma'lumot** (Q-30): sinovc
 mumkin, lekin tizimdagi o'quvchi, vasiy, telefon raqamlari soxta.
 
 Natijalarni belgilash: har ssenariy uchun ✅ (o'tdi), ❌ (xato), ⏸ (bloklangan — oldingi qadam ishlamadi).
-Belgilash shu faylning nusxasida yoki umumiy jadvalda (interaktiv ro'yxat keyin qo'shiladi).
+Interaktiv ro'yxat (sinovchilar birga belgilaydi, natijalar hammaga ko'rinadi): https://claude.ai/artifact/E1wS2UiE4dvXXxG9UNrXZ1 — egasi uni sinovchilarga Share menyusidan ulashadi.
 
 ## 0. Tayyorgarlik (egasi)
 
